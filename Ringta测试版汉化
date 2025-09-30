@@ -1,0 +1,173 @@
+local Translations = {
+    ["Toggle"] = "开/关",
+    ["Lock"] = "锁定",
+    ["Unlock"] = "取消锁定",
+    ["ringta loaded"] = "ringta已加载",
+    ["Script is in development"] = "脚本正在开发中",
+    ["expect bugs and errors"] = "预期存在错误和问题",
+    ["Misc"] = "杂项",
+    ["UI Settings"] = "UI设置",
+    ["Main Features"] = "主要功能",
+    ["Teleport to End"] = "传送到终点",
+    ["Remove Injury"] = "移除伤害",
+    ["Utilities"] = "实用工具",
+    ["Help Player LOOP TILL OF"] = "循环帮助玩家",
+    ["TROLL Players"] = "恶搞玩家",
+    ["Auto Collect Bandage"] = "自动收集绷带",
+    ["RedLight"] = "红绿灯",
+    ["Search"] = "搜索",
+    ["discord.gg/ringta"] = "加入QQ群737561425",
+    ["Custom themes"] = "自定义主题",
+    ["Load theme"] = "加载主题",
+    ["Overwrite theme"] = "覆盖主题",
+    ["Delete theme"] = "删除主题",
+    ["Refresh list"] = "刷新列表",
+    ["Set as default"] = "设为默认",
+    ["Reast default"] = "重置默认值",
+    ["Font Face"] = "字体样式",
+    ["code"] = "代码",
+    ["Theme list"] = "主题列表",
+    ["Default"] = "默认",
+    ["Custom theme name"] = "自定义主题名称",
+    ["Create theme"] = "创建主题",
+    ["Menu bind"] = "菜单绑定",
+    ["RightControl"] = "右键控制",
+    ["Unload"] = "卸载",
+    ["Theme"] = "主题",
+    ["Background color"] = "背景颜色",
+    ["Main color"] = "主色",
+    ["Accent color"] = "强调色",
+    ["Outline color"] = "轮廓颜色",
+    ["Font color"] = "字体颜色",
+    ["Menu"] = "菜单",
+    ["Open Keybind Menu"] = "打开键绑定菜单",
+    ["Custom Cursor"] = "自定义光标",
+    ["Notification Sild"] = "通知侧边",
+    ["Right"] = "右侧",
+    ["DPI Scale"] = "DPI缩放比例",
+    ["Configuration"] = "配置",
+    ["Config name"] = "配置名称",
+    ["Create config"] = "创建配置",
+    ["Config list"] = "配置列表",
+    ["Overwrite config"] = "覆盖配置",
+    ["Load config"] = "加载配置",
+    ["Delete config"] = "删除配置",
+    ["Refresh list"] = "刷新列表",
+    ["Set as autoload"] = "设置为自动加载",
+    ["Reset autoload"] = "重置自动加载",
+    ["Current autoload config"] = "当前自动加载配置",
+}
+
+local function translateText(text)
+    if not text or type(text) ~= "string" then return text end
+    
+    if Translations[text] then
+        return Translations[text]
+    end
+    
+    for en, cn in pairs(Translations) do
+        if text:find(en) then
+            return text:gsub(en, cn)
+        end
+    end
+    
+    return text
+end
+
+local function setupTranslationEngine()
+    local success, err = pcall(function()
+        local oldIndex = getrawmetatable(game).__newindex
+        setreadonly(getrawmetatable(game), false)
+        
+        getrawmetatable(game).__newindex = newcclosure(function(t, k, v)
+            if (t:IsA("TextLabel") or t:IsA("TextButton") or t:IsA("TextBox")) and k == "Text" then
+                v = translateText(tostring(v))
+            end
+            return oldIndex(t, k, v)
+        end)
+        
+        setreadonly(getrawmetatable(game), true)
+    end)
+    
+    if not success then
+        warn("元表劫持失败:", err)
+       
+        local translated = {}
+        local function scanAndTranslate()
+            for _, gui in ipairs(game:GetService("CoreGui"):GetDescendants()) do
+                if (gui:IsA("TextLabel") or gui:IsA("TextButton") or gui:IsA("TextBox")) and not translated[gui] then
+                    pcall(function()
+                        local text = gui.Text
+                        if text and text ~= "" then
+                            local translatedText = translateText(text)
+                            if translatedText ~= text then
+                                gui.Text = translatedText
+                                translated[gui] = true
+                            end
+                        end
+                    end)
+                end
+            end
+            
+            local player = game:GetService("Players").LocalPlayer
+            if player and player:FindFirstChild("PlayerGui") then
+                for _, gui in ipairs(player.PlayerGui:GetDescendants()) do
+                    if (gui:IsA("TextLabel") or gui:IsA("TextButton") or gui:IsA("TextBox")) and not translated[gui] then
+                        pcall(function()
+                            local text = gui.Text
+                            if text and text ~= "" then
+                                local translatedText = translateText(text)
+                                if translatedText ~= text then
+                                    gui.Text = translatedText
+                                    translated[gui] = true
+                                end
+                            end
+                        end)
+                    end
+                end
+            end
+        end
+        
+        local function setupDescendantListener(parent)
+            parent.DescendantAdded:Connect(function(descendant)
+                if descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox") then
+                    task.wait(0.1)
+                    pcall(function()
+                        local text = descendant.Text
+                        if text and text ~= "" then
+                            local translatedText = translateText(text)
+                            if translatedText ~= text then
+                                descendant.Text = translatedText
+                            end
+                        end
+                    end)
+                end
+            end)
+        end
+        
+        pcall(setupDescendantListener, game:GetService("CoreGui"))
+        local player = game:GetService("Players").LocalPlayer
+        if player and player:FindFirstChild("PlayerGui") then
+            pcall(setupDescendantListener, player.PlayerGui)
+        end
+        
+        while true do
+            scanAndTranslate()
+            task.wait(3)
+        end
+    end
+end
+
+task.wait(2)
+
+setupTranslationEngine()
+
+local success, err = pcall(function()
+--这下面填加载外部脚本
+loadstring(game:HttpGet("https://raw.githubusercontent.com/wefwef127382/inkgames.github.io/refs/heads/main/ringta.lua"))()
+
+
+end)
+
+if not success then
+    war
