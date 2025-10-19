@@ -1,0 +1,202 @@
+local Translations = {
+    ["Lock"] = "鎖定",
+    ["Unlock"] = "取消鎖定",
+    ["Toggle"] = "開/關",
+    ["RINGTA"] = "RINGTA汉化byLOL",
+    ["RedLight"] = "紅綠燈",
+    ["Main Features"] = "主要功能",
+    ["Teleport to End"] = "傳送到終點",
+    ["Remove Injury"] = "移除傷害",
+    ["Utilities"] = "實用工具",
+    ["Help Player LOOP TILL OFF"] = "循環幫助其他玩家直到關閉",
+    ["TROLL Players"] = "惡搞其他玩家",
+    ["Auto Collect Bandage"] = "自動收集繃帶",
+    ["Dalgona"] = "摳糖餅",
+    ["Player Features"] = "玩家功能",
+    ["Auto Complete Dalgona"] = "自動完成摳糖餅",
+    ["Free Lighter"] = "免費打火機",
+    ["NOTE THE ANTIPUSH NOT ALWAYS WORK"] = "注意:反推不總是有效",
+    ["Player Utilities"] = "玩家工具",
+    ["ANTIPUSH"] = "反推",
+    ["TP TO ALL PEABERT"] = "傳送到所有pe
+abert",
+    ["Tug Of War"] = "拔河",
+    ["Tug Of War Features"] = "拔河功能",
+    ["Tug Of War Auto"] = "自動拔河",
+    ["Hide And Seek"] = "捉迷藏",
+    ["Hide And Seek Features"] = "捉迷藏功能",
+    ["KILL HIDES"] = "殺掉躲藏者",
+    ["Hide And Seek ESP"] = "捉迷藏透視",
+    ["ESP Hider & Seeker"] = "透視躲藏者&抓捕者",
+    ["Key ESP & Utility"] = "透視鑰匙和工具",
+    ["ESP Keys"] = "透視鑰匙",
+    ["Teleport to Random Hider"] = "傳送到隨機躲藏者",
+    ["Hide And Seek Utilities"] = "捉迷藏工具",
+    ["Teleport 100 Blocks Up"] = "向上傳送100格",
+    ["Teleport 40 Blocks Down"] = "向下傳送40格",
+    ["Delete the spikes"] = "刪除尖刺",
+    ["Exit Door ESP"] = "出口門透視",
+    ["ESP Exit Doors"] = "透視出口門",
+    ["KILL AURA"] = "擊殺光環",
+    ["EXTREMLY SAFE"] = "極其安全",
+    ["Jump Rope"] = "跳繩",
+    ["Glass Bridge"] = "玻璃橋",
+    ["TP to End"] = "到終點",
+    ["Delete The Rope"] = "刪除跳繩",
+    ["THE THINGS BELOW IS FOR GLASS BRIDGE"] = "以下內容試用於玻璃橋",
+    ["Glass Bridge Features"] = "玻璃橋功能",
+    ["Mingle"] = "混搭",
+    ["Auto Win Mingle"] = "自動贏混搭",
+    ["Auto Win Mingle"] = "自動贏混搭",
+    ["Mingle Utilities"] = "混搭工具",
+    ["Mingle Noclip"] = "混搭無碰撞",
+    ["Random Features"] = "特性",
+    ["Game Boots"] = "解鎖",
+    ["Unlock Dash Free"] = "解鎖衝刺",
+    ["Equip Phantom Power Free"] = "免費幽靈步",
+    ["Parkour Artist"] = "跑酷藝術家",
+    ["Movement & AntiFling"] = "速度&防彈飛",
+    ["WalkSpeed Increase"] = "行走速度選擇",
+    ["WalkSpeed Amount"] = "行走速度",
+    ["Reset WalkSpeed to Normal"] = "重置速度",
+    ["Teleport & Emotes"] = "傳送&動作",
+    ["Teleport to Selected Player"] = "傳送到選定玩家位置",
+    ["Refresh Player List"] = "刷新玩家列表",
+    ["Play Selected Emotes"] = "播放動作",
+    ["Stop Emoting"] = "停止播放",
+    ["Auto Skip"] = "自動跳過",
+    ["Rebel"] = "反叛",
+    ["NPC Kill & Aimbot"] = "npc殺戮&自瞄",
+    ["Auto Kill NPC Guards"] = "自動擊殺守衛",
+    ["Rebel Aimbot"] = "自瞄",
+    ["Expand Hitbox"] = "擴展命中框",
+    ["BE CARFUL USING THIS COULD RISK IN BAN"] = "使用此功能時要小心,可能導致封禁",
+    ["Expand Rebel Hitbox"] = "擴展命中框",
+    ["Final"] = "最終",
+    ["Sky Squid Game & Poles"] = "天空魚遊戲&杆子",
+    ["SKY SQUID GAME GODMODE"] = "天空魚遊戲上帝模式",
+    ["INSTA GRAB Poles"] = "立刻抓杆子",
+    ["Fling Features"] = "投擲功能",
+    ["Touch Fling"] = "觸摸投擲",
+    ["FLING ALL HAS RISK FOR BAN"] = "投擲所有，有封禁風險",
+    ["Fling All Players"] = "投擲所有玩家",
+    ["INSANE OP"] = "瘋狂無敵",
+    ["End Fling All Players Early"] = "提前結束所有玩家投擲",
+    ["Misc"] = "雜項",
+    ["UI Settings"] = "UI設置",
+}
+
+local function translateText(text)
+    if not text or type(text) ~= "string" then return text end
+    
+    if Translations[text] then
+        return Translations[text]
+    end
+    
+    for en, cn in pairs(Translations) do
+        if text:find(en) then
+            return text:gsub(en, cn)
+        end
+    end
+    
+    return text
+end
+
+local function setupTranslationEngine()
+    local success, err = pcall(function()
+        local oldIndex = getrawmetatable(game).__newindex
+        setreadonly(getrawmetatable(game), false)
+        
+        getrawmetatable(game).__newindex = newcclosure(function(t, k, v)
+            if (t:IsA("TextLabel") or t:IsA("TextButton") or t:IsA("TextBox")) and k == "Text" then
+                v = translateText(tostring(v))
+            end
+            return oldIndex(t, k, v)
+        end)
+        
+        setreadonly(getrawmetatable(game), true)
+    end)
+    
+    if not success then
+        warn("元表劫持失败:", err)
+       
+        local translated = {}
+        local function scanAndTranslate()
+            for _, gui in ipairs(game:GetService("CoreGui"):GetDescendants()) do
+                if (gui:IsA("TextLabel") or gui:IsA("TextButton") or gui:IsA("TextBox")) and not translated[gui] then
+                    pcall(function()
+                        local text = gui.Text
+                        if text and text ~= "" then
+                            local translatedText = translateText(text)
+                            if translatedText ~= text then
+                                gui.Text = translatedText
+                                translated[gui] = true
+                            end
+                        end
+                    end)
+                end
+            end
+            
+            local player = game:GetService("Players").LocalPlayer
+            if player and player:FindFirstChild("PlayerGui") then
+                for _, gui in ipairs(player.PlayerGui:GetDescendants()) do
+                    if (gui:IsA("TextLabel") or gui:IsA("TextButton") or gui:IsA("TextBox")) and not translated[gui] then
+                        pcall(function()
+                            local text = gui.Text
+                            if text and text ~= "" then
+                                local translatedText = translateText(text)
+                                if translatedText ~= text then
+                                    gui.Text = translatedText
+                                    translated[gui] = true
+                                end
+                            end
+                        end)
+                    end
+                end
+            end
+        end
+        
+        local function setupDescendantListener(parent)
+            parent.DescendantAdded:Connect(function(descendant)
+                if descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox") then
+                    task.wait(0.1)
+                    pcall(function()
+                        local text = descendant.Text
+                        if text and text ~= "" then
+                            local translatedText = translateText(text)
+                            if translatedText ~= text then
+                                descendant.Text = translatedText
+                            end
+                        end
+                    end)
+                end
+            end)
+        end
+        
+        pcall(setupDescendantListener, game:GetService("CoreGui"))
+        local player = game:GetService("Players").LocalPlayer
+        if player and player:FindFirstChild("PlayerGui") then
+            pcall(setupDescendantListener, player.PlayerGui)
+        end
+        
+        while true do
+            scanAndTranslate()
+            task.wait(3)
+        end
+    end
+end
+
+task.wait(2)
+
+setupTranslationEngine()
+
+local success, err = pcall(function()
+--这下面填加载外部脚本
+loadstring(game:HttpGet("https://rawscripts.net/raw/Ink-Game-Ringta-ink-game-updated-51437"))()
+
+
+end)
+
+if not success then
+    warn("加载失败:", err)
+end
