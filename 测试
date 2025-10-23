@@ -1,0 +1,36 @@
+local OrionLib = loadstring(game:HttpGet('https://pastebin.com/raw/xLRUSiKx'))()
+local Window = OrionLib:MakeWindow({Name = "LOL", HidePremium = false, SaveConfig = true,IntroText = "傻逼心情瞎鸡巴圈钱", ConfigFolder = "乱输"})
+local Tab = Window:MakeTab({
+    Name = "功能",
+	Icon = "rbxassetid://4483345998",
+	PremiumOnly = false
+})
+Tab:AddButton({
+	Name = "飞行",
+	Callback = function()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/%E6%B1%89%E5%8C%96%E9%A3%9E%E8%A1%8C"))()
+end
+})
+local OrionLib = loadstring(game:HttpGet('https://pastebin.com/raw/xLRUSiKx'))()
+local Window = OrionLib:MakeWindow({Name = "LoL", HidePremium = false, SaveConfig = true,IntroText = "乱", ConfigFolder = "乱输"})
+local Tab = Window:MakeTab({
+    Name = "我是人",
+	Icon = "rbxassetid://4483345998",
+	PremiumOnly = false
+})
+
+Tab:AddButton({
+	Name = "时间回溯",
+	Callback = functio ()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/%E5%9B%9E%E6%BA%AF%E6%97%B6%E9%97%B4LOL"))()
+end
+})    
+Tab:AddButton({
+	Name = "甩人",
+	Callback = function()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/%E7%94%A9%E4%BA%BA%E6%B1%89%E5%8C%96"))()
+end
+})
+local LBLG = Instance.new("ScreenGui", getParent)
+local LBL = Instance.new("TextLabel", getParent)
+local player = game.Players.LocalPlayer
