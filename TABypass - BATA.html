@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TABypass</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        :root {
+            --primary: #6c5ce7;
+            --secondary: #a29bfe;
+            --success: #00b894;
+            --warning: #fdcb6e;
+            --danger: #e17055;
+            --dark: #2d3436;
+            --light: #dfe6e9;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+        
+        header {
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 25px 20px;
+            text-align: center;
+            position: relative;
+        }
+        
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .main-content {
+            padding: 25px;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid var(--light);
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.2);
+        }
+        
+        .url-example {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 8px;
+            font-size: 0.9rem;
+            color: #666;
+            border-left: 3px solid var(--primary);
+        }
+        
+        .service-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            padding: 15px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(108, 92, 231, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn:disabled {
+            background: #b0b0b0;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .btn-lat {
+            background: linear-gradient(90deg, #6c5ce7, #a29bfe);
+        }
+        
+        .btn-nasrali {
+            background: linear-gradient(90deg, #00b894, #00cec9);
+        }
+        
+        .result-container {
+            display: none;
+            margin-top: 30px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 5px solid var(--primary);
+        }
+        
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .result-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+        
+        .copy-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .result-content {
+            line-height: 1.8;
+        }
+        
+        .result-item {
+            margin-bottom: 10px;
+            display: flex;
+        }
+        
+        .result-label {
+            font-weight: 600;
+            min-width: 100px;
+            color: #555;
+        }
+        
+        .key-result {
+            background: #e8f4ff;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-weight: bold;
+            color: #0984e3;
+            border: 2px dashed #0984e3;
+            margin-top: 10px;
+            word-break: break-all;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+        
+        .api-url {
+            background: #f0f8ff;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            margin-top: 10px;
+            word-break: break-all;
+            border: 1px solid #b3d9ff;
+            font-size: 0.9rem;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 5px solid rgba(108, 92, 231, 0.2);
+            border-radius: 50%;
+            border-top: 5px solid var(--primary);
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .service-info {
+            margin-top: 20px;
+            background: #eef5ff;
+            border-radius: 12px;
+            padding: 20px;
+        }
+        
+        .service-info h3 {
+            color: var(--primary);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .supported-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .supported-item {
+            background: white;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+        }
+        
+        .success { color: var(--success); }
+        .warning { color: var(--warning); }
+        .error { color: var(--danger); }
+        
+        @media (max-width: 768px) {
+            .service-buttons {
+                grid-template-columns: 1fr;
+            }
+            
+            .supported-list {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-key"></i> 解卡工具</h1>
+            <p class="subtitle">智能解卡</p>
+        </header>
+        
+        <div class="main-content">
+            <div class="input-group">
+                <label for="target-url"><i class="fas fa-link"></i> 输入要绕过的卡密链接</label>
+                <input type="text" id="target-url" placeholder="https://auth.platoboost.com/...">
+                <div class="url-example">
+                    <strong>示例链接：</strong> https://auth.platoboost.com/8?id=xxx 或 https://linkvertise.com/xxx
+                </div>
+            </div>
+            
+            <div class="service-buttons">
+                <button class="btn btn-lat" id="lat-bypass">
+                    <i class="fas fa-bolt"></i> 使用 LAT 解卡
+                </button>
+                <button class="btn btn-nasrali" id="nasrali-bypass">
+                    <i class="fas fa-shield-alt"></i> 使用 nasrali11448 解卡
+                </button>
+            </div>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p id="loading-text">正在调用真实API解卡...</p>
+            </div>
+            
+            <div class="result-container" id="result-container">
+                <div class="result-header">
+                    <div class="result-title"><i class="fas fa-check-circle"></i> 解卡结果</div>
+                    <button class="copy-btn" id="copy-btn">
+                        <i class="fas fa-copy"></i> 复制卡密
+                    </button>
+                </div>
+                <div class="result-content" id="result-content">
+                    <!-- 结果将在这里显示 -->
+                </div>
+            </div>
+            
+            <div class="service-info">
+                <h3><i class="fas fa-info-circle"></i> 服务详情</h3>
+                <p>本工具直接调用真实的绕过API，确保解卡成功率。</p>
+                
+                <div class="result-item">
+                    <span class="result-label">LAT API:</span>
+                    <span>https://bypass.ceo/LAT-userjs/?url=</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">nasrali11448 API:</span>
+                    <span>https://nasrali11448.github.io/BypassUnlock/?url=</span>
+                </div>
+                
+                <div class="supported-list">
+                    <div class="supported-item">Delta</div>
+                    <div class="supported-item">Fluxus</div>
+                    <div class="supported-item">loot-link</div>
+                    <div class="supported-item">Linkvertise</div>
+                    <div class="supported-item">CodeX</div>
+                    <div class="supported-item">Trigon</div>
+                    <div class="supported-item">paster.so</div>
+                    <div class="supported-item">work.ink</div>
+                    <div class="supported-item">boost.ink</div>
+                    <div class="supported-item">mboost.me</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>智能解卡</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const targetUrlInput = document.getElementById('target-url');
+            const latBypassBtn = document.getElementById('lat-bypass');
+            const nasraliBypassBtn = document.getElementById('nasrali-bypass');
+            const loadingElement = document.getElementById('loading');
+            const loadingText = document.getElementById('loading-text');
+            const resultContainer = document.getElementById('result-container');
+            const resultContent = document.getElementById('result-content');
+            const copyBtn = document.getElementById('copy-btn');
+            
+            // 示例链接
+            targetUrlInput.value = "https://auth.platoboost.com/8?id=demo";
+            
+            // LAT 解卡功能
+            latBypassBtn.addEventListener('click', async function() {
+                const url = targetUrlInput.value.trim();
+                
+                if (!url) {
+                    alert('请输入要解卡的链接');
+                    return;
+                }
+                
+                // 显示加载状态
+                loadingElement.style.display = 'block';
+                loadingText.textContent = "正在调用 LAT API 解卡...";
+                resultContainer.style.display = 'none';
+                latBypassBtn.disabled = true;
+                nasraliBypassBtn.disabled = true;
+                
+                try {
+                    // 直接调用 LAT API
+                    const result = await callLATAPI(url);
+                    displayResult(result, 'LAT');
+                    
+                } catch (error) {
+                    resultContent.innerHTML = `
+                        <div class="result-item">
+                            <span class="result-label">❌ 错误:</span>
+                            <span class="error">${error.message}</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">💡 建议:</span>
+                            <span>请检查链接格式或尝试其他服务</span>
+                        </div>
+                    `;
+                    resultContainer.style.display = 'block';
+                } finally {
+                    loadingElement.style.display = 'none';
+                    latBypassBtn.disabled = false;
+                    nasraliBypassBtn.disabled = false;
+                }
+            });
+            
+            // nasrali11448 解卡功能
+            nasraliBypassBtn.addEventListener('click', async function() {
+                const url = targetUrlInput.value.trim();
+                
+                if (!url) {
+                    alert('请输入要解卡的链接');
+                    return;
+                }
+                
+                // 显示加载状态
+                loadingElement.style.display = 'block';
+                loadingText.textContent = "正在调用 nasrali11448 API 解卡...";
+                resultContainer.style.display = 'none';
+                latBypassBtn.disabled = true;
+                nasraliBypassBtn.disabled = true;
+                
+                try {
+                    // 直接调用 nasrali11448 API
+                    const result = await callNasraliAPI(url);
+                    displayResult(result, 'nasrali11448');
+                    
+                } catch (error) {
+                    resultContent.innerHTML = `
+                        <div class="result-item">
+                            <span class="result-label">❌ 错误:</span>
+                            <span class="error">${error.message}</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">💡 建议:</span>
+                            <span>请检查链接格式或尝试其他服务</span>
+                        </div>
+                    `;
+                    resultContainer.style.display = 'block';
+                } finally {
+                    loadingElement.style.display = 'none';
+                    latBypassBtn.disabled = false;
+                    nasraliBypassBtn.disabled = false;
+                }
+            });
+            
+            // 调用 LAT API
+            async function callLATAPI(url) {
+                const apiUrl = `https://bypass.ceo/LAT-userjs/?url=${encodeURIComponent(url)}`;
+                
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`LAT API 响应错误: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    return {
+                        success: true,
+                        key: data.key || data.token || data.code,
+                        apiUrl: apiUrl,
+                        originalUrl: url,
+                        service: 'LAT',
+                        rawData: data
+                    };
+                    
+                } catch (error) {
+                    // 如果直接调用失败，尝试通过代理
+                    return await callLATViaProxy(url);
+                }
+            }
+            
+            // 通过代理调用 LAT API
+            async function callLATViaProxy(url) {
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://bypass.ceo/LAT-userjs/?url=${encodeURIComponent(url)}`)}`;
+                
+                try {
+                    const response = await fetch(proxyUrl);
+                    const data = await response.json();
+                    
+                    if (data.contents) {
+                        const content = JSON.parse(data.contents);
+                        return {
+                            success: true,
+                            key: content.key || content.token || content.code,
+                            apiUrl: `https://bypass.ceo/LAT-userjs/?url=${encodeURIComponent(url)}`,
+                            originalUrl: url,
+                            service: 'LAT',
+                            rawData: content
+                        };
+                    } else {
+                        throw new Error('LAT API 返回数据格式错误');
+                    }
+                } catch (error) {
+                    throw new Error('LAT 暂时不可用: ' + error.message);
+                }
+            }
+            
+            // 调用 nasrali11448 API
+            async function callNasraliAPI(url) {
+                const apiUrl = `https://nasrali11448.github.io/BypassUnlock/?url=${encodeURIComponent(url)}`;
+                
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`nasrali11448 API 响应错误: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    return {
+                        success: true,
+                        key: data.key || data.token || data.code,
+                        apiUrl: apiUrl,
+                        originalUrl: url,
+                        service: 'nasrali11448',
+                        rawData: data
+                    };
+                    
+                } catch (error) {
+                    // 如果直接调用失败，尝试通过代理
+                    return await callNasraliViaProxy(url);
+                }
+            }
+            
+            // 通过代理调用 nasrali11448 API
+            async function callNasraliViaProxy(url) {
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://nasrali11448.github.io/BypassUnlock/?url=${encodeURIComponent(url)}`)}`;
+                
+                try {
+                    const response = await fetch(proxyUrl);
+                    const data = await response.json();
+                    
+                    if (data.contents) {
+                        const content = JSON.parse(data.contents);
+                        return {
+                            success: true,
+                            key: content.key || content.token || content.code,
+                            apiUrl: `https://nasrali11448.github.io/BypassUnlock/?url=${encodeURIComponent(url)}`,
+                            originalUrl: url,
+                            service: 'nasrali11448',
+                            rawData: content
+                        };
+                    } else {
+                        throw new Error('nasrali11448 API 返回数据格式错误');
+                    }
+                } catch (error) {
+                    throw new Error('nasrali11448 暂时不可用: ' + error.message);
+                }
+            }
+            
+            // 显示结果
+            function displayResult(result, service) {
+                if (result.success && result.key) {
+                    resultContent.innerHTML = `
+                        <div class="result-item">
+                            <span class="result-label">🔗 原链接:</span>
+                            <span>${result.originalUrl}</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">🎯 使用服务:</span>
+                            <span>${service}</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">🔧 API地址:</span>
+                            <span>${result.apiUrl}</span>
+                        </div>
+                        <div class="key-result">
+                            ${result.key}
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">📊 状态:</span>
+                            <span class="success">解卡成功</span>
+                        </div>
+                    `;
+                } else {
+                    resultContent.innerHTML = `
+                        <div class="result-item">
+                            <span class="result-label">❌ 状态:</span>
+                            <span class="error">解卡失败</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">📝 响应数据:</span>
+                            <span>${JSON.stringify(result.rawData)}</span>
+                        </div>
+                    `;
+                }
+                
+                resultContainer.style.display = 'block';
+                
+                // 自动复制卡密到剪贴板
+                if (result.key && navigator.clipboard) {
+                    navigator.clipboard.writeText(result.key).then(() => {
+                        console.log("卡密已自动复制到剪贴板");
+                    });
+                }
+            }
+            
+            // 复制功能
+            copyBtn.addEventListener('click', function() {
+                const keyElement = resultContent.querySelector('.key-result');
+                if (keyElement) {
+                    navigator.clipboard.writeText(keyElement.textContent).then(() => {
+                        const originalText = copyBtn.innerHTML;
+                        copyBtn.innerHTML = '<i class="fas fa-check"></i> 已复制';
+                        setTimeout(() => {
+                            copyBtn.innerHTML = originalText;
+                        }, 2000);
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
