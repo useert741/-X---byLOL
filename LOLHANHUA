@@ -1,0 +1,146 @@
+local Translations = {["Residence Massacre"] = "住宅大屠杀(汉化byLOL)",
+    ["Main"] = "主要",
+    ["LocalPlayer"] = "本地玩家",
+    ["Field of View"] = "视野",
+    ["Enable Field of View"] = "启动视野",
+    ["Esp"] = "透视",
+    ["Color"] = "颜色",
+    ["Entity"] = "怪物",
+    ["Players"] = "玩家",
+    ["Admin commands [Chat]"] = "管理员命令(聊天)",
+    ["Teleport to Players"] = "传送到玩家",
+    ["Fix Power"] = "修电",
+    ["Teleport to Home 1"] = "传送到房子1",
+    ["Teleport to Home 2"] = "传送到房子2",
+    ["Teleport to Generator"] = "传送到发电机",
+    ["Auto Wire"] = "自动修电",
+    ["AutoMatic Power"] = "自动加油",
+    ["Infinity Flashlight Battery"] = "无限手电筒电池",
+    ["Infinity Oxygen"] = "无限氧气",
+    ["Infinity Stamina"] = "无限体力",
+    ["Infinity BloxyCola (Stamina)"] = "无限虚拟可乐(体力)",
+    ["Event Notifiers"] = "事件通知",
+    ["Auto Camera"] = "自动装摄像头",
+    ["Free Hat [Lobby] Patch"] = "免费帽子(大厅)补丁",
+    ["[Select] Hat"] = "[选择]帽子",
+    ["Adurite King"] = "国王帽",
+    ["Cola Hat"] = "可乐帽",
+    ["Dust Mask"] = "防毒面具",
+    ["Flaming Vision"] = "燃烧",
+    ["Golden King"] = "黄金国王",
+    ["Headphones"] = "耳机",
+    ["Lightbulb"] = "灯泡",
+    ["Night Vision"] = "夜视仪",
+    }
+
+local function translateText(text)
+    if not text or type(text) ~= "string" then return text end
+    
+    if Translations[text] then
+        return Translations[text]
+    end
+    
+    for en, cn in pairs(Translations) do
+        if text:find(en) then
+            return text:gsub(en, cn)
+        end
+    end
+    
+    return text
+end
+
+local function setupTranslationEngine()
+    local success, err = pcall(function()
+        local oldIndex = getrawmetatable(game).__newindex
+        setreadonly(getrawmetatable(game), false)
+        
+        getrawmetatable(game).__newindex = newcclosure(function(t, k, v)
+            if (t:IsA("TextLabel") or t:IsA("TextButton") or t:IsA("TextBox")) and k == "Text" then
+                v = translateText(tostring(v))
+            end
+            return oldIndex(t, k, v)
+        end)
+        
+        setreadonly(getrawmetatable(game), true)
+    end)
+    
+    if not success then
+        warn("元表劫持失败:", err)
+       
+        local translated = {}
+        local function scanAndTranslate()
+            for _, gui in ipairs(game:GetService("CoreGui"):GetDescendants()) do
+                if (gui:IsA("TextLabel") or gui:IsA("TextButton") or gui:IsA("TextBox")) and not translated[gui] then
+                    pcall(function()
+                        local text = gui.Text
+                        if text and text ~= "" then
+                            local translatedText = translateText(text)
+                            if translatedText ~= text then
+                                gui.Text = translatedText
+                                translated[gui] = true
+                            end
+                        end
+                    end)
+                end
+            end
+            
+            local player = game:GetService("Players").LocalPlayer
+            if player and player:FindFirstChild("PlayerGui") then
+                for _, gui in ipairs(player.PlayerGui:GetDescendants()) do
+                    if (gui:IsA("TextLabel") or gui:IsA("TextButton") or gui:IsA("TextBox")) and not translated[gui] then
+                        pcall(function()
+                            local text = gui.Text
+                            if text and text ~= "" then
+                                local translatedText = translateText(text)
+                                if translatedText ~= text then
+                                    gui.Text = translatedText
+                                    translated[gui] = true
+                                end
+                            end
+                        end)
+                    end
+                end
+            end
+        end
+        
+        local function setupDescendantListener(parent)
+            parent.DescendantAdded:Connect(function(descendant)
+                if descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox") then
+                    task.wait(0.1)
+                    pcall(function()
+                        local text = descendant.Text
+                        if text and text ~= "" then
+                            local translatedText = translateText(text)
+                            if translatedText ~= text then
+                                descendant.Text = translatedText
+                            end
+                        end
+                    end)
+                end
+            end)
+        end
+        
+        pcall(setupDescendantListener, game:GetService("CoreGui"))
+        local player = game:GetService("Players").LocalPlayer
+        if player and player:FindFirstChild("PlayerGui") then
+            pcall(setupDescendantListener, player.PlayerGui)
+        end
+        
+        while true do
+            scanAndTranslate()
+            task.wait(3)
+        end
+    end
+end
+
+task.wait(2)
+
+setupTranslationEngine()
+
+local success, err = pcall(function()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/KINGHUB01/BlackKing-obf/main/Residence%20Massacre"))()
+end)
+
+if not success then
+    warn("加载失败:", err)
+end
