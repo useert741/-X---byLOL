@@ -1,0 +1,223 @@
+local Translations = {
+   --[""] = "",
+    ["Loading BronxWare 99 Nights"] = "加载BronxWare的99夜脚本-LOL汉化",
+    ["Made by rxzoa"] = "脚本制作rxzoa汉化LOL",
+    ["BronxWare 99 Nights"] = "BronxWare99夜",
+    ["Main"] = "主要",
+    ["Godmode"] = "上帝模式",
+    ["Spectate Players"] = "旁观玩家",
+    ["Fly"] = "飞行",
+    ["Fly Speed"] = "飞行速度",
+    ["Walkspeed"] = "行走速度",
+    ["Instant Prompts"] = "及时提示",
+    ["Auto"] = "自动",
+    ["Auto Scrap Items"] = "自动带来废料",
+    ["Auto Fuel Fire"] = "自动带来燃料",
+    ["Auto Crock Pot Main"] = "自动炖食物(好像)",
+    ["Auto Cook"] = "自动煮食物",
+    ["Auto Consume Food"] = "自动消耗食物(好像)",
+    ["Auto Chop Trees"] = "砍树",
+    ["Auto Chop"] = "自动砍",
+    ["Chop Range"] = "砍树范围",
+    ["Auto Plant Trees"] = "自动种树",
+    ["Auto Plant Saplings in Circle"] = "自动植树圆形",
+    ["Planting Radius"] = "种植半径",
+    ["Tree Spacing"] = "植树距离",
+    ["Teleport Options"] = "传送",
+    ["Chest Selector"] = "宝箱选择",
+    ["Volcanic Chest1"] = "火山宝箱1",
+    ["Volcanic Chest2"] = "火山宝箱2",
+    ["Player Teleport"] = "玩家传送",
+    ["Select Player"] = "选择玩家",
+    ["None"] = "无",
+    ["Refresh Player List"] = "刷新玩家列表",
+    ["Teleport to Selected Player"] = "传送选择的玩家",
+    ["Spectate Player"] = "旁观玩家",
+    ["Anvil Teleport"] = "砧传送",
+    ["Anvil Front"] = "砧前",
+    ["Anvil Base"] = "砧基地",
+    ["Anvil Back"] = "砧后",
+    ["Teleport"] = "传送",
+    ["Kids Teleport"] = "孩子传送",
+    ["Teleport to Dion Kid"] = "传送至恐龙小孩",
+    ["Teleport to Kraken Kid"] = "传送至克拉肯小孩",
+    ["Teleport to Squid Kid"] = "传送至鱿鱼小孩",
+    ["Teleport to Koala Kid"] = "传送至考拉小孩",
+    ["Other Teleport"] = "其他传送",
+    ["Teleport to Fire"] = "传送至篝火",
+    ["Teleport to Alien Chest"] = "传送至外星人宝箱",
+    ["Teleport to Stronghold"] = "传送到堡垒",
+    ["Teleport to Fairy House"] = "传送到仙女屋",
+    ["Teleport to Tool Workshop"] = "传送到工具车间",
+    ["Teleport to Snow Clothing Shop"] = "传送到雪地商店",
+    ["Bring Items"] = "带来物品",
+    ["Item Category"] = "物品类别",
+    ["Pelt"] = "皮毛",
+    ["Seeds"] = "种子",
+    ["Armour"] = "盔甲",
+    ["Food"] = "食物",
+    ["Ammo"] = "弹药",
+    ["Scrap"] = "废料",
+    ["Blueprints"] = "蓝图",
+    ["Clothing"] = "衣服",
+    ["Tools"] = "工具",
+    ["Chair"] = "椅子",
+    ["Biofuel"] = "生物燃料",
+    ["Select Item"] = "选择物品",
+    ["Coal"] = "煤",
+    ["Fuel Canister"] = "燃料罐",
+    ["Oil Barrel"] = "油桶",
+    ["Log"] = "日志",
+    ["Crossbow"] = "弩",
+    ["Cultist"] = "邪教徒",
+    ["Wolf Corpse"] = "狼的尸体",
+    ["Alpha Wolf Corpse"] = "阿尔法狼的尸体",
+    ["Bear Corpse"] = "熊的尸体",
+    ["Sapling"] = "幼树",
+    ["Instant Catch"] = "及时捕捉",
+    ["Fish Area ESP"] = "鱼类区透视",
+    ["Fishing Zone"] = "钓鱼区",
+    ["Teleport to Zone"] = "传送至这个区域",
+    ["Water"] = "水区",
+    ["Zone"] = "区域",
+    ["Refresh Zones"] = "刷新区域",
+    ["Teleport to Fishing Hut"] = "传送到钓鱼小屋",
+    ["Search this page"] = "搜索",
+    ["Sytem"] = "系统",
+    ["Anonymized analytics"] = "匿名分析",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+}
+
+local function translateText(text)
+    if not text or type(text) ~= "string" then return text end
+    
+    if Translations[text] then
+        return Translations[text]
+    end
+    
+    for en, cn in pairs(Translations) do
+        if text:find(en) then
+            return text:gsub(en, cn)
+        end
+    end
+    
+    return text
+end
+
+local function setupTranslationEngine()
+    local success, err = pcall(function()
+        local oldIndex = getrawmetatable(game).__newindex
+        setreadonly(getrawmetatable(game), false)
+        
+        getrawmetatable(game).__newindex = newcclosure(function(t, k, v)
+            if (t:IsA("TextLabel") or t:IsA("TextButton") or t:IsA("TextBox")) and k == "Text" then
+                v = translateText(tostring(v))
+            end
+            return oldIndex(t, k, v)
+        end)
+        
+        setreadonly(getrawmetatable(game), true)
+    end)
+    
+    if not success then
+        warn("元表劫持失败:", err)
+       
+        local translated = {}
+        local function scanAndTranslate()
+            for _, gui in ipairs(game:GetService("CoreGui"):GetDescendants()) do
+                if (gui:IsA("TextLabel") or gui:IsA("TextButton") or gui:IsA("TextBox")) and not translated[gui] then
+                    pcall(function()
+                        local text = gui.Text
+                        if text and text ~= "" then
+                            local translatedText = translateText(text)
+                            if translatedText ~= text then
+                                gui.Text = translatedText
+                                translated[gui] = true
+                            end
+                        end
+                    end)
+                end
+            end
+            
+            local player = game:GetService("Players").LocalPlayer
+            if player and player:FindFirstChild("PlayerGui") then
+                for _, gui in ipairs(player.PlayerGui:GetDescendants()) do
+                    if (gui:IsA("TextLabel") or gui:IsA("TextButton") or gui:IsA("TextBox")) and not translated[gui] then
+                        pcall(function()
+                            local text = gui.Text
+                            if text and text ~= "" then
+                                local translatedText = translateText(text)
+                                if translatedText ~= text then
+                                    gui.Text = translatedText
+                                    translated[gui] = true
+                                end
+                            end
+                        end)
+                    end
+                end
+            end
+        end
+        
+        local function setupDescendantListener(parent)
+            parent.DescendantAdded:Connect(function(descendant)
+                if descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox") then
+                    task.wait(0.1)
+                    pcall(function()
+                        local text = descendant.Text
+                        if text and text ~= "" then
+                            local translatedText = translateText(text)
+                            if translatedText ~= text then
+                                descendant.Text = translatedText
+                            end
+                        end
+                    end)
+                end
+            end)
+        end
+        
+        pcall(setupDescendantListener, game:GetService("CoreGui"))
+        local player = game:GetService("Players").LocalPlayer
+        if player and player:FindFirstChild("PlayerGui") then
+            pcall(setupDescendantListener, player.PlayerGui)
+        end
+        
+        while true do
+            scanAndTranslate()
+            task.wait(3)
+        end
+    end
+end
+
+task.wait(2)
+
+setupTranslationEngine()
+
+local success, err = pcall(function()
+--这下面填加载外部脚本
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Seriously56/99-Nights/refs/heads/main/99%20nights", true))()
+
+
+end)
+
+if not success then
+    warn("加载失败:", err)
+end
