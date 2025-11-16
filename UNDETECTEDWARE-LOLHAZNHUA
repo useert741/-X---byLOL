@@ -1,0 +1,205 @@
+local Translations = {
+   --[""] = "",
+    ["UNDETECTEDWARE"] = "UNDETECTEDWARE汉化",
+    ["Main"] = "主要",
+    ["Main Left"] = "主要左",
+    ["Infinite Stamina"] = "无限耐力",
+    ["Walk Speed"] = "移动速度",
+    ["Walk Speed Value"] = "速度调节",
+    ["Enable Spinbot"] = "启用旋转机器人",
+    ["Spinbot Speed"] = "旋转机器人速度调节",
+    ["Main Right"] = "主要右",
+    ["ForceField ViewModel"] = "地图模型",
+    ["TPkill"] = "传送击杀",
+    ["FOV Changer"] = "FOV变换",
+    ["FOV Value"] = "FOV调节",
+    ["RemoveCamShake"] = "移除抖动",
+    ["Combat"] = "战斗",
+    ["Combat Left"] = "战斗左",
+    ["Hitbox Expander"] = "碰撞箱扩展",
+    ["Melee Aura"] = "近战光环",
+    ["Melee Aura Distance"] = "近战光环距离",
+    ["Cheak Team"] = "检查团队",
+    ["No Recoil"] = "无后座力",
+    ["Instant Reload"] = "及时重新加载",
+    ["Show Animations"] = "展示动画",
+    ["Target Part"] = "目标部件",
+    ["Ragebot"] = "愤怒机器人",
+    ["Ragebot Mode"] = "愤怒机器人模组",
+    ["Off"] = "关",
+    ["Downed Check"] = "已勾销的支票",
+    ["Rocket Control"] = "火箭控制",
+    ["Rocket Speed"] = "火箭速度",
+    ["Combat Right"] = "战斗右",
+    ["Silent Aim"] = "无声瞄准",
+    ["Wall Check"] = "墙检查",
+    ["Use Hit Chance"] = "使用命中几率",
+    ["Hit Chance"] = "命中几率",
+    ["Check Team"] = "检查团队",
+    ["Draw FOV Circle"] = "绘制视野范围圆圈",
+    ["Silent Aim FOV"] = "无声瞄准视野",
+    ["discord.gg/9V3nRmYjEY"] = "LOL汉化",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+    [""] = "",
+}
+
+local function translateText(text)
+    if not text or type(text) ~= "string" then return text end
+    
+    if Translations[text] then
+        return Translations[text]
+    end
+    
+    for en, cn in pairs(Translations) do
+        if text:find(en) then
+            return text:gsub(en, cn)
+        end
+    end
+    
+    return text
+end
+
+local function setupTranslationEngine()
+    local success, err = pcall(function()
+        local oldIndex = getrawmetatable(game).__newindex
+        setreadonly(getrawmetatable(game), false)
+        
+        getrawmetatable(game).__newindex = newcclosure(function(t, k, v)
+            if (t:IsA("TextLabel") or t:IsA("TextButton") or t:IsA("TextBox")) and k == "Text" then
+                v = translateText(tostring(v))
+            end
+            return oldIndex(t, k, v)
+        end)
+        
+        setreadonly(getrawmetatable(game), true)
+    end)
+    
+    if not success then
+        warn("元表劫持失败:", err)
+       
+        local translated = {}
+        local function scanAndTranslate()
+            for _, gui in ipairs(game:GetService("CoreGui"):GetDescendants()) do
+                if (gui:IsA("TextLabel") or gui:IsA("TextButton") or gui:IsA("TextBox")) and not translated[gui] then
+                    pcall(function()
+                        local text = gui.Text
+                        if text and text ~= "" then
+                            local translatedText = translateText(text)
+                            if translatedText ~= text then
+                                gui.Text = translatedText
+                                translated[gui] = true
+                            end
+                        end
+                    end)
+                end
+            end
+            
+            local player = game:GetService("Players").LocalPlayer
+            if player and player:FindFirstChild("PlayerGui") then
+                for _, gui in ipairs(player.PlayerGui:GetDescendants()) do
+                    if (gui:IsA("TextLabel") or gui:IsA("TextButton") or gui:IsA("TextBox")) and not translated[gui] then
+                        pcall(function()
+                            local text = gui.Text
+                            if text and text ~= "" then
+                                local translatedText = translateText(text)
+                                if translatedText ~= text then
+                                    gui.Text = translatedText
+                                    translated[gui] = true
+                                end
+                            end
+                        end)
+                    end
+                end
+            end
+        end
+        
+        local function setupDescendantListener(parent)
+            parent.DescendantAdded:Connect(function(descendant)
+                if descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox") then
+                    task.wait(0.1)
+                    pcall(function()
+                        local text = descendant.Text
+                        if text and text ~= "" then
+                            local translatedText = translateText(text)
+                            if translatedText ~= text then
+                                descendant.Text = translatedText
+                            end
+                        end
+                    end)
+                end
+            end)
+        end
+        
+        pcall(setupDescendantListener, game:GetService("CoreGui"))
+        local player = game:GetService("Players").LocalPlayer
+        if player and player:FindFirstChild("PlayerGui") then
+            pcall(setupDescendantListener, player.PlayerGui)
+        end
+        
+        while true do
+            scanAndTranslate()
+            task.wait(3)
+        end
+    end
+end
+
+task.wait(2)
+
+setupTranslationEngine()
+
+local success, err = pcall(function()
+--这下面填加载外部脚本
+loadstring(game:HttpGet("https://raw.githubusercontent.com/UNDETECTEDWARE/SCRIPT/refs/heads/main/UNDETECTEDWARENEW"))()
+
+
+end)
+
+if not success then
+    warn("加载失败:", err)
+end
