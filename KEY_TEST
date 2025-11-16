@@ -1,0 +1,568 @@
+-- 创建密钥验证UI - 修复白名单漏洞并优化显示
+local Players = game:GetService("Players")
+local PlayerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+
+-- 增强白名单系统
+local whitelist = {
+    -- 用户ID白名单（最可靠的方式）
+    userids = {
+        yummyfood585,  -- 示例用户ID - 替换为实际ID
+        987654321,  -- 示例用户ID - 替换为实际ID
+    },
+    -- 用户名白名单
+    usernames = {
+        "yummyfood585",    -- 示例用户名 - 替换为实际用户名
+        "Moderator",    -- 示例用户名 - 替换为实际用户名
+    },
+    -- 开发者特殊权限
+    developers = {
+        "Developer1",   -- 示例开发者 - 替换为实际用户名
+        "Developer2"    -- 示例开发者 - 替换为实际用户名
+    }
+}
+
+-- 增强白名单检查函数
+local function checkWhitelist()
+    local player = game.Players.LocalPlayer
+    local playerName = player.Name
+    local playerUserId = player.UserId
+    
+    -- 检查用户ID白名单
+    for _, id in ipairs(whitelist.userids) do
+        if playerUserId == id then
+            return true, "用户ID白名单"
+        end
+    end
+    
+    -- 检查用户名白名单
+    for _, name in ipairs(whitelist.usernames) do
+        if playerName == name then
+            return true, "用户名白名单"
+        end
+    end
+    
+    -- 检查开发者白名单
+    for _, dev in ipairs(whitelist.developers) do
+        if playerName == dev then
+            return true, "开发者权限"
+        end
+    end
+    
+    return false, "不在白名单中"
+end
+
+-- 白名单检查（最高优先级）
+local isWhitelisted, whitelistType = checkWhitelist()
+if isWhitelisted then
+    -- 创建白名单欢迎界面
+    local WhitelistScreen = Instance.new("ScreenGui")
+    WhitelistScreen.Name = "WhitelistWelcomeUI"
+    WhitelistScreen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    WhitelistScreen.Parent = PlayerGui
+    
+    local WelcomeFrame = Instance.new("Frame")
+    WelcomeFrame.Size = UDim2.new(0, 400, 0, 200)
+    WelcomeFrame.Position = UDim2.new(0.5, -200, 0.5, -100)
+    WelcomeFrame.BackgroundColor3 = Color3.fromRGB(30, 40, 30)
+    WelcomeFrame.BorderSizePixel = 0
+    WelcomeFrame.Parent = WhitelistScreen
+    
+    local UICorner = Instance.new("UICorner")
+    UICorner.CornerRadius = UDim.new(0, 12)
+    UICorner.Parent = WelcomeFrame
+    
+    local WelcomeLabel = Instance.new("TextLabel")
+    WelcomeLabel.Size = UDim2.new(1, 0, 0, 60)
+    WelcomeLabel.Position = UDim2.new(0, 0, 0, 0)
+    WelcomeLabel.BackgroundColor3 = Color3.fromRGB(40, 60, 40)
+    WelcomeLabel.BackgroundTransparency = 0
+    WelcomeLabel.BorderSizePixel = 0
+    WelcomeLabel.Text = "🎉 白名单用户 🎉"
+    WelcomeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    WelcomeLabel.TextSize = 24
+    WelcomeLabel.Font = Enum.Font.GothamBold
+    WelcomeLabel.Parent = WelcomeFrame
+    
+    local TitleCorner = Instance.new("UICorner")
+    TitleCorner.CornerRadius = UDim.new(0, 12)
+    TitleCorner.Parent = WelcomeLabel
+    
+    local MessageLabel = Instance.new("TextLabel")
+    MessageLabel.Size = UDim2.new(1, -40, 0, 80)
+    MessageLabel.Position = UDim2.new(0, 20, 0, 70)
+    MessageLabel.BackgroundTransparency = 1
+    MessageLabel.Text = "欢迎 " .. game.Players.LocalPlayer.Name .. "!\n\n您在白名单中 (" .. whitelistType .. ")\n正在加载脚本..."
+    MessageLabel.TextColor3 = Color3.fromRGB(200, 255, 200)
+    MessageLabel.TextSize = 16
+    MessageLabel.TextWrapped = true
+    MessageLabel.Font = Enum.Font.Gotham
+    MessageLabel.Parent = WelcomeFrame
+    
+    wait(3)
+    WhitelistScreen:Destroy()
+    
+    -- 直接加载主脚本
+    loadstring(game:HttpGet(string.char(0x68,0x74,0x74,0x70,0x73,0x3a,0x2f,0x2f,0x72,0x61,0x77,0x2e,0x67,0x69,0x74,0x68,0x75,0x62,0x75,0x73,0x65,0x72,0x63,0x6f,0x6e,0x74,0x65,0x6e,0x74,0x2e,0x63,0x6f,0x6d,0x2f,0x75,0x73,0x65,0x65,0x72,0x74,0x37,0x34,0x31,0x2f,0x2d,0x58,0x2d,0x2d,0x2d,0x62,0x79,0x4c,0x4f,0x4c,0x2f,0x72,0x65,0x66,0x73,0x2f,0x68,0x65,0x61,0x64,0x73,0x2f,0x6d,0x61,0x69,0x6e,0x2f,0x4c,0x4f,0x4c,0x25,0x45,0x36,0x25,0x42,0x31,0x25,0x38,0x39,0x25,0x45,0x35,0x25,0x38,0x43,0x25,0x39,0x36,0x48,0x55,0x42,0x2d,0x56,0x30,0x2e,0x30,0x2e,0x31)))()
+    return
+end
+
+-- 尝试从存储中读取已保存的密钥
+local function loadSavedKey()
+    local playerName = game.Players.LocalPlayer.Name
+    local success, savedData = pcall(function()
+        return readfile("LOLHUB_SavedKeys.json")
+    end)
+    
+    if success then
+        local keysData = HttpService:JSONDecode(savedData)
+        if keysData[playerName] then
+            return keysData[playerName]
+        end
+    end
+    return nil
+end
+
+-- 保存密钥到存储
+local function saveKey(key)
+    local playerName = game.Players.LocalPlayer.Name
+    local success, savedData = pcall(function()
+        return readfile("LOLHUB_SavedKeys.json")
+    end)
+    
+    local keysData = {}
+    if success then
+        keysData = HttpService:JSONDecode(savedData)
+    end
+    
+    keysData[playerName] = key
+    
+    pcall(function()
+        writefile("LOLHUB_SavedKeys.json", HttpService:JSONEncode(keysData))
+    end)
+end
+
+-- 删除保存的密钥
+local function removeSavedKey()
+    local playerName = game.Players.LocalPlayer.Name
+    local success, savedData = pcall(function()
+        return readfile("LOLHUB_SavedKeys.json")
+    end)
+    
+    if success then
+        local keysData = HttpService:JSONDecode(savedData)
+        keysData[playerName] = nil
+        
+        pcall(function()
+            writefile("LOLHUB_SavedKeys.json", HttpService:JSONEncode(keysData))
+        end)
+    end
+end
+
+-- 检查是否有保存的密钥并自动验证
+local savedKey = loadSavedKey()
+if savedKey then
+    -- 创建加载界面
+    local LoadingScreen = Instance.new("ScreenGui")
+    LoadingScreen.Name = "AutoVerificationUI"
+    LoadingScreen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    LoadingScreen.Parent = PlayerGui
+    
+    local LoadingFrame = Instance.new("Frame")
+    LoadingFrame.Size = UDim2.new(0, 300, 0, 150)
+    LoadingFrame.Position = UDim2.new(0.5, -150, 0.5, -75)
+    LoadingFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    LoadingFrame.BorderSizePixel = 0
+    LoadingFrame.Parent = LoadingScreen
+    
+    local UICorner = Instance.new("UICorner")
+    UICorner.CornerRadius = UDim.new(0, 12)
+    UICorner.Parent = LoadingFrame
+    
+    local LoadingLabel = Instance.new("TextLabel")
+    LoadingLabel.Size = UDim2.new(1, 0, 0, 60)
+    LoadingLabel.Position = UDim2.new(0, 0, 0, 0)
+    LoadingLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    LoadingLabel.BackgroundTransparency = 0
+    LoadingLabel.BorderSizePixel = 0
+    LoadingLabel.Text = "自动验证中..."
+    LoadingLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    LoadingLabel.TextSize = 20
+    LoadingLabel.Font = Enum.Font.GothamBold
+    LoadingLabel.Parent = LoadingFrame
+    
+    local TitleCorner = Instance.new("UICorner")
+    TitleCorner.CornerRadius = UDim.new(0, 12)
+    TitleCorner.Parent = LoadingLabel
+    
+    local StatusLabel = Instance.new("TextLabel")
+    StatusLabel.Size = UDim2.new(1, -40, 0, 80)
+    StatusLabel.Position = UDim2.new(0, 20, 0, 70)
+    StatusLabel.BackgroundTransparency = 1
+    StatusLabel.Text = "检测到已保存的密钥\n正在自动验证..."
+    StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    StatusLabel.TextSize = 16
+    StatusLabel.TextWrapped = true
+    StatusLabel.Font = Enum.Font.Gotham
+    StatusLabel.Parent = LoadingFrame
+    
+    -- 密钥验证函数
+    local function verifyKey(key)
+        -- 专业简洁的密钥列表，直接显示有效期
+        local valid_keys = {
+            ["LOL"] = {expires = 0, name = "永久许可"},                    -- 永久
+            ["LOLHub"] = {expires = os.time() + 7*24*60*60, name = "7天许可"},    -- 7天
+            ["KEY030"] = {expires = os.time() + 30*24*60*60, name = "30天许可"},  -- 30天
+            ["DeepSeek"] = {expires = os.time() + 90*24*60*60, name = "90天许可"},  -- 90天
+            ["KEYHub"] = {expires = os.time() + 365*24*60*60, name = "365天许可"},-- 365天
+            ["FREE_KEY"] = {expires = os.time() + 24*60*60, name = "测试许可"}      -- 1天测试
+        }
+        
+        if not valid_keys[key] then
+            return false, "无效密钥"
+        end
+        
+        if valid_keys[key].expires ~= 0 and os.time() > valid_keys[key].expires then
+            return false, "密钥已过期"
+        end
+        
+        return true, valid_keys[key].name
+    end
+    
+    -- 自动验证
+    wait(2)
+    local success, membership = verifyKey(savedKey)
+    
+    if success then
+        StatusLabel.Text = "验证成功！" .. membership
+        StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        
+        wait(2)
+        LoadingScreen:Destroy()
+        
+        -- 加载主脚本
+        loadstring(game:HttpGet(string.char(0x68,0x74,0x74,0x70,0x73,0x3a,0x2f,0x2f,0x72,0x61,0x77,0x2e,0x67,0x69,0x74,0x68,0x75,0x62,0x75,0x73,0x65,0x72,0x63,0x6f,0x6e,0x74,0x65,0x6e,0x74,0x2e,0x63,0x6f,0x6d,0x2f,0x75,0x73,0x65,0x65,0x72,0x74,0x37,0x34,0x31,0x2f,0x2d,0x58,0x2d,0x2d,0x2d,0x62,0x79,0x4c,0x4f,0x4c,0x2f,0x72,0x65,0x66,0x73,0x2f,0x68,0x65,0x61,0x64,0x73,0x2f,0x6d,0x61,0x69,0x6e,0x2f,0x4c,0x4f,0x4c,0x25,0x45,0x36,0x25,0x42,0x31,0x25,0x38,0x39,0x25,0x45,0x35,0x25,0x38,0x43,0x25,0x39,0x36,0x48,0x55,0x42,0x2d,0x56,0x30,0x2e,0x30,0x2e,0x31)))()
+        return
+    else
+        StatusLabel.Text = "自动验证失败: " .. membership .. "\n将显示手动验证界面"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        
+        -- 删除无效的保存密钥
+        removeSavedKey()
+        
+        wait(3)
+        LoadingScreen:Destroy()
+        -- 继续显示手动验证界面
+    end
+end
+
+-- 创建主验证UI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "KeyVerificationUI"
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = PlayerGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 400, 0, 350)
+MainFrame.Position = UDim2.new(0.5, -200, 0.5, -175)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+MainFrame.BorderSizePixel = 0
+MainFrame.ClipsDescendants = true
+MainFrame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 12)
+UICorner.Parent = MainFrame
+
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Color = Color3.fromRGB(60, 60, 80)
+UIStroke.Thickness = 2
+UIStroke.Parent = MainFrame
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 60)
+Title.Position = UDim2.new(0, 0, 0, 0)
+Title.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+Title.BackgroundTransparency = 0
+Title.BorderSizePixel = 0
+Title.Text = "LOL汉化HUB - 密钥验证"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 24
+Title.Font = Enum.Font.GothamBold
+Title.Parent = MainFrame
+
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 12)
+TitleCorner.Parent = Title
+
+local Description = Instance.new("TextLabel")
+Description.Size = UDim2.new(1, -40, 0, 60)
+Description.Position = UDim2.new(0, 20, 0, 70)
+Description.BackgroundTransparency = 1
+Description.Text = "请输入您的访问密钥以使用LOL汉化HUB功能\n验证成功后会自动记住您的账户"
+Description.TextColor3 = Color3.fromRGB(200, 200, 200)
+Description.TextSize = 16
+Description.TextWrapped = true
+Description.Font = Enum.Font.Gotham
+Description.Parent = MainFrame
+
+local KeyBox = Instance.new("TextBox")
+KeyBox.Size = UDim2.new(1, -40, 0, 40)
+KeyBox.Position = UDim2.new(0, 20, 0, 140)
+KeyBox.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+KeyBox.BorderSizePixel = 0
+KeyBox.PlaceholderText = "在此输入您的密钥..."
+KeyBox.Text = ""
+KeyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+KeyBox.TextSize = 18
+KeyBox.Font = Enum.Font.Gotham
+KeyBox.ClearTextOnFocus = false
+KeyBox.Parent = MainFrame
+
+local KeyBoxCorner = Instance.new("UICorner")
+KeyBoxCorner.CornerRadius = UDim.new(0, 8)
+KeyBoxCorner.Parent = KeyBox
+
+local KeyBoxPadding = Instance.new("UIPadding")
+KeyBoxPadding.PaddingLeft = UDim.new(0, 10)
+KeyBoxPadding.PaddingRight = UDim.new(0, 10)
+KeyBoxPadding.Parent = KeyBox
+
+-- 添加"记住我"复选框
+local RememberMeFrame = Instance.new("Frame")
+RememberMeFrame.Size = UDim2.new(1, -40, 0, 30)
+RememberMeFrame.Position = UDim2.new(0, 20, 0, 190)
+RememberMeFrame.BackgroundTransparency = 1
+RememberMeFrame.Parent = MainFrame
+
+local RememberMeBox = Instance.new("TextButton")
+RememberMeBox.Size = UDim2.new(0, 20, 0, 20)
+RememberMeBox.Position = UDim2.new(0, 0, 0, 5)
+RememberMeBox.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+RememberMeBox.BorderSizePixel = 0
+RememberMeBox.Text = ""
+RememberMeBox.Parent = RememberMeFrame
+
+local RememberMeCorner = Instance.new("UICorner")
+RememberMeCorner.CornerRadius = UDim.new(0, 4)
+RememberMeCorner.Parent = RememberMeBox
+
+local RememberMeLabel = Instance.new("TextLabel")
+RememberMeLabel.Size = UDim2.new(1, -30, 1, 0)
+RememberMeLabel.Position = UDim2.new(0, 30, 0, 0)
+RememberMeLabel.BackgroundTransparency = 1
+RememberMeLabel.Text = "记住我的账户（下次自动验证）"
+RememberMeLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+RememberMeLabel.TextSize = 14
+RememberMeLabel.TextXAlignment = Enum.TextXAlignment.Left
+RememberMeLabel.Font = Enum.Font.Gotham
+RememberMeLabel.Parent = RememberMeFrame
+
+local RememberMeChecked = false
+RememberMeBox.MouseButton1Click:Connect(function()
+    RememberMeChecked = not RememberMeChecked
+    if RememberMeChecked then
+        RememberMeBox.BackgroundColor3 = Color3.fromRGB(80, 120, 200)
+        -- 添加勾选标记
+        if not RememberMeBox:FindFirstChild("CheckMark") then
+            local CheckMark = Instance.new("TextLabel")
+            CheckMark.Name = "CheckMark"
+            CheckMark.Size = UDim2.new(1, 0, 1, 0)
+            CheckMark.BackgroundTransparency = 1
+            CheckMark.Text = "✓"
+            CheckMark.TextColor3 = Color3.fromRGB(255, 255, 255)
+            CheckMark.TextSize = 14
+            CheckMark.Font = Enum.Font.GothamBold
+            CheckMark.Parent = RememberMeBox
+        end
+    else
+        RememberMeBox.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+        if RememberMeBox:FindFirstChild("CheckMark") then
+            RememberMeBox.CheckMark:Destroy()
+        end
+    end
+end)
+
+local SubmitButton = Instance.new("TextButton")
+SubmitButton.Size = UDim2.new(1, -40, 0, 40)
+SubmitButton.Position = UDim2.new(0, 20, 0, 230)
+SubmitButton.BackgroundColor3 = Color3.fromRGB(80, 120, 200)
+SubmitButton.BorderSizePixel = 0
+SubmitButton.Text = "验证密钥"
+SubmitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+SubmitButton.TextSize = 18
+SubmitButton.Font = Enum.Font.GothamBold
+SubmitButton.Parent = MainFrame
+
+local ButtonCorner = Instance.new("UICorner")
+ButtonCorner.CornerRadius = UDim.new(0, 8)
+ButtonCorner.Parent = SubmitButton
+
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Size = UDim2.new(1, -40, 0, 30)
+StatusLabel.Position = UDim2.new(0, 20, 0, 280)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Text = "等待输入..."
+StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+StatusLabel.TextSize = 14
+StatusLabel.Font = Enum.Font.Gotham
+StatusLabel.Parent = MainFrame
+
+local CloseButton = Instance.new("TextButton")
+CloseButton.Size = UDim2.new(0, 30, 0, 30)
+CloseButton.Position = UDim2.new(1, -35, 0, 15)
+CloseButton.BackgroundColor3 = Color3.fromRGB(200, 80, 80)
+CloseButton.BorderSizePixel = 0
+CloseButton.Text = "X"
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.TextSize = 16
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.Parent = Title
+
+local CloseButtonCorner = Instance.new("UICorner")
+CloseButtonCorner.CornerRadius = UDim.new(0, 15)
+CloseButtonCorner.Parent = CloseButton
+
+-- 动画效果
+MainFrame.Size = UDim2.new(0, 0, 0, 0)
+MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+
+local openTween = TweenService:Create(
+    MainFrame,
+    TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+    {Size = UDim2.new(0, 400, 0, 350), Position = UDim2.new(0.5, -200, 0.5, -175)}
+)
+openTween:Play()
+
+-- 按钮悬停效果
+SubmitButton.MouseEnter:Connect(function()
+    TweenService:Create(
+        SubmitButton,
+        TweenInfo.new(0.2),
+        {BackgroundColor3 = Color3.fromRGB(100, 140, 220)}
+    ):Play()
+end)
+
+SubmitButton.MouseLeave:Connect(function()
+    TweenService:Create(
+        SubmitButton,
+        TweenInfo.new(0.2),
+        {BackgroundColor3 = Color3.fromRGB(80, 120, 200)}
+    ):Play()
+end)
+
+CloseButton.MouseEnter:Connect(function()
+    TweenService:Create(
+        CloseButton,
+        TweenInfo.new(0.2),
+        {BackgroundColor3 = Color3.fromRGB(220, 100, 100)}
+    ):Play()
+end)
+
+CloseButton.MouseLeave:Connect(function()
+    TweenService:Create(
+        CloseButton,
+        TweenInfo.new(0.2),
+        {BackgroundColor3 = Color3.fromRGB(200, 80, 80)}
+    ):Play()
+end)
+
+-- 密钥验证函数
+local function verifyKey(key)
+    -- 专业简洁的密钥列表，直接显示有效期
+    local valid_keys = {
+        ["LOL"] = {expires = 0, name = "永久许可"},                    -- 永久
+        ["LOLHub"] = {expires = os.time() + 7*24*60*60, name = "7天许可"},    -- 7天
+        ["KEY030"] = {expires = os.time() + 30*24*60*60, name = "30天许可"},  -- 30天
+        ["DeepSeek"] = {expires = os.time() + 90*24*60*60, name = "90天许可"},  -- 90天
+        ["KEYHub"] = {expires = os.time() + 365*24*60*60, name = "365天许可"},-- 365天
+        ["FREE_KEY"] = {expires = os.time() + 24*60*60, name = "测试许可"}      -- 1天测试
+    }
+    
+    if not valid_keys[key] then
+        return false, "无效密钥"
+    end
+    
+    if valid_keys[key].expires ~= 0 and os.time() > valid_keys[key].expires then
+        return false, "密钥已过期"
+    end
+    
+    return true, valid_keys[key].name
+end
+
+-- 提交按钮点击事件
+SubmitButton.MouseButton1Click:Connect(function()
+    local key = KeyBox.Text
+    if key == "" then
+        StatusLabel.Text = "请输入密钥"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        return
+    end
+    
+    StatusLabel.Text = "验证中..."
+    StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+    
+    wait(1)
+    
+    local success, membership = verifyKey(key)
+    
+    if success then
+        StatusLabel.Text = "验证成功！" .. membership
+        StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        
+        -- 如果勾选了"记住我"，保存密钥
+        if RememberMeChecked then
+            saveKey(key)
+            StatusLabel.Text = StatusLabel.Text .. " (已保存)"
+        end
+        
+        SubmitButton.Text = "加载中..."
+        SubmitButton.BackgroundColor3 = Color3.fromRGB(100, 180, 100)
+        
+        local closeTween = TweenService:Create(
+            MainFrame,
+            TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.In),
+            {Size = UDim2.new(0, 0, 0, 0), Position = UDim2.new(0.5, 0, 0.5, 0)}
+        )
+        closeTween:Play()
+        
+        closeTween.Completed:Connect(function()
+            ScreenGui:Destroy()
+            
+            wait(1)
+            loadstring(game:HttpGet(string.char(0x68,0x74,0x74,0x70,0x73,0x3a,0x2f,0x2f,0x72,0x61,0x77,0x2e,0x67,0x69,0x74,0x68,0x75,0x62,0x75,0x73,0x65,0x72,0x63,0x6f,0x6e,0x74,0x65,0x6e,0x74,0x2e,0x63,0x6f,0x6d,0x2f,0x75,0x73,0x65,0x65,0x72,0x74,0x37,0x34,0x31,0x2f,0x2d,0x58,0x2d,0x2d,0x2d,0x62,0x79,0x4c,0x4f,0x4c,0x2f,0x72,0x65,0x66,0x73,0x2f,0x68,0x65,0x61,0x64,0x73,0x2f,0x6d,0x61,0x69,0x6e,0x2f,0x4c,0x4f,0x4c,0x25,0x45,0x36,0x25,0x42,0x31,0x25,0x38,0x39,0x25,0x45,0x35,0x25,0x38,0x43,0x25,0x39,0x36,0x48,0x55,0x42,0x2d,0x56,0x30,0x2e,0x30,0x2e,0x31)))()
+        end)
+    else
+        StatusLabel.Text = "验证失败: " .. membership
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        
+        SubmitButton.Text = "验证失败"
+        SubmitButton.BackgroundColor3 = Color3.fromRGB(200, 80, 80)
+        
+        wait(2)
+        
+        SubmitButton.Text = "验证密钥"
+        SubmitButton.BackgroundColor3 = Color3.fromRGB(80, 120, 200)
+        
+        if membership == "无效密钥" then
+            wait(2)
+            game.Players.LocalPlayer:Kick("❌ 密钥无效，请获取有效密钥后重试")
+        elseif membership == "密钥已过期" then
+            wait(2)
+            game.Players.LocalPlayer:Kick("⏰ 密钥已过期")
+        end
+    end
+end)
+
+-- 关闭按钮点击事件
+CloseButton.MouseButton1Click:Connect(function()
+    game.Players.LocalPlayer:Kick("❌ 已取消密钥验证")
+end)
+
+-- 按回车键也可以提交
+KeyBox.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        SubmitButton.MouseButton1Click:Fire()
+    end
+end)
