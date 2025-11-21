@@ -140,6 +140,116 @@ ScriptsTab:Button({
     end
 })
 
+-- 創建雜項標籤頁
+local MiscSection = Window:Section({ Title = "雜項", Opened = true })
+local MiscTab = MiscSection:Tab({ Title = "基礎功能", Icon = "settings" })
+
+-- 添加說明
+MiscTab:Paragraph({
+    Title = "基礎功能設置",
+    Desc = "調整玩家基本屬性",
+    Image = "user",
+    ImageSize = 20,
+    Color = "White",
+})
+
+MiscTab:Divider()
+
+-- 修改速度功能
+local speedValue = 16
+local speedSlider = MiscTab:Slider({
+    Title = "移動速度",
+    Desc = "調整玩家移動速度",
+    Value = { Min = 0, Max = 100, Default = 16 },
+    Callback = function(value)
+        speedValue = value
+        local character = game.Players.LocalPlayer.Character
+        if character and character:FindFirstChild("Humanoid") then
+            character.Humanoid.WalkSpeed = value
+        end
+    end
+})
+
+-- 修改跳躍高度功能
+local jumpValue = 50
+local jumpSlider = MiscTab:Slider({
+    Title = "跳躍高度",
+    Desc = "調整玩家跳躍高度",
+    Value = { Min = 0, Max = 200, Default = 50 },
+    Callback = function(value)
+        jumpValue = value
+        local character = game.Players.LocalPlayer.Character
+        if character and character:FindFirstChild("Humanoid") then
+            character.Humanoid.JumpPower = value
+        end
+    end
+})
+
+-- 修改生命值功能
+local healthValue = 100
+MiscTab:Input({
+    Title = "生命值",
+    Desc = "設置玩家生命值",
+    Value = "100",
+    Callback = function(value)
+        healthValue = tonumber(value) or 100
+    end
+})
+
+MiscTab:Button({
+    Title = "應用生命值",
+    Icon = "heart",
+    Callback = function()
+        local character = game.Players.LocalPlayer.Character
+        if character and character:FindFirstChild("Humanoid") then
+            character.Humanoid.Health = healthValue
+            WindUI:Notify({
+                Title = "生命值已設置",
+                Content = "生命值設置為: " .. healthValue,
+                Icon = "check",
+                Duration = 3
+            })
+        else
+            WindUI:Notify({
+                Title = "錯誤",
+                Content = "找不到玩家角色或Humanoid",
+                Icon = "x",
+                Duration = 3
+            })
+        end
+    end
+})
+
+MiscTab:Divider()
+
+-- 重置按鈕
+MiscTab:Button({
+    Title = "重置所有設置",
+    Icon = "refresh-cw",
+    Variant = "Secondary",
+    Callback = function()
+        -- 重置速度
+        speedSlider:Set(16)
+        local character = game.Players.LocalPlayer.Character
+        if character and character:FindFirstChild("Humanoid") then
+            character.Humanoid.WalkSpeed = 16
+        end
+        
+        -- 重置跳躍高度
+        jumpSlider:Set(50)
+        if character and character:FindFirstChild("Humanoid") then
+            character.Humanoid.JumpPower = 50
+        end
+        
+        WindUI:Notify({
+            Title = "重置完成",
+            Content = "所有設置已重置為默認值",
+            Icon = "check",
+            Duration = 3
+        })
+    end
+})
+
 Window:OnClose(function()
     print("Window closed")
 end)
