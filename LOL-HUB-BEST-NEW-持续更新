@@ -8,7 +8,7 @@ WindUI:Localization({
     Translations = {
         ["en"] = {
             ["WELCOME"] = "歡迎使用LOL漢化hub",
-            ["LIB_DESC"] = "測試版",
+            ["LIB_DESC"] = "V1",
         }
     }
 })
@@ -70,7 +70,7 @@ Window:Tag({
     Color = Color3.fromHex("#30ff6a")
 })
 Window:Tag({
-    Title = "BETA",
+    Title = "Release",
 })
 
 Window:CreateTopbarButton("theme-switcher", "moon", function()
@@ -147,7 +147,7 @@ local MiscTab = MiscSection:Tab({ Title = "基礎功能", Icon = "settings" })
 -- 添加說明
 MiscTab:Paragraph({
     Title = "基礎功能設置",
-    Desc = "調整玩家基本屬性",
+    Desc = "調整玩家基本屬性和實用功能",
     Image = "user",
     ImageSize = 20,
     Color = "White",
@@ -160,7 +160,7 @@ local speedValue = 16
 local speedSlider = MiscTab:Slider({
     Title = "移動速度",
     Desc = "調整玩家移動速度",
-    Value = { Min = 0, Max = 10000, Default = 16 },
+    Value = { Min = 0, Max = 100, Default = 16 },
     Callback = function(value)
         speedValue = value
         local character = game.Players.LocalPlayer.Character
@@ -217,6 +217,53 @@ MiscTab:Button({
                 Duration = 3
             })
         end
+    end
+})
+
+MiscTab:Divider()
+
+-- 添加飛行按鈕
+MiscTab:Button({
+    Title = "飛行",
+    Icon = "feather",
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/%E6%B1%89%E5%8C%96%E9%A3%9E%E8%A1%8C"))()
+        WindUI:Notify({
+            Title = "飛行腳本已加載",
+            Content = "飛行功能已啟用",
+            Icon = "feather",
+            Duration = 3
+        })
+    end
+})
+
+-- 添加甩人按鈕
+MiscTab:Button({
+    Title = "甩人",
+    Icon = "wind",
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/%E7%94%A9%E4%BA%BA%E6%B1%89%E5%8C%96"))()
+        WindUI:Notify({
+            Title = "甩人腳本已加載",
+            Content = "甩人功能已啟用",
+            Icon = "wind",
+            Duration = 3
+        })
+    end
+})
+
+-- 添加時間回溯按鈕
+MiscTab:Button({
+    Title = "時間回溯",
+    Icon = "rewind",
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/%E5%9B%9E%E6%BA%AF%E6%97%B6%E9%97%B4LOL"))()
+        WindUI:Notify({
+            Title = "時間回溯腳本已加載",
+            Content = "時間回溯功能已啟用",
+            Icon = "rewind",
+            Duration = 3
+        })
     end
 })
 
