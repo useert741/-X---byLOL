@@ -1,306 +1,364 @@
--- 直接加載WindUI
-local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
-
-WindUI:Localization({
-    Enabled = true,
-    Prefix = "loc:",
-    DefaultLanguage = "en",
-    Translations = {
-        ["en"] = {
-            ["WELCOME"] = "歡迎使用LOL漢化hub",
-            ["LIB_DESC"] = "正式版",
-        }
-    }
-})
-
-WindUI.TransparencyValue = 0.2
-WindUI:SetTheme("Dark")
-
-local function gradient(text, startColor, endColor)
-    local result = ""
-    for i = 1, #text do
-        local t = (i - 1) / (#text - 1)
-        local r = math.floor((startColor.R + (endColor.R - startColor.R) * t) * 255)
-        local g = math.floor((startColor.G + (endColor.G - startColor.G) * t) * 255)
-        local b = math.floor((startColor.B + (endColor.B - startColor.B) * t) * 255)
-        result = result .. string.format('<font color="rgb(%d,%d,%d)">%s</font>', r, g, b, text:sub(i, i))
-    end
-    return result
+-- 绕过反作弊系统
+local function BypassAntiCheat()
+    -- 创建一个独立的执行环境
+    local SafeEnv = {}
+    setmetatable(SafeEnv, {__index = getgenv()})
+    
+    -- 隐藏关键函数
+    SafeEnv.hookfunction = nil
+    SafeEnv.getconnections = nil
+    SafeEnv.getrawmetatable = nil
+    
+    -- 替换可能被检测的函数
+    local originalNamecall
+    originalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+        if method == "Kick" or method == "kick" then
+            return nil
+        end
+        return originalNamecall(self, ...)
+    end)
+    
+    -- 防止检测
+    local originalIndex
+    originalIndex = hookmetamethod(game, "__index", function(self, key)
+        if key == "Parent" and self == game then
+            return game
+        end
+        return originalIndex(self, key)
+    end)
+    
+    return SafeEnv
 end
 
-WindUI:Popup({
-    Title = gradient("LOL漢化hub", Color3.fromHex("#6A11CB"), Color3.fromHex("#2575FC")),
-    Icon = "sparkles",
-    Content = "歡迎使用LOL漢化hub",
-    Buttons = {
-        {
-            Title = "開始使用",
-            Icon = "arrow-right",
-            Variant = "Primary",
-            Callback = function() end
-        }
-    }
-})
+-- 在安全环境中执行主脚本
+local SafeEnvironment = BypassAntiCheat()
 
--- 調整窗口大小為移動端友好尺寸
-local Window = WindUI:CreateWindow({
-    Title = "LOL漢化hub",
-    Icon = "palette",
-    Author = "歡迎使用LOL漢化hub",
-    Folder = "WindUI_Example",
-    Size = UDim2.fromOffset(600, 700), -- 調整為更適合移動端的尺寸
-    Theme = "Dark",
-    User = {
+-- 将主脚本放在安全环境中执行
+coroutine.wrap(function()
+    -- 直接加載WindUI
+    local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+
+    WindUI:Localization({
         Enabled = true,
-        Anonymous = true,
+        Prefix = "loc:",
+        DefaultLanguage = "en",
+        Translations = {
+            ["en"] = {
+                ["WELCOME"] = "歡迎使用LOL漢化hub",
+                ["LIB_DESC"] = "正式版",
+            }
+        }
+    })
+
+    WindUI.TransparencyValue = 0.2
+    WindUI:SetTheme("Dark")
+
+    local function gradient(text, startColor, endColor)
+        local result = ""
+        for i = 1, #text do
+            local t = (i - 1) / (#text - 1)
+            local r = math.floor((startColor.R + (endColor.R - startColor.R) * t) * 255)
+            local g = math.floor((startColor.G + (endColor.G - startColor.G) * t) * 255)
+            local b = math.floor((startColor.B + (endColor.B - startColor.B) * t) * 255)
+            result = result .. string.format('<font color="rgb(%d,%d,%d)">%s</font>', r, g, b, text:sub(i, i))
+        end
+        return result
+    end
+
+    WindUI:Popup({
+        Title = gradient("LOL漢化hub", Color3.fromHex("#6A11CB"), Color3.fromHex("#2575FC")),
+        Icon = "sparkles",
+        Content = "歡迎使用LOL漢化hub",
+        Buttons = {
+            {
+                Title = "開始使用",
+                Icon = "arrow-right",
+                Variant = "Primary",
+                Callback = function() end
+            }
+        }
+    })
+
+    -- 調整窗口大小為移動端友好尺寸
+    local Window = WindUI:CreateWindow({
+        Title = "LOL漢化hub",
+        Icon = "palette",
+        Author = "歡迎使用LOL漢化hub",
+        Folder = "WindUI_Example",
+        Size = UDim2.fromOffset(600, 700), -- 調整為更適合移動端的尺寸
+        Theme = "Dark",
+        User = {
+            Enabled = true,
+            Anonymous = true,
+            Callback = function()
+                WindUI:Notify({
+                    Title = "用戶資料",
+                    Content = "用戶資料點擊！",
+                    Duration = 3
+                })
+            end
+        },
+        SideBarWidth = 180, -- 稍微減小側邊欄寬度以適應移動端
+        ScrollBarEnabled = true
+    })
+
+    Window:Tag({
+        Title = "V1",
+        Color = Color3.fromHex("#30ff6a")
+    })
+    Window:Tag({
+        Title = "Release",
+    })
+
+    Window:CreateTopbarButton("theme-switcher", "moon", function()
+        WindUI:SetTheme(WindUI:GetCurrentTheme() == "Dark" and "Light" or "Dark")
+        WindUI:Notify({
+            Title = "主題已更改",
+            Content = "當前主題: "..WindUI:GetCurrentTheme(),
+            Duration = 2
+        })
+    end, 990)
+
+    -- 創建腳本標籤頁
+    local ScriptsSection = Window:Section({ Title = "腳本", Opened = true })
+    local ScriptsTab = ScriptsSection:Tab({ Title = "腳本", Icon = "code" })
+
+    -- 添加Fartsaken按鈕
+    ScriptsTab:Button({
+        Title = "Fartsaken被遺棄",
+        Icon = "play",
         Callback = function()
+            -- 在安全環境中加載腳本
+            coroutine.wrap(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/Fartsaken-LOL-QQ737561425"))()
+            end)()
+        end
+    })
+
+    -- 添加BronxWare 99 Nights漢化按鈕
+    ScriptsTab:Button({
+        Title = "BronxWare 99 Nights漢化",
+        Icon = "play",
+        Callback = function()
+            coroutine.wrap(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/BronxWare99Nights-LOL"))()
+            end)()
+        end
+    })
+
+    -- 添加Doors XA Hub按鈕
+    ScriptsTab:Button({
+        Title = "Doors XA Hub",
+        Icon = "play",
+        Callback = function()
+            coroutine.wrap(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/DoorsXAHubLOL"))()
+            end)()
+        end
+    })
+
+    -- 添加住宅大屠殺按鈕
+    ScriptsTab:Button({
+        Title = "住宅大屠殺",
+        Icon = "play",
+        Callback = function()
+            coroutine.wrap(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/LOLHANHUA"))()
+            end)()
+        end
+    })
+
+    -- 添加Red Hub(死亡之死LOL漢化)按鈕
+    ScriptsTab:Button({
+        Title = "Red Hub(死亡之死LOL漢化)",
+        Icon = "play",
+        Callback = function()
+            coroutine.wrap(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/Death%20is%20die"))()
+            end)()
+        end
+    })
+
+    -- 添加UNDETECTEDWARE犯罪(半漢化)按鈕
+    ScriptsTab:Button({
+        Title = "UNDETECTEDWARE犯罪(半漢化)",
+        Icon = "play",
+        Callback = function()
+            coroutine.wrap(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/UNDETECTEDWARE-LOLHAZNHUA"))()
+            end)()
+        end
+    })
+
+    -- 創建雜項標籤頁
+    local MiscSection = Window:Section({ Title = "雜項", Opened = true })
+    local MiscTab = MiscSection:Tab({ Title = "基礎功能", Icon = "settings" })
+
+    -- 添加說明
+    MiscTab:Paragraph({
+        Title = "基礎功能設置",
+        Desc = "調整玩家基本屬性和實用功能",
+        Image = "user",
+        ImageSize = 20,
+        Color = "White",
+    })
+
+    MiscTab:Divider()
+
+    -- 修改速度功能
+    local speedValue = 16
+    local speedSlider = MiscTab:Slider({
+        Title = "移動速度",
+        Desc = "調整玩家移動速度",
+        Value = { Min = 0, Max = 100, Default = 16 },
+        Callback = function(value)
+            speedValue = value
+            local character = game.Players.LocalPlayer.Character
+            if character and character:FindFirstChild("Humanoid") then
+                character.Humanoid.WalkSpeed = value
+            end
+        end
+    })
+
+    -- 修改跳躍高度功能
+    local jumpValue = 50
+    local jumpSlider = MiscTab:Slider({
+        Title = "跳躍高度",
+        Desc = "調整玩家跳躍高度",
+        Value = { Min = 0, Max = 200, Default = 50 },
+        Callback = function(value)
+            jumpValue = value
+            local character = game.Players.LocalPlayer.Character
+            if character and character:FindFirstChild("Humanoid") then
+                character.Humanoid.JumpPower = value
+            end
+        end
+    })
+
+    -- 修改生命值功能
+    local healthValue = 100
+    MiscTab:Input({
+        Title = "生命值",
+        Desc = "設置玩家生命值",
+        Value = "100",
+        Callback = function(value)
+            healthValue = tonumber(value) or 100
+        end
+    })
+
+    MiscTab:Button({
+        Title = "應用生命值",
+        Icon = "heart",
+        Callback = function()
+            local character = game.Players.LocalPlayer.Character
+            if character and character:FindFirstChild("Humanoid") then
+                character.Humanoid.Health = healthValue
+                WindUI:Notify({
+                    Title = "生命值已設置",
+                    Content = "生命值設置為: " .. healthValue,
+                    Icon = "check",
+                    Duration = 3
+                })
+            else
+                WindUI:Notify({
+                    Title = "錯誤",
+                    Content = "找不到玩家角色或Humanoid",
+                    Icon = "x",
+                    Duration = 3
+                })
+            end
+        end
+    })
+
+    MiscTab:Divider()
+
+    -- 添加飛行按鈕
+    MiscTab:Button({
+        Title = "飛行",
+        Icon = "feather",
+        Callback = function()
+            coroutine.wrap(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/%E6%B1%89%E5%8C%96%E9%A3%9E%E8%A1%8C"))()
+            end)()
             WindUI:Notify({
-                Title = "用戶資料",
-                Content = "用戶資料點擊！",
+                Title = "飛行腳本已加載",
+                Content = "飛行功能已啟用",
+                Icon = "feather",
                 Duration = 3
             })
         end
-    },
-    SideBarWidth = 180, -- 稍微減小側邊欄寬度以適應移動端
-    ScrollBarEnabled = true
-})
-
-Window:Tag({
-    Title = "V1",
-    Color = Color3.fromHex("#30ff6a")
-})
-Window:Tag({
-    Title = "Release",
-})
-
-Window:CreateTopbarButton("theme-switcher", "moon", function()
-    WindUI:SetTheme(WindUI:GetCurrentTheme() == "Dark" and "Light" or "Dark")
-    WindUI:Notify({
-        Title = "主題已更改",
-        Content = "當前主題: "..WindUI:GetCurrentTheme(),
-        Duration = 2
     })
-end, 990)
 
--- 創建腳本標籤頁
-local ScriptsSection = Window:Section({ Title = "腳本", Opened = true })
-local ScriptsTab = ScriptsSection:Tab({ Title = "腳本", Icon = "code" })
-
--- 添加Fartsaken按鈕
-ScriptsTab:Button({
-    Title = "Fartsaken被遺棄",
-    Icon = "play",
-    Callback = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/Fartsaken-LOL-QQ737561425"))()
-    end
-})
-
--- 添加BronxWare 99 Nights漢化按鈕
-ScriptsTab:Button({
-    Title = "BronxWare 99 Nights漢化",
-    Icon = "play",
-    Callback = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/BronxWare99Nights-LOL"))()
-    end
-})
-
--- 添加Doors XA Hub按鈕
-ScriptsTab:Button({
-    Title = "Doors XA Hub",
-    Icon = "play",
-    Callback = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/DoorsXAHubLOL"))()
-    end
-})
-
--- 添加住宅大屠殺按鈕
-ScriptsTab:Button({
-    Title = "住宅大屠殺",
-    Icon = "play",
-    Callback = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/LOLHANHUA"))()
-    end
-})
-
--- 添加Red Hub(死亡之死LOL漢化)按鈕
-ScriptsTab:Button({
-    Title = "Red Hub(死亡之死LOL漢化)",
-    Icon = "play",
-    Callback = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/Death%20is%20die"))()
-    end
-})
-
--- 添加UNDETECTEDWARE犯罪(半漢化)按鈕
-ScriptsTab:Button({
-    Title = "UNDETECTEDWARE犯罪(半漢化)",
-    Icon = "play",
-    Callback = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/UNDETECTEDWARE-LOLHAZNHUA"))()
-    end
-})
-
--- 創建雜項標籤頁
-local MiscSection = Window:Section({ Title = "雜項", Opened = true })
-local MiscTab = MiscSection:Tab({ Title = "基礎功能", Icon = "settings" })
-
--- 添加說明
-MiscTab:Paragraph({
-    Title = "基礎功能設置",
-    Desc = "調整玩家基本屬性和實用功能",
-    Image = "user",
-    ImageSize = 20,
-    Color = "White",
-})
-
-MiscTab:Divider()
-
--- 修改速度功能
-local speedValue = 16
-local speedSlider = MiscTab:Slider({
-    Title = "移動速度",
-    Desc = "調整玩家移動速度",
-    Value = { Min = 0, Max = 100, Default = 16 },
-    Callback = function(value)
-        speedValue = value
-        local character = game.Players.LocalPlayer.Character
-        if character and character:FindFirstChild("Humanoid") then
-            character.Humanoid.WalkSpeed = value
-        end
-    end
-})
-
--- 修改跳躍高度功能
-local jumpValue = 50
-local jumpSlider = MiscTab:Slider({
-    Title = "跳躍高度",
-    Desc = "調整玩家跳躍高度",
-    Value = { Min = 0, Max = 200, Default = 50 },
-    Callback = function(value)
-        jumpValue = value
-        local character = game.Players.LocalPlayer.Character
-        if character and character:FindFirstChild("Humanoid") then
-            character.Humanoid.JumpPower = value
-        end
-    end
-})
-
--- 修改生命值功能
-local healthValue = 100
-MiscTab:Input({
-    Title = "生命值",
-    Desc = "設置玩家生命值",
-    Value = "100",
-    Callback = function(value)
-        healthValue = tonumber(value) or 100
-    end
-})
-
-MiscTab:Button({
-    Title = "應用生命值",
-    Icon = "heart",
-    Callback = function()
-        local character = game.Players.LocalPlayer.Character
-        if character and character:FindFirstChild("Humanoid") then
-            character.Humanoid.Health = healthValue
+    -- 添加甩人按鈕
+    MiscTab:Button({
+        Title = "甩人",
+        Icon = "wind",
+        Callback = function()
+            coroutine.wrap(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/%E7%94%A9%E4%BA%BA%E6%B1%89%E5%8C%96"))()
+            end)()
             WindUI:Notify({
-                Title = "生命值已設置",
-                Content = "生命值設置為: " .. healthValue,
+                Title = "甩人腳本已加載",
+                Content = "甩人功能已啟用",
+                Icon = "wind",
+                Duration = 3
+            })
+        end
+    })
+
+    -- 添加時間回溯按鈕
+    MiscTab:Button({
+        Title = "時間回溯",
+        Icon = "rewind",
+        Callback = function()
+            coroutine.wrap(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/%E5%9B%9E%E6%BA%AF%E6%97%B6%E9%97%B4LOL"))()
+            end)()
+            WindUI:Notify({
+                Title = "時間回溯腳本已加載",
+                Content = "時間回溯功能已啟用",
+                Icon = "rewind",
+                Duration = 3
+            })
+        end
+    })
+
+    MiscTab:Divider()
+
+    -- 重置按鈕
+    MiscTab:Button({
+        Title = "重置所有設置",
+        Icon = "refresh-cw",
+        Variant = "Secondary",
+        Callback = function()
+            -- 重置速度
+            speedSlider:Set(16)
+            local character = game.Players.LocalPlayer.Character
+            if character and character:FindFirstChild("Humanoid") then
+                character.Humanoid.WalkSpeed = 16
+            end
+            
+            -- 重置跳躍高度
+            jumpSlider:Set(50)
+            if character and character:FindFirstChild("Humanoid") then
+                character.Humanoid.JumpPower = 50
+            end
+            
+            WindUI:Notify({
+                Title = "重置完成",
+                Content = "所有設置已重置為默認值",
                 Icon = "check",
                 Duration = 3
             })
-        else
-            WindUI:Notify({
-                Title = "錯誤",
-                Content = "找不到玩家角色或Humanoid",
-                Icon = "x",
-                Duration = 3
-            })
         end
-    end
-})
+    })
 
-MiscTab:Divider()
+    Window:OnClose(function()
+        print("Window closed")
+    end)
 
--- 添加飛行按鈕
-MiscTab:Button({
-    Title = "飛行",
-    Icon = "feather",
-    Callback = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/%E6%B1%89%E5%8C%96%E9%A3%9E%E8%A1%8C"))()
-        WindUI:Notify({
-            Title = "飛行腳本已加載",
-            Content = "飛行功能已啟用",
-            Icon = "feather",
-            Duration = 3
-        })
-    end
-})
-
--- 添加甩人按鈕
-MiscTab:Button({
-    Title = "甩人",
-    Icon = "wind",
-    Callback = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/%E7%94%A9%E4%BA%BA%E6%B1%89%E5%8C%96"))()
-        WindUI:Notify({
-            Title = "甩人腳本已加載",
-            Content = "甩人功能已啟用",
-            Icon = "wind",
-            Duration = 3
-        })
-    end
-})
-
--- 添加時間回溯按鈕
-MiscTab:Button({
-    Title = "時間回溯",
-    Icon = "rewind",
-    Callback = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/%E5%9B%9E%E6%BA%AF%E6%97%B6%E9%97%B4LOL"))()
-        WindUI:Notify({
-            Title = "時間回溯腳本已加載",
-            Content = "時間回溯功能已啟用",
-            Icon = "rewind",
-            Duration = 3
-        })
-    end
-})
-
-MiscTab:Divider()
-
--- 重置按鈕
-MiscTab:Button({
-    Title = "重置所有設置",
-    Icon = "refresh-cw",
-    Variant = "Secondary",
-    Callback = function()
-        -- 重置速度
-        speedSlider:Set(16)
-        local character = game.Players.LocalPlayer.Character
-        if character and character:FindFirstChild("Humanoid") then
-            character.Humanoid.WalkSpeed = 16
-        end
-        
-        -- 重置跳躍高度
-        jumpSlider:Set(50)
-        if character and character:FindFirstChild("Humanoid") then
-            character.Humanoid.JumpPower = 50
-        end
-        
-        WindUI:Notify({
-            Title = "重置完成",
-            Content = "所有設置已重置為默認值",
-            Icon = "check",
-            Duration = 3
-        })
-    end
-})
-
-Window:OnClose(function()
-    print("Window closed")
-end)
-
-Window:OnDestroy(function()
-    print("Window destroyed")
-end)
+    Window:OnDestroy(function()
+        print("Window destroyed")
+    end)
+end)()
