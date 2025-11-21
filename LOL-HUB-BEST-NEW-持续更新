@@ -1,15 +1,15 @@
--- 绕过反作弊系统
+-- 繞過反作弊系統
 local function BypassAntiCheat()
-    -- 创建一个独立的执行环境
+    -- 創建一個獨立的執行環境
     local SafeEnv = {}
     setmetatable(SafeEnv, {__index = getgenv()})
     
-    -- 隐藏关键函数
+    -- 隱藏關鍵函數
     SafeEnv.hookfunction = nil
     SafeEnv.getconnections = nil
     SafeEnv.getrawmetatable = nil
     
-    -- 替换可能被检测的函数
+    -- 替換可能被檢測的函數
     local originalNamecall
     originalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
         local method = getnamecallmethod()
@@ -19,7 +19,7 @@ local function BypassAntiCheat()
         return originalNamecall(self, ...)
     end)
     
-    -- 防止检测
+    -- 防止檢測
     local originalIndex
     originalIndex = hookmetamethod(game, "__index", function(self, key)
         if key == "Parent" and self == game then
@@ -31,10 +31,10 @@ local function BypassAntiCheat()
     return SafeEnv
 end
 
--- 在安全环境中执行主脚本
+-- 在安全環境中執行主腳本
 local SafeEnvironment = BypassAntiCheat()
 
--- 将主脚本放在安全环境中执行
+-- 將主腳本放在安全環境中執行
 coroutine.wrap(function()
     -- 直接加載WindUI
     local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
@@ -319,6 +319,23 @@ coroutine.wrap(function()
                 Title = "時間回溯腳本已加載",
                 Content = "時間回溯功能已啟用",
                 Icon = "rewind",
+                Duration = 3
+            })
+        end
+    })
+
+    -- 添加甩飛按鈕
+    MiscTab:Button({
+        Title = "甩飛",
+        Icon = "zap",
+        Callback = function()
+            coroutine.wrap(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/0Ben1/fe./main/Fling%20GUI"))()
+            end)()
+            WindUI:Notify({
+                Title = "甩飛腳本已加載",
+                Content = "甩飛功能已啟用",
+                Icon = "zap",
                 Duration = 3
             })
         end
