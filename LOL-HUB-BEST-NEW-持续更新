@@ -160,7 +160,7 @@ local speedValue = 16
 local speedSlider = MiscTab:Slider({
     Title = "移動速度",
     Desc = "調整玩家移動速度",
-    Value = { Min = 0, Max = 100, Default = 16 },
+    Value = { Min = 0, Max = 10000, Default = 16 },
     Callback = function(value)
         speedValue = value
         local character = game.Players.LocalPlayer.Character
