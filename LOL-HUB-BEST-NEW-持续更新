@@ -8,7 +8,7 @@ WindUI:Localization({
     Translations = {
         ["en"] = {
             ["WELCOME"] = "歡迎使用LOL漢化hub",
-            ["LIB_DESC"] = "V1",
+            ["LIB_DESC"] = "正式版",
         }
     }
 })
@@ -66,7 +66,7 @@ local Window = WindUI:CreateWindow({
 })
 
 Window:Tag({
-    Title = "0.0.1",
+    Title = "V1",
     Color = Color3.fromHex("#30ff6a")
 })
 Window:Tag({
