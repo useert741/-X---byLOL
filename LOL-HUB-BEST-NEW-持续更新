@@ -358,6 +358,172 @@ coroutine.wrap(function()
         end
     })
 
+    -- 添加點擊傳送按鈕
+    MiscTab:Button({
+        Title = "點擊傳送",
+        Icon = "navigation",
+        Callback = function()
+            coroutine.wrap(function()
+                mouse = game.Players.LocalPlayer:GetMouse()
+                tool = Instance.new("Tool")
+                tool.RequiresHandle = false
+                tool.Name = "LOL點擊傳送"
+                tool.Activated:connect(function()
+                    local pos = mouse.Hit+Vector3.new(0,2.5,0)
+                    pos = CFrame.new(pos.X,pos.Y,pos.Z)
+                    game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = pos
+                end)
+                tool.Parent = game.Players.LocalPlayer.Backpack
+            end)()
+            WindUI:Notify({
+                Title = "點擊傳送工具已添加",
+                Content = "請查看背包中的LOL點擊傳送工具",
+                Icon = "navigation",
+                Duration = 3
+            })
+        end
+    })
+
+    -- 添加透視按鈕
+    local espEnabled = false
+    local espBoxes = {}
+    
+    MiscTab:Button({
+        Title = "透視",
+        Icon = "eye",
+        Callback = function()
+            espEnabled = not espEnabled
+            
+            if espEnabled then
+                -- 啟用透視
+                WindUI:Notify({
+                    Title = "透視功能已啟用",
+                    Content = "正在顯示玩家彩色3D框",
+                    Icon = "eye",
+                    Duration = 3
+                })
+                
+                -- 創建ESP功能
+                local function createESP(player)
+                    if player == game.Players.LocalPlayer then return end
+                    
+                    local character = player.Character
+                    if not character then return end
+                    
+                    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+                    if not humanoidRootPart then return end
+                    
+                    -- 生成隨機顏色
+                    local function getRandomColor()
+                        local colors = {
+                            Color3.fromRGB(255, 0, 0),     -- 紅色
+                            Color3.fromRGB(0, 255, 0),     -- 綠色
+                            Color3.fromRGB(0, 0, 255),     -- 藍色
+                            Color3.fromRGB(255, 255, 0),   -- 黃色
+                            Color3.fromRGB(255, 0, 255),   -- 粉色
+                            Color3.fromRGB(0, 255, 255),   -- 青色
+                            Color3.fromRGB(255, 165, 0),   -- 橙色
+                            Color3.fromRGB(128, 0, 128),   -- 紫色
+                            Color3.fromRGB(0, 128, 0),     -- 深綠色
+                            Color3.fromRGB(255, 192, 203)  -- 淺粉色
+                        }
+                        return colors[math.random(1, #colors)]
+                    end
+                    
+                    local playerColor = getRandomColor()
+                    
+                    -- 創建彩色方框
+                    local box = Instance.new("BoxHandleAdornment")
+                    box.Name = "ESP_" .. player.Name
+                    box.Adornee = humanoidRootPart
+                    box.AlwaysOnTop = true
+                    box.ZIndex = 10
+                    box.Size = Vector3.new(4, 6, 2)
+                    box.Color3 = playerColor
+                    box.Transparency = 0.2
+                    box.Parent = humanoidRootPart
+                    
+                    -- 創建名稱標籤（使用相同顏色）
+                    local billboard = Instance.new("BillboardGui")
+                    billboard.Name = "ESP_Name_" .. player.Name
+                    billboard.Adornee = humanoidRootPart
+                    billboard.Size = UDim2.new(0, 200, 0, 50)
+                    billboard.StudsOffset = Vector3.new(0, 3.5, 0)
+                    billboard.AlwaysOnTop = true
+                    
+                    local nameLabel = Instance.new("TextLabel")
+                    nameLabel.Size = UDim2.new(1, 0, 1, 0)
+                    nameLabel.BackgroundTransparency = 1
+                    nameLabel.Text = player.Name
+                    nameLabel.TextColor3 = playerColor
+                    nameLabel.TextStrokeTransparency = 0
+                    nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+                    nameLabel.TextSize = 14
+                    nameLabel.Font = Enum.Font.GothamBold
+                    nameLabel.Parent = billboard
+                    
+                    billboard.Parent = humanoidRootPart
+                    
+                    -- 保存ESP對象
+                    espBoxes[player] = {box = box, billboard = billboard}
+                end
+                
+                -- 為所有現有玩家創建ESP
+                for _, player in ipairs(game.Players:GetPlayers()) do
+                    createESP(player)
+                end
+                
+                -- 監聽新玩家加入
+                game.Players.PlayerAdded:Connect(function(player)
+                    player.CharacterAdded:Connect(function(character)
+                        wait(1) -- 等待角色加載完成
+                        createESP(player)
+                    end)
+                end)
+                
+                -- 監聽玩家離開
+                game.Players.PlayerRemoving:Connect(function(player)
+                    if espBoxes[player] then
+                        if espBoxes[player].box then
+                            espBoxes[player].box:Destroy()
+                        end
+                        if espBoxes[player].billboard then
+                            espBoxes[player].billboard:Destroy()
+                        end
+                        espBoxes[player] = nil
+                    end
+                end)
+                
+                -- 監聽角色變化
+                for _, player in ipairs(game.Players:GetPlayers()) do
+                    player.CharacterAdded:Connect(function(character)
+                        wait(1) -- 等待角色加載完成
+                        createESP(player)
+                    end)
+                end
+            else
+                -- 禁用透視
+                WindUI:Notify({
+                    Title = "透視功能已禁用",
+                    Content = "已移除所有玩家彩色3D框",
+                    Icon = "eye-off",
+                    Duration = 3
+                })
+                
+                -- 移除所有ESP對象
+                for player, espObjects in pairs(espBoxes) do
+                    if espObjects.box then
+                        espObjects.box:Destroy()
+                    end
+                    if espObjects.billboard then
+                        espObjects.billboard:Destroy()
+                    end
+                end
+                espBoxes = {}
+            end
+        end
+    })
+
     MiscTab:Divider()
 
     -- 重置按鈕
