@@ -341,6 +341,23 @@ coroutine.wrap(function()
         end
     })
 
+    -- 添加無敵少俠飛行r15按鈕
+    MiscTab:Button({
+        Title = "無敵少俠飛行r15",
+        Icon = "shield",
+        Callback = function()
+            coroutine.wrap(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/invincible-FLY"))()
+            end)()
+            WindUI:Notify({
+                Title = "無敵少俠飛行腳本已加載",
+                Content = "無敵少俠飛行功能已啟用",
+                Icon = "shield",
+                Duration = 3
+            })
+        end
+    })
+
     MiscTab:Divider()
 
     -- 重置按鈕
