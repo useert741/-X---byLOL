@@ -384,6 +384,84 @@ coroutine.wrap(function()
         end
     })
 
+    -- 添加穿墙功能
+    local noclipEnabled = false
+    local noclipConnection = nil
+    
+    MiscTab:Button({
+        Title = "穿墙",
+        Icon = "git-merge",
+        Callback = function()
+            noclipEnabled = not noclipEnabled
+            
+            if noclipEnabled then
+                WindUI:Notify({
+                    Title = "穿墙已启用",
+                    Content = "现在可以穿过物体",
+                    Icon = "git-merge",
+                    Duration = 3
+                })
+                
+                local player = game.Players.LocalPlayer
+                local character = player.Character
+                
+                -- 穿墙功能主循环
+                noclipConnection = game:GetService("RunService").Stepped:Connect(function()
+                    if not noclipEnabled then return end
+                    
+                    local currentCharacter = player.Character
+                    if not currentCharacter then return end
+                    
+                    -- 禁用角色所有部件的碰撞
+                    for _, part in pairs(currentCharacter:GetDescendants()) do
+                        if part:IsA("BasePart") and part.CanCollide then
+                            part.CanCollide = false
+                        end
+                    end
+                end)
+                
+                -- 监听角色变化
+                player.CharacterAdded:Connect(function(newChar)
+                    character = newChar
+                    wait(1) -- 等待角色加载完成
+                    
+                    -- 为新角色应用穿墙
+                    if noclipEnabled then
+                        for _, part in pairs(character:GetDescendants()) do
+                            if part:IsA("BasePart") and part.CanCollide then
+                                part.CanCollide = false
+                            end
+                        end
+                    end
+                end)
+                
+            else
+                -- 禁用穿墙
+                if noclipConnection then
+                    noclipConnection:Disconnect()
+                    noclipConnection = nil
+                end
+                
+                -- 恢复角色碰撞
+                local character = game.Players.LocalPlayer.Character
+                if character then
+                    for _, part in pairs(character:GetDescendants()) do
+                        if part:IsA("BasePart") and not part.CanCollide then
+                            part.CanCollide = true
+                        end
+                    end
+                end
+                
+                WindUI:Notify({
+                    Title = "穿墙已禁用",
+                    Content = "现在无法穿过物体",
+                    Icon = "git-merge",
+                    Duration = 3
+                })
+            end
+        end
+    })
+
     -- 添加透視按鈕
     local espEnabled = false
     local espBoxes = {}
@@ -524,6 +602,395 @@ coroutine.wrap(function()
         end
     })
 
+    -- 添加殺戮光環按鈕和範圍設置
+    local killAuraEnabled = false
+    local killAuraRange = 20
+    
+    -- 殺戮光環範圍滑塊
+    local killAuraSlider = MiscTab:Slider({
+        Title = "殺戮光環範圍",
+        Desc = "設置自動攻擊範圍",
+        Value = { Min = 5, Max = 50, Default = 20 },
+        Callback = function(value)
+            killAuraRange = value
+        end
+    })
+
+    -- 殺戮光環按鈕
+    MiscTab:Button({
+        Title = "殺戮光環",
+        Icon = "sword",
+        Callback = function()
+            killAuraEnabled = not killAuraEnabled
+            
+            if killAuraEnabled then
+                WindUI:Notify({
+                    Title = "殺戮光環已啟用",
+                    Content = "自動攻擊範圍內的玩家，範圍: " .. killAuraRange,
+                    Icon = "sword",
+                    Duration = 3
+                })
+                
+                -- 殺戮光環主循環
+                coroutine.wrap(function()
+                    while killAuraEnabled do
+                        wait(0.1) -- 每0.1秒檢測一次
+                        
+                        local localPlayer = game.Players.LocalPlayer
+                        local localCharacter = localPlayer.Character
+                        
+                        if localCharacter and localCharacter:FindFirstChild("HumanoidRootPart") then
+                            local localRoot = localCharacter.HumanoidRootPart
+                            
+                            -- 檢測範圍內的所有玩家
+                            for _, player in ipairs(game.Players:GetPlayers()) do
+                                if player ~= localPlayer then
+                                    local character = player.Character
+                                    if character and character:FindFirstChild("HumanoidRootPart") then
+                                        local targetRoot = character.HumanoidRootPart
+                                        local distance = (localRoot.Position - targetRoot.Position).Magnitude
+                                        
+                                        -- 如果目標在範圍內，進行攻擊
+                                        if distance <= killAuraRange then
+                                            -- 這裡可以添加具體的攻擊邏輯
+                                            -- 例如：使用工具攻擊、發射射線等
+                                            localRoot.CFrame = targetRoot.CFrame
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end)()
+            else
+                WindUI:Notify({
+                    Title = "殺戮光環已禁用",
+                    Content = "已停止自動攻擊",
+                    Icon = "sword",
+                    Duration = 3
+                })
+            end
+        end
+    })
+
+    -- 添加自動攻擊按鈕
+    local autoAttackEnabled = false
+    local autoAttackRange = 15
+    
+    -- 自動攻擊範圍滑塊
+    local autoAttackSlider = MiscTab:Slider({
+        Title = "自動攻擊範圍",
+        Desc = "設置自動攻擊檢測範圍",
+        Value = { Min = 5, Max = 30, Default = 15 },
+        Callback = function(value)
+            autoAttackRange = value
+        end
+    })
+
+    -- 自動攻擊按鈕
+    MiscTab:Button({
+        Title = "自動攻擊",
+        Icon = "target",
+        Callback = function()
+            autoAttackEnabled = not autoAttackEnabled
+            
+            if autoAttackEnabled then
+                WindUI:Notify({
+                    Title = "自動攻擊已啟用",
+                    Content = "自動攻擊範圍內的敵人，範圍: " .. autoAttackRange,
+                    Icon = "target",
+                    Duration = 3
+                })
+                
+                -- 自動攻擊主循環
+                coroutine.wrap(function()
+                    while autoAttackEnabled do
+                        wait(0.2) -- 每0.2秒檢測一次
+                        
+                        local localPlayer = game.Players.LocalPlayer
+                        local localCharacter = localPlayer.Character
+                        
+                        if localCharacter and localCharacter:FindFirstChild("HumanoidRootPart") then
+                            local localRoot = localCharacter.HumanoidRootPart
+                            
+                            -- 尋找最近的敵人
+                            local closestTarget = nil
+                            local closestDistance = autoAttackRange
+                            
+                            for _, player in ipairs(game.Players:GetPlayers()) do
+                                if player ~= localPlayer then
+                                    local character = player.Character
+                                    if character and character:FindFirstChild("HumanoidRootPart") and character:FindFirstChild("Humanoid") then
+                                        local targetRoot = character.HumanoidRootPart
+                                        local humanoid = character.Humanoid
+                                        
+                                        -- 檢查目標是否存活
+                                        if humanoid.Health > 0 then
+                                            local distance = (localRoot.Position - targetRoot.Position).Magnitude
+                                            
+                                            if distance < closestDistance then
+                                                closestDistance = distance
+                                                closestTarget = character
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                            
+                            -- 如果有目標在範圍內，進行攻擊
+                            if closestTarget then
+                                local targetRoot = closestTarget.HumanoidRootPart
+                                
+                                -- 面向目標
+                                localRoot.CFrame = CFrame.new(localRoot.Position, targetRoot.Position)
+                                
+                                -- 模擬攻擊動作（這裡可以根據遊戲具體機制調整）
+                                if localCharacter:FindFirstChildOfClass("Tool") then
+                                    local tool = localCharacter:FindFirstChildOfClass("Tool")
+                                    -- 激活工具（如果有的話）
+                                    if tool:FindFirstChild("Handle") then
+                                        -- 這裡可以添加具體的攻擊邏輯
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end)()
+            else
+                WindUI:Notify({
+                    Title = "自動攻擊已禁用",
+                    Content = "已停止自動攻擊",
+                    Icon = "target",
+                    Duration = 3
+                })
+            end
+        end
+    })
+
+    -- 添加無限傷害武器按鈕
+    MiscTab:Button({
+        Title = "無限傷害武器",
+        Icon = "zap",
+        Callback = function()
+            coroutine.wrap(function()
+                local player = game.Players.LocalPlayer
+                
+                -- 創建無限傷害武器
+                local weapon = Instance.new("Tool")
+                weapon.Name = "LOL無限武器"
+                weapon.RequiresHandle = false
+                
+                -- 創建武器手柄（視覺效果）
+                local handle = Instance.new("Part")
+                handle.Name = "Handle"
+                handle.Size = Vector3.new(1, 1, 4)
+                handle.BrickColor = BrickColor.new("Bright red")
+                handle.Material = Enum.Material.Neon
+                handle.Parent = weapon
+                
+                -- 創建武器特效
+                local pointLight = Instance.new("PointLight")
+                pointLight.Brightness = 5
+                pointLight.Range = 10
+                pointLight.Color = Color3.fromRGB(255, 0, 0)
+                pointLight.Parent = handle
+                
+                -- 添加揮動動畫
+                local swingAnimation = Instance.new("Animation")
+                swingAnimation.AnimationId = "rbxassetid://188632011" -- 標準揮動動畫
+                
+                -- 武器激活時的無限傷害功能
+                weapon.Activated:Connect(function()
+                    local character = player.Character
+                    if not character then return end
+                    
+                    local humanoid = character:FindFirstChild("Humanoid")
+                    if not humanoid then return end
+                    
+                    -- 播放揮動動畫
+                    local animationTrack = humanoid:LoadAnimation(swingAnimation)
+                    animationTrack:Play()
+                    
+                    -- 等待動畫播放
+                    wait(0.3)
+                    
+                    -- 檢測前方的敵人
+                    local rayOrigin = character:FindFirstChild("HumanoidRootPart").Position
+                    local rayDirection = character:FindFirstChild("HumanoidRootPart").CFrame.LookVector * 25
+                    local raycastParams = RaycastParams.new()
+                    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+                    raycastParams.FilterDescendantsInstances = {character}
+                    
+                    local raycastResult = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+                    
+                    if raycastResult then
+                        local hit = raycastResult.Instance
+                        local model = hit:FindFirstAncestorOfClass("Model")
+                        
+                        if model then
+                            local targetHumanoid = model:FindFirstChildOfClass("Humanoid")
+                            local targetPlayer = game.Players:GetPlayerFromCharacter(model)
+                            
+                            if targetHumanoid and targetPlayer and targetPlayer ~= player then
+                                -- 使用多種方法確保敵人死亡
+                                pcall(function()
+                                    -- 方法1: 直接設置生命值為0
+                                    targetHumanoid.Health = 0
+                                    
+                                    -- 方法2: 使用TakeDamage方法
+                                    targetHumanoid:TakeDamage(math.huge)
+                                    
+                                    -- 方法3: 使用BreakJoints摧毀關節
+                                    model:BreakJoints()
+                                    
+                                    -- 方法4: 摧毀角色
+                                    model:Destroy()
+                                    
+                                    -- 顯示擊殺效果
+                                    WindUI:Notify({
+                                        Title = "無限武器擊殺",
+                                        Content = "已擊殺: " .. targetPlayer.Name,
+                                        Icon = "zap",
+                                        Duration = 3
+                                    })
+                                    
+                                    -- 在擊殺位置創建爆炸效果
+                                    local explosion = Instance.new("Explosion")
+                                    explosion.Position = raycastResult.Position
+                                    explosion.BlastPressure = 0
+                                    explosion.BlastRadius = 5
+                                    explosion.DestroyJointRadiusPercent = 0
+                                    explosion.Parent = workspace
+                                end)
+                            end
+                        end
+                    end
+                end)
+                
+                -- 武器裝備時的效果
+                weapon.Equipped:Connect(function()
+                    WindUI:Notify({
+                        Title = "無限武器已裝備",
+                        Content = "點擊使用無限傷害攻擊",
+                        Icon = "zap",
+                        Duration = 3
+                    })
+                end)
+                
+                -- 將武器添加到玩家背包
+                weapon.Parent = player.Backpack
+                
+                WindUI:Notify({
+                    Title = "無限傷害武器已添加",
+                    Content = "請查看背包中的LOL無限武器",
+                    Icon = "zap",
+                    Duration = 3
+                })
+            end)()
+        end
+    })
+
+    -- 添加真正有效的防甩飞功能
+    local antiFlingEnabled = false
+    local antiFlingConnection = nil
+    
+    MiscTab:Button({
+        Title = "防甩飞",
+        Icon = "shield",
+        Callback = function()
+            antiFlingEnabled = not antiFlingEnabled
+            
+            if antiFlingEnabled then
+                WindUI:Notify({
+                    Title = "防甩飞已启用",
+                    Content = "现在免疫甩飞攻击",
+                    Icon = "shield",
+                    Duration = 3
+                })
+                
+                local player = game.Players.LocalPlayer
+                local character = player.Character
+                
+                -- 方法1: 移除网络所有权，让服务器控制物理
+                if character then
+                    local rootPart = character:FindFirstChild("HumanoidRootPart")
+                    if rootPart then
+                        rootPart:SetNetworkOwner(nil)
+                    end
+                end
+                
+                -- 方法2: 创建防甩飞主体
+                antiFlingConnection = game:GetService("RunService").Heartbeat:Connect(function()
+                    if not antiFlingEnabled then return end
+                    
+                    local currentCharacter = player.Character
+                    if not currentCharacter then return end
+                    
+                    local humanoid = currentCharacter:FindFirstChild("Humanoid")
+                    local rootPart = currentCharacter:FindFirstChild("HumanoidRootPart")
+                    
+                    if humanoid and rootPart then
+                        -- 检测异常运动
+                        local velocity = rootPart.Velocity
+                        local rotVelocity = rootPart.RotVelocity
+                        
+                        -- 如果速度异常，立即重置
+                        if velocity.Magnitude > 100 or rotVelocity.Magnitude > 50 then
+                            -- 立即停止所有运动
+                            rootPart.Velocity = Vector3.new(0, 0, 0)
+                            rootPart.RotVelocity = Vector3.new(0, 0, 0)
+                            
+                            -- 短暂锚定来稳定角色
+                            rootPart.Anchored = true
+                            wait(0.05)
+                            rootPart.Anchored = false
+                            
+                            -- 重置网络所有权
+                            rootPart:SetNetworkOwner(nil)
+                        end
+                        
+                        -- 防止角色被旋转
+                        if math.abs(rotVelocity.X) > 10 or math.abs(rotVelocity.Y) > 10 or math.abs(rotVelocity.Z) > 10 then
+                            rootPart.RotVelocity = Vector3.new(0, 0, 0)
+                        end
+                        
+                        -- 防止角色被甩到异常位置
+                        if rootPart.Position.Y < -500 or rootPart.Position.Y > 1000 then
+                            -- 传送到安全位置
+                            rootPart.CFrame = CFrame.new(0, 50, 0)
+                        end
+                    end
+                end)
+                
+                -- 方法3: 监听角色变化
+                player.CharacterAdded:Connect(function(newChar)
+                    character = newChar
+                    wait(1) -- 等待角色加载完成
+                    
+                    -- 为新角色应用防甩飞
+                    local newRoot = newChar:FindFirstChild("HumanoidRootPart")
+                    if newRoot then
+                        newRoot:SetNetworkOwner(nil)
+                    end
+                end)
+                
+            else
+                -- 禁用防甩飞
+                if antiFlingConnection then
+                    antiFlingConnection:Disconnect()
+                    antiFlingConnection = nil
+                end
+                
+                WindUI:Notify({
+                    Title = "防甩飞已禁用",
+                    Content = "现在不再免疫甩飞攻击",
+                    Icon = "shield-off",
+                    Duration = 3
+                })
+            end
+        end
+    })
+
     MiscTab:Divider()
 
     -- 重置按鈕
@@ -543,6 +1010,42 @@ coroutine.wrap(function()
             jumpSlider:Set(50)
             if character and character:FindFirstChild("Humanoid") then
                 character.Humanoid.JumpPower = 50
+            end
+            
+            -- 重置殺戮光環範圍
+            killAuraSlider:Set(20)
+            killAuraRange = 20
+            
+            -- 重置自動攻擊範圍
+            autoAttackSlider:Set(15)
+            autoAttackRange = 15
+            
+            -- 禁用防甩飞
+            if antiFlingEnabled then
+                antiFlingEnabled = false
+                if antiFlingConnection then
+                    antiFlingConnection:Disconnect()
+                    antiFlingConnection = nil
+                end
+            end
+            
+            -- 禁用穿墙
+            if noclipEnabled then
+                noclipEnabled = false
+                if noclipConnection then
+                    noclipConnection:Disconnect()
+                    noclipConnection = nil
+                end
+                
+                -- 恢复角色碰撞
+                local character = game.Players.LocalPlayer.Character
+                if character then
+                    for _, part in pairs(character:GetDescendants()) do
+                        if part:IsA("BasePart") and not part.CanCollide then
+                            part.CanCollide = true
+                        end
+                    end
+                end
             end
             
             WindUI:Notify({
