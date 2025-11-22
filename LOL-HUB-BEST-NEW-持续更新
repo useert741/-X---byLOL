@@ -95,7 +95,7 @@ coroutine.wrap(function()
         desc.Size = UDim2.new(1, -70, 0, 20)
         desc.Position = UDim2.new(0, 70, 0, 45)
         desc.BackgroundTransparency = 1
-        desc.Text = "V2"
+        desc.Text = "V3"
         desc.TextColor3 = Color3.fromRGB(200, 200, 200)
         desc.TextSize = 14
         desc.Font = Enum.Font.Gotham
@@ -210,7 +210,7 @@ coroutine.wrap(function()
     })
 
     Window:Tag({
-        Title = "V2",
+        Title = "V3",
         Color = Color3.fromHex("#30ff6a")
     })
     Window:Tag({
@@ -297,6 +297,299 @@ coroutine.wrap(function()
         end
     })
 
+    -- 創建視覺標籤頁
+    local VisualSection = Window:Section({ Title = "視覺", Opened = true })
+    local VisualTab = VisualSection:Tab({ Title = "視覺效果", Icon = "eye" })
+
+    -- 添加視覺效果說明
+    VisualTab:Paragraph({
+        Title = "視覺效果設置",
+        Desc = "調整遊戲畫面效果和色彩",
+        Image = "palette",
+        ImageSize = 20,
+        Color = "White",
+    })
+
+    VisualTab:Divider()
+
+    -- 創建視覺效果調節功能
+    local lighting = game:GetService("Lighting")
+    local camera = workspace.CurrentCamera
+
+    -- 曝光度
+    VisualTab:Slider({
+        Title = "曝光度",
+        Desc = "調整畫面整體亮度",
+        Value = { Min = 0, Max = 10, Default = 1 },
+        Callback = function(value)
+            lighting.ExposureCompensation = value - 1
+        end
+    })
+
+    -- 鮮明度
+    VisualTab:Slider({
+        Title = "鮮明度",
+        Desc = "調整色彩鮮艷程度",
+        Value = { Min = 0, Max = 2, Default = 1 },
+        Callback = function(value)
+            -- 通過調整飽和度和對比度模擬鮮明度
+            if not lighting:FindFirstChild("ColorCorrection_Contrast") then
+                local cc = Instance.new("ColorCorrectionEffect")
+                cc.Name = "ColorCorrection_Contrast"
+                cc.Parent = lighting
+            end
+            lighting.ColorCorrection_Contrast.Contrast = (value - 1) * 0.5
+        end
+    })
+
+    -- 高光
+    VisualTab:Slider({
+        Title = "高光",
+        Desc = "調整高光區域亮度",
+        Value = { Min = 0, Max = 2, Default = 1 },
+        Callback = function(value)
+            if not lighting:FindFirstChild("BloomEffect") then
+                local bloom = Instance.new("BloomEffect")
+                bloom.Parent = lighting
+            end
+            lighting.BloomEffect.Intensity = (value - 1) * 0.5
+        end
+    })
+
+    -- 陰影
+    VisualTab:Slider({
+        Title = "陰影",
+        Desc = "調整陰影區域亮度",
+        Value = { Min = 0, Max = 2, Default = 1 },
+        Callback = function(value)
+            lighting.Ambient = Color3.new(value * 0.3, value * 0.3, value * 0.3)
+        end
+    })
+
+    -- 對比度
+    VisualTab:Slider({
+        Title = "對比度",
+        Desc = "調整明暗對比程度",
+        Value = { Min = 0, Max = 2, Default = 1 },
+        Callback = function(value)
+            if not lighting:FindFirstChild("ColorCorrection_Contrast") then
+                local cc = Instance.new("ColorCorrectionEffect")
+                cc.Name = "ColorCorrection_Contrast"
+                cc.Parent = lighting
+            end
+            lighting.ColorCorrection_Contrast.Contrast = (value - 1) * 0.5
+        end
+    })
+
+    -- 亮度
+    VisualTab:Slider({
+        Title = "亮度",
+        Desc = "調整畫面整體亮度",
+        Value = { Min = 0, Max = 2, Default = 1 },
+        Callback = function(value)
+            if not lighting:FindFirstChild("ColorCorrection_Brightness") then
+                local cc = Instance.new("ColorCorrectionEffect")
+                cc.Name = "ColorCorrection_Brightness"
+                cc.Parent = lighting
+            end
+            lighting.ColorCorrection_Brightness.Brightness = (value - 1) * 0.3
+        end
+    })
+
+    -- 黑點
+    VisualTab:Slider({
+        Title = "黑點",
+        Desc = "調整黑色區域深度",
+        Value = { Min = 0, Max = 2, Default = 1 },
+        Callback = function(value)
+            -- 通過調整陰影和對比度模擬黑點效果
+            lighting.ShadowSoftness = 1 - (value - 1) * 0.5
+        end
+    })
+
+    -- 飽和度
+    VisualTab:Slider({
+        Title = "飽和度",
+        Desc = "調整色彩飽和程度",
+        Value = { Min = 0, Max = 2, Default = 1 },
+        Callback = function(value)
+            if not lighting:FindFirstChild("ColorCorrection_Saturation") then
+                local cc = Instance.new("ColorCorrectionEffect")
+                cc.Name = "ColorCorrection_Saturation"
+                cc.Parent = lighting
+            end
+            lighting.ColorCorrection_Saturation.Saturation = value - 1
+        end
+    })
+
+    -- 自然飽和度
+    VisualTab:Slider({
+        Title = "自然飽和度",
+        Desc = "智能調整色彩飽和度",
+        Value = { Min = 0, Max = 2, Default = 1 },
+        Callback = function(value)
+            -- 通過調整多個色彩參數模擬自然飽和度
+            if not lighting:FindFirstChild("ColorCorrection_Tint") then
+                local cc = Instance.new("ColorCorrectionEffect")
+                cc.Name = "ColorCorrection_Tint"
+                cc.Parent = lighting
+            end
+            lighting.ColorCorrection_Tint.TintColor = Color3.new(1, value, 1)
+        end
+    })
+
+    -- 色溫
+    VisualTab:Slider({
+        Title = "色溫",
+        Desc = "調整畫面冷暖色調",
+        Value = { Min = 0, Max = 2, Default = 1 },
+        Callback = function(value)
+            if not lighting:FindFirstChild("ColorCorrection_Temperature") then
+                local cc = Instance.new("ColorCorrectionEffect")
+                cc.Name = "ColorCorrection_Temperature"
+                cc.Parent = lighting
+            end
+            -- 冷色調到暖色調的過渡
+            local coldColor = Color3.fromRGB(180, 220, 255) -- 冷色
+            local warmColor = Color3.fromRGB(255, 220, 180) -- 暖色
+            lighting.ColorCorrection_Temperature.TintColor = coldColor:Lerp(warmColor, value - 1)
+        end
+    })
+
+    -- 色調
+    VisualTab:Slider({
+        Title = "色調",
+        Desc = "調整畫面整體色調",
+        Value = { Min = 0, Max = 2, Default = 1 },
+        Callback = function(value)
+            if not lighting:FindFirstChild("ColorCorrection_Tone") then
+                local cc = Instance.new("ColorCorrectionEffect")
+                cc.Name = "ColorCorrection_Tone"
+                cc.Parent = lighting
+            end
+            -- 綠色到紫色的色調變化
+            local greenTone = Color3.fromRGB(200, 255, 200)
+            local purpleTone = Color3.fromRGB(255, 200, 255)
+            lighting.ColorCorrection_Tone.TintColor = greenTone:Lerp(purpleTone, value - 1)
+        end
+    })
+
+    -- 銳度
+    VisualTab:Slider({
+        Title = "銳度",
+        Desc = "調整圖像邊緣清晰度",
+        Value = { Min = 0, Max = 2, Default = 1 },
+        Callback = function(value)
+            -- 通過調整後處理效果模擬銳度
+            if not lighting:FindFirstChild("DepthOfFieldEffect") then
+                local dof = Instance.new("DepthOfFieldEffect")
+                dof.Parent = lighting
+            end
+            lighting.DepthOfFieldEffect.FarIntensity = (value - 1) * 0.1
+        end
+    })
+
+    -- 清晰度
+    VisualTab:Slider({
+        Title = "清晰度",
+        Desc = "調整圖像整體清晰度",
+        Value = { Min = 0, Max = 2, Default = 1 },
+        Callback = function(value)
+            -- 通過調整霧效模擬清晰度
+            lighting.FogEnd = 1000 / value
+        end
+    })
+
+    -- 噪點消除
+    VisualTab:Slider({
+        Title = "噪點消除",
+        Desc = "減少圖像噪點和顆粒",
+        Value = { Min = 0, Max = 2, Default = 1 },
+        Callback = function(value)
+            -- 通過調整後處理效果模擬降噪
+            if not lighting:FindFirstChild("BlurEffect") then
+                local blur = Instance.new("BlurEffect")
+                blur.Parent = lighting
+            end
+            lighting.BlurEffect.Size = (1 - value) * 2
+        end
+    })
+
+    -- 暈影
+    VisualTab:Slider({
+        Title = "暈影",
+        Desc = "添加畫面邊緣暗角效果",
+        Value = { Min = 0, Max = 2, Default = 1 },
+        Callback = function(value)
+            -- 通過調整環境光模擬暈影效果
+            lighting.OutdoorAmbient = Color3.new(value * 0.5, value * 0.5, value * 0.5)
+        end
+    })
+
+    VisualTab:Divider()
+
+    -- 重置視覺效果按鈕
+    VisualTab:Button({
+        Title = "重置所有視覺效果",
+        Icon = "refresh-cw",
+        Variant = "Secondary",
+        Callback = function()
+            -- 重置所有視覺效果到默認值
+            lighting.ExposureCompensation = 0
+            
+            if lighting:FindFirstChild("ColorCorrection_Contrast") then
+                lighting.ColorCorrection_Contrast:Destroy()
+            end
+            
+            if lighting:FindFirstChild("BloomEffect") then
+                lighting.BloomEffect.Intensity = 0.1
+            end
+            
+            lighting.Ambient = Color3.new(0, 0, 0)
+            
+            if lighting:FindFirstChild("ColorCorrection_Brightness") then
+                lighting.ColorCorrection_Brightness:Destroy()
+            end
+            
+            lighting.ShadowSoftness = 0.5
+            
+            if lighting:FindFirstChild("ColorCorrection_Saturation") then
+                lighting.ColorCorrection_Saturation:Destroy()
+            end
+            
+            if lighting:FindFirstChild("ColorCorrection_Tint") then
+                lighting.ColorCorrection_Tint:Destroy()
+            end
+            
+            if lighting:FindFirstChild("ColorCorrection_Temperature") then
+                lighting.ColorCorrection_Temperature:Destroy()
+            end
+            
+            if lighting:FindFirstChild("ColorCorrection_Tone") then
+                lighting.ColorCorrection_Tone:Destroy()
+            end
+            
+            if lighting:FindFirstChild("DepthOfFieldEffect") then
+                lighting.DepthOfFieldEffect.FarIntensity = 0
+            end
+            
+            lighting.FogEnd = 100000
+            
+            if lighting:FindFirstChild("BlurEffect") then
+                lighting.BlurEffect.Size = 0
+            end
+            
+            lighting.OutdoorAmbient = Color3.new(0.5, 0.5, 0.5)
+            
+            WindUI:Notify({
+                Title = "視覺效果已重置",
+                Content = "所有視覺設置已恢復默認值",
+                Icon = "check",
+                Duration = 3
+            })
+        end
+    })
+
     -- 創建雜項標籤頁
     local MiscSection = Window:Section({ Title = "雜項", Opened = true })
     local MiscTab = MiscSection:Tab({ Title = "基礎功能", Icon = "settings" })
@@ -309,6 +602,81 @@ coroutine.wrap(function()
         ImageSize = 20,
         Color = "White",
     })
+
+    MiscTab:Divider()
+
+    -- 添加FPS和延遲顯示
+    local fpsValue = 0
+    local pingValue = 0
+    local frameCount = 0
+    local lastTime = tick()
+    
+    -- FPS計算循環
+    coroutine.wrap(function()
+        while true do
+            frameCount = frameCount + 1
+            local currentTime = tick()
+            if currentTime - lastTime >= 1 then
+                fpsValue = math.floor(frameCount / (currentTime - lastTime))
+                frameCount = 0
+                lastTime = currentTime
+                
+                -- 獲取延遲
+                local success, result = pcall(function()
+                    return game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
+                end)
+                
+                if success then
+                    pingValue = math.floor(result)
+                else
+                    pingValue = 0
+                end
+            end
+            wait()
+        end
+    end)()
+
+    -- 創建FPS和延遲顯示
+    local fpsDisplay = MiscTab:Paragraph({
+        Title = "性能監控",
+        Desc = "FPS: 計算中... | 延遲: 計算中...",
+        Image = "bar-chart",
+        ImageSize = 20,
+        Color = "White",
+    })
+
+    -- 更新FPS顯示
+    coroutine.wrap(function()
+        while true do
+            local fpsColor = "White"
+            if fpsValue < 30 then
+                fpsColor = "Red"
+            elseif fpsValue < 60 then
+                fpsColor = "Yellow"
+            else
+                fpsColor = "Green"
+            end
+            
+            local pingColor = "White"
+            if pingValue > 200 then
+                pingColor = "Red"
+            elseif pingValue > 100 then
+                pingColor = "Yellow"
+            else
+                pingColor = "Green"
+            end
+            
+            fpsDisplay:Set({
+                Title = "性能監控",
+                Desc = string.format('<font color="%s">FPS: %d</font> | <font color="%s">延遲: %dms</font>', 
+                    fpsColor, fpsValue, pingColor, pingValue),
+                Image = "bar-chart",
+                ImageSize = 20,
+                Color = "White",
+            })
+            wait(0.5)
+        end
+    end)()
 
     MiscTab:Divider()
 
@@ -487,6 +855,46 @@ coroutine.wrap(function()
                 Icon = "navigation",
                 Duration = 3
             })
+        end
+    })
+
+    -- 添加移除碰撞箱按钮
+    MiscTab:Button({
+        Title = "移除碰撞箱",
+        Icon = "box",
+        Callback = function()
+            local player = game.Players.LocalPlayer
+            local character = player.Character
+            
+            if character then
+                -- 只禁用碰撞，不改变部件大小，保持视觉外观不变
+                for _, part in pairs(character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+                
+                -- 监听新加入的部件
+                character.DescendantAdded:Connect(function(part)
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end)
+                
+                WindUI:Notify({
+                    Title = "碰撞箱已移除",
+                    Content = "玩家碰撞已禁用，视觉外观保持不变",
+                    Icon = "check",
+                    Duration = 3
+                })
+            else
+                WindUI:Notify({
+                    Title = "錯誤",
+                    Content = "找不到玩家角色",
+                    Icon = "x",
+                    Duration = 3
+                })
+            end
         end
     })
 
