@@ -36,6 +36,112 @@ local SafeEnvironment = BypassAntiCheat()
 
 -- 將主腳本放在安全環境中執行
 coroutine.wrap(function()
+    -- 創建右下角歡迎提示
+    local function CreateWelcomeNotification()
+        local screenGui = Instance.new("ScreenGui")
+        screenGui.Name = "WelcomeNotification"
+        screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        screenGui.Parent = game:GetService("CoreGui")
+        
+        local frame = Instance.new("Frame")
+        frame.Size = UDim2.new(0, 300, 0, 80)
+        frame.Position = UDim2.new(1, -320, 1, -100) -- 右下角位置
+        frame.AnchorPoint = Vector2.new(1, 1)
+        frame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+        frame.BackgroundTransparency = 0.2
+        frame.BorderSizePixel = 0
+        frame.Parent = screenGui
+        
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 8)
+        corner.Parent = frame
+        
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = Color3.fromHex("#6A11CB")
+        stroke.Thickness = 2
+        stroke.Parent = frame
+        
+        local gradient = Instance.new("UIGradient")
+        gradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromHex("#6A11CB")),
+            ColorSequenceKeypoint.new(1, Color3.fromHex("#2575FC"))
+        })
+        gradient.Rotation = 45
+        stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        stroke.LineJoinMode = Enum.LineJoinMode.Round
+        stroke.Transparency = NumberSequence.new(0)
+        
+        local icon = Instance.new("ImageLabel")
+        icon.Size = UDim2.new(0, 40, 0, 40)
+        icon.Position = UDim2.new(0, 15, 0.5, -20)
+        icon.AnchorPoint = Vector2.new(0, 0.5)
+        icon.BackgroundTransparency = 1
+        icon.Image = "rbxassetid://6031091003" -- 星星图标
+        icon.ImageColor3 = Color3.fromHex("#2575FC")
+        icon.Parent = frame
+        
+        local title = Instance.new("TextLabel")
+        title.Size = UDim2.new(1, -70, 0, 30)
+        title.Position = UDim2.new(0, 70, 0, 15)
+        title.BackgroundTransparency = 1
+        title.Text = "歡迎使用LOL漢化hub"
+        title.TextColor3 = Color3.fromRGB(255, 255, 255)
+        title.TextSize = 18
+        title.Font = Enum.Font.GothamBold
+        title.TextXAlignment = Enum.TextXAlignment.Left
+        title.Parent = frame
+        
+        local desc = Instance.new("TextLabel")
+        desc.Size = UDim2.new(1, -70, 0, 20)
+        desc.Position = UDim2.new(0, 70, 0, 45)
+        desc.BackgroundTransparency = 1
+        desc.Text = "繁體中文版本 V1.0"
+        desc.TextColor3 = Color3.fromRGB(200, 200, 200)
+        desc.TextSize = 14
+        desc.Font = Enum.Font.Gotham
+        desc.TextXAlignment = Enum.TextXAlignment.Left
+        desc.Parent = frame
+        
+        -- 添加淡入动画
+        frame.BackgroundTransparency = 1
+        title.TextTransparency = 1
+        desc.TextTransparency = 1
+        icon.ImageTransparency = 1
+        
+        local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local tweenService = game:GetService("TweenService")
+        
+        local tween1 = tweenService:Create(frame, tweenInfo, {BackgroundTransparency = 0.2})
+        local tween2 = tweenService:Create(title, tweenInfo, {TextTransparency = 0})
+        local tween3 = tweenService:Create(desc, tweenInfo, {TextTransparency = 0})
+        local tween4 = tweenService:Create(icon, tweenInfo, {ImageTransparency = 0})
+        
+        tween1:Play()
+        tween2:Play()
+        tween3:Play()
+        tween4:Play()
+        
+        -- 5秒后淡出并删除
+        wait(5)
+        
+        local tweenOut = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+        local tween5 = tweenService:Create(frame, tweenOut, {BackgroundTransparency = 1})
+        local tween6 = tweenService:Create(title, tweenOut, {TextTransparency = 1})
+        local tween7 = tweenService:Create(desc, tweenOut, {TextTransparency = 1})
+        local tween8 = tweenService:Create(icon, tweenOut, {ImageTransparency = 1})
+        
+        tween5:Play()
+        tween6:Play()
+        tween7:Play()
+        tween8:Play()
+        
+        tween5.Completed:Wait()
+        screenGui:Destroy()
+    end
+
+    -- 立即顯示歡迎提示
+    CreateWelcomeNotification()
+
     -- 直接加載WindUI
     local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 
@@ -80,13 +186,13 @@ coroutine.wrap(function()
         }
     })
 
-    -- 調整窗口大小為移動端友好尺寸
+    -- 調整窗口大小
     local Window = WindUI:CreateWindow({
         Title = "LOL漢化hub",
         Icon = "palette",
         Author = "歡迎使用LOL漢化hub",
         Folder = "WindUI_Example",
-        Size = UDim2.fromOffset(600, 700), -- 調整為更適合移動端的尺寸
+        Size = UDim2.fromOffset(600, 700),
         Theme = "Dark",
         User = {
             Enabled = true,
@@ -99,7 +205,7 @@ coroutine.wrap(function()
                 })
             end
         },
-        SideBarWidth = 180, -- 稍微減小側邊欄寬度以適應移動端
+        SideBarWidth = 180,
         ScrollBarEnabled = true
     })
 
@@ -476,7 +582,7 @@ coroutine.wrap(function()
                 -- 啟用透視
                 WindUI:Notify({
                     Title = "透視功能已啟用",
-                    Content = "正在顯示玩家彩色3D框",
+                    Content = "正在顯示玩家紅色3D框",
                     Icon = "eye",
                     Duration = 3
                 })
@@ -491,26 +597,10 @@ coroutine.wrap(function()
                     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
                     if not humanoidRootPart then return end
                     
-                    -- 生成隨機顏色
-                    local function getRandomColor()
-                        local colors = {
-                            Color3.fromRGB(255, 0, 0),     -- 紅色
-                            Color3.fromRGB(0, 255, 0),     -- 綠色
-                            Color3.fromRGB(0, 0, 255),     -- 藍色
-                            Color3.fromRGB(255, 255, 0),   -- 黃色
-                            Color3.fromRGB(255, 0, 255),   -- 粉色
-                            Color3.fromRGB(0, 255, 255),   -- 青色
-                            Color3.fromRGB(255, 165, 0),   -- 橙色
-                            Color3.fromRGB(128, 0, 128),   -- 紫色
-                            Color3.fromRGB(0, 128, 0),     -- 深綠色
-                            Color3.fromRGB(255, 192, 203)  -- 淺粉色
-                        }
-                        return colors[math.random(1, #colors)]
-                    end
+                    -- 固定使用紅色
+                    local playerColor = Color3.fromRGB(255, 0, 0)
                     
-                    local playerColor = getRandomColor()
-                    
-                    -- 創建彩色方框
+                    -- 創建紅色方框
                     local box = Instance.new("BoxHandleAdornment")
                     box.Name = "ESP_" .. player.Name
                     box.Adornee = humanoidRootPart
@@ -521,7 +611,7 @@ coroutine.wrap(function()
                     box.Transparency = 0.2
                     box.Parent = humanoidRootPart
                     
-                    -- 創建名稱標籤（使用相同顏色）
+                    -- 創建名稱標籤（使用紅色）
                     local billboard = Instance.new("BillboardGui")
                     billboard.Name = "ESP_Name_" .. player.Name
                     billboard.Adornee = humanoidRootPart
@@ -583,7 +673,7 @@ coroutine.wrap(function()
                 -- 禁用透視
                 WindUI:Notify({
                     Title = "透視功能已禁用",
-                    Content = "已移除所有玩家彩色3D框",
+                    Content = "已移除所有玩家紅色3D框",
                     Icon = "eye-off",
                     Duration = 3
                 })
