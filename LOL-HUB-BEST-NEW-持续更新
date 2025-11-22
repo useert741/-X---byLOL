@@ -95,7 +95,7 @@ coroutine.wrap(function()
         desc.Size = UDim2.new(1, -70, 0, 20)
         desc.Position = UDim2.new(0, 70, 0, 45)
         desc.BackgroundTransparency = 1
-        desc.Text = "繁體中文版本 V1.0"
+        desc.Text = "V2"
         desc.TextColor3 = Color3.fromRGB(200, 200, 200)
         desc.TextSize = 14
         desc.Font = Enum.Font.Gotham
@@ -210,7 +210,7 @@ coroutine.wrap(function()
     })
 
     Window:Tag({
-        Title = "V1",
+        Title = "V2",
         Color = Color3.fromHex("#30ff6a")
     })
     Window:Tag({
