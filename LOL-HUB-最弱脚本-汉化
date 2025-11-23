@@ -38,8 +38,8 @@ local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/m
 
 -- 創建主視窗
 local Window = Library:CreateWindow({
-    Title = "LOL漢化Hub - Vx",
-    Footer = "LOL | 正式版",
+    Title = "LOL漢化Hub - 完整整合版",
+    Footer = "LOL漢化組 | 全功能版本",
     Center = true,
     AutoShow = true,
     Resizable = true,
@@ -238,7 +238,6 @@ function restoreHitboxes()
     end
     originalSizes = {}
 end
-
 -- 視覺效果功能
 local lighting = game:GetService("Lighting")
 
@@ -520,6 +519,142 @@ local UtilityGroup = Tabs.Player:AddRightGroupbox("實用功能", "zap") do
         end
     })
 end
+-- 靈魂出竅功能
+local outOfBodyEnabled = false
+local originalCharacter = nil
+local soulPart = nil
+local soulBody = nil
+local soulControl = nil
+
+local OutOfBodyGroup = Tabs.Player:AddLeftGroupbox("靈魂出竅", "ghost") do
+    OutOfBodyGroup:AddToggle("OutOfBody", {
+        Text = "靈魂出竅模式",
+        Default = false,
+        Callback = function(value)
+            outOfBodyEnabled = value
+            
+            if value then
+                -- 保存原始角色
+                originalCharacter = game.Players.LocalPlayer.Character
+                
+                -- 創建靈魂部件
+                soulPart = Instance.new("Part")
+                soulPart.Name = "Soul"
+                soulPart.Size = Vector3.new(2, 2, 2)
+                soulPart.Position = originalCharacter.HumanoidRootPart.Position + Vector3.new(0, 5, 0)
+                soulPart.Anchored = false
+                soulPart.CanCollide = false
+                soulPart.Transparency = 0.5
+                soulPart.Material = Enum.Material.Neon
+                soulPart.BrickColor = BrickColor.new("Bright blue")
+                soulPart.Parent = workspace
+                
+                -- 創建靈魂身體
+                soulBody = Instance.new("BodyGyro")
+                soulBody.MaxTorque = Vector3.new(400000, 400000, 400000)
+                soulBody.P = 10000
+                soulBody.Parent = soulPart
+                
+                soulControl = Instance.new("BodyVelocity")
+                soulControl.MaxForce = Vector3.new(400000, 400000, 400000)
+                soulControl.Velocity = Vector3.new(0, 0, 0)
+                soulControl.Parent = soulPart
+                
+                -- 設置相機跟隨靈魂
+                workspace.CurrentCamera.CameraSubject = soulPart
+                
+                -- 控制靈魂移動
+                local connection
+                connection = game:GetService("RunService").RenderStepped:Connect(function()
+                    if not outOfBodyEnabled then
+                        connection:Disconnect()
+                        return
+                    end
+                    
+                    local camera = workspace.CurrentCamera
+                    local mouse = game.Players.LocalPlayer:GetMouse()
+                    
+                    -- 獲取相機方向
+                    local cameraCFrame = camera.CFrame
+                    local lookVector = cameraCFrame.LookVector
+                    local rightVector = cameraCFrame.RightVector
+                    local upVector = cameraCFrame.UpVector
+                    
+                    -- 移動速度
+                    local speed = 50
+                    
+                    -- 處理輸入
+                    local moveDirection = Vector3.new(0, 0, 0)
+                    
+                    if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.W) then
+                        moveDirection = moveDirection + lookVector
+                    end
+                    if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.S) then
+                        moveDirection = moveDirection - lookVector
+                    end
+                    if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.A) then
+                        moveDirection = moveDirection - rightVector
+                    end
+                    if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.D) then
+                        moveDirection = moveDirection + rightVector
+                    end
+                    if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.Space) then
+                        moveDirection = moveDirection + Vector3.new(0, 1, 0)
+                    end
+                    if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.LeftShift) then
+                        moveDirection = moveDirection - Vector3.new(0, 1, 0)
+                    end
+                    
+                    -- 應用移動
+                    if moveDirection.Magnitude > 0 then
+                        soulControl.Velocity = moveDirection.Unit * speed
+                    else
+                        soulControl.Velocity = Vector3.new(0, 0, 0)
+                    end
+                    
+                    -- 更新旋轉以面向相機方向
+                    soulBody.CFrame = CFrame.new(soulPart.Position, soulPart.Position + lookVector)
+                end)
+                
+                Library:Notify("靈魂出竅模式已啟用！使用WASD移動，空格上升，Shift下降", 5)
+            else
+                -- 恢復原始角色
+                if originalCharacter then
+                    workspace.CurrentCamera.CameraSubject = originalCharacter.Humanoid
+                end
+                
+                -- 清理靈魂部件
+                if soulPart then
+                    soulPart:Destroy()
+                    soulPart = nil
+                end
+                if soulBody then
+                    soulBody:Destroy()
+                    soulBody = nil
+                end
+                if soulControl then
+                    soulControl:Destroy()
+                    soulControl = nil
+                end
+                
+                Library:Notify("靈魂出竅模式已禁用", 3)
+            end
+        end
+    })
+
+    OutOfBodyGroup:AddSlider("SoulSpeed", {
+        Text = "靈魂移動速度",
+        Default = 50,
+        Min = 10,
+        Max = 100,
+        Rounding = 1
+    })
+
+    OutOfBodyGroup:AddToggle("SoulNoclip", {
+        Text = "靈魂穿牆",
+        Default = true
+    })
+end
 
 -- 無敵模式
 local godModeEnabled = false
@@ -586,7 +721,6 @@ local GodModeGroup = Tabs.Player:AddLeftGroupbox("無敵模式", "shield") do
         end
     })
 end
-
 -- 自瞄功能
 local aimbotEnabled = false
 local aimbotConnection = nil
@@ -979,7 +1113,6 @@ local SystemGroup = Tabs.Misc:AddRightGroupbox("系統功能", "cpu") do
         Library:Notify("所有設定已重置為默認值", 3)
     end)
 end
-
 -- UI設定
 local MenuGroup = Tabs.Settings:AddLeftGroupbox("選單", "menu") do
     MenuGroup:AddLabel("選單綁定"):AddKeyPicker("MenuKeybind", { 
@@ -1052,6 +1185,17 @@ Library:OnUnload(function()
     for player, espObjects in pairs(espBoxes) do
         if espObjects.box then espObjects.box:Destroy() end
         if espObjects.billboard then espObjects.billboard:Destroy() end
+    end
+    
+    -- 清理靈魂出竅
+    if soulPart then
+        soulPart:Destroy()
+    end
+    if soulBody then
+        soulBody:Destroy()
+    end
+    if soulControl then
+        soulControl:Destroy()
     end
 end)
 
