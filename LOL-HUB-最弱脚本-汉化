@@ -38,8 +38,8 @@ local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/m
 
 -- 創建主視窗
 local Window = Library:CreateWindow({
-    Title = "LOL漢化Hub - 完整整合版",
-    Footer = "LOL漢化組 | 全功能版本",
+    Title = "LOL漢化Hub - V6",
+    Footer = "LOL | 全新功能版本",
     Center = true,
     AutoShow = true,
     Resizable = true,
@@ -101,17 +101,17 @@ end
 
 local ToolsGroup = Tabs.Scripts:AddRightGroupbox("工具腳本", "wrench") do
     ToolsGroup:AddButton("飛行腳本", function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/漢化飛行"))()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/%E6%B1%89%E5%8C%96%E9%A3%9E%E8%A1%8C"))()
         Library:Notify("飛行功能已啟用", 3)
     end)
 
     ToolsGroup:AddButton("甩人腳本", function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/甩人漢化"))()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/%E7%94%A9%E4%BA%BA%E6%B1%89%E5%8C%96"))()
         Library:Notify("甩人功能已啟用", 3)
     end)
 
     ToolsGroup:AddButton("時間回溯", function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/回溯時間LOL"))()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/%E5%9B%9E%E6%BA%AF%E6%97%B6%E9%97%B4LOL"))()
         Library:Notify("時間回溯功能已啟用", 3)
     end)
 
@@ -721,6 +721,7 @@ local GodModeGroup = Tabs.Player:AddLeftGroupbox("無敵模式", "shield") do
         end
     })
 end
+
 -- 自瞄功能
 local aimbotEnabled = false
 local aimbotConnection = nil
@@ -810,7 +811,6 @@ local AimbotSettingsGroup = Tabs.Aiming:AddLeftGroupbox("自瞄設定", "setting
         Rounding = 1
     })
 end
-
 -- 戰鬥功能
 local CombatGroup = Tabs.Combat:AddLeftGroupbox("戰鬥設定", "target") do
     local killAuraEnabled = false
@@ -865,7 +865,7 @@ local CombatGroup = Tabs.Combat:AddLeftGroupbox("戰鬥設定", "target") do
     })
 end
 
--- 甩飛功能 - 修正為甩飛別人
+-- 甩飛功能
 local flingEnabled = false
 local flingConnection = nil
 
