@@ -38,8 +38,8 @@ local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/m
 
 -- 創建主視窗
 local Window = Library:CreateWindow({
-    Title = "LOL漢化Hub - V5",
-    Footer = "LOL | 全功能版本",
+    Title = "LOL漢化Hub - Vx",
+    Footer = "LOL | 正式版",
     Center = true,
     AutoShow = true,
     Resizable = true,
@@ -56,7 +56,6 @@ local Tabs = {
     Combat = Window:AddTab("戰鬥功能", "sword"),
     Aiming = Window:AddTab("自瞄功能", "target"),
     Hitbox = Window:AddTab("碰撞箱擴展", "box"),
-    Dodge = Window:AddTab("完美閃避", "shield"),
     Misc = Window:AddTab("雜項功能", "settings"),
     Settings = Window:AddTab("UI設定", "sliders-horizontal")
 }
@@ -125,366 +124,6 @@ local ToolsGroup = Tabs.Scripts:AddRightGroupbox("工具腳本", "wrench") do
         loadstring(game:HttpGet("https://raw.githubusercontent.com/0Ben1/fe./main/Fling%20GUI"))()
         Library:Notify("甩飛腳本已加載", 3)
     end)
-end
-
--- 完美閃避功能
-local perfectDodgeEnabled = false
-local dodgeConnection = nil
-local isDodging = false
-local lastDodgeTime = 0
-
-local DodgeMainGroup = Tabs.Dodge:AddLeftGroupbox("完美閃避", "shield") do
-    DodgeMainGroup:AddToggle("PerfectDodge", {
-        Text = "啟用完美閃避",
-        Default = false,
-        Callback = function(value)
-            perfectDodgeEnabled = value
-            if value then
-                startDodgeSystem()
-                Library:Notify("完美閃避已啟用", 3)
-            else
-                stopDodgeSystem()
-                Library:Notify("完美閃避已禁用", 3)
-            end
-        end
-    })
-
-    DodgeMainGroup:AddSlider("DodgeDistance", {
-        Text = "閃避距離",
-        Default = 10,
-        Min = 5,
-        Max = 30,
-        Rounding = 1
-    })
-
-    DodgeMainGroup:AddSlider("DodgeCooldown", {
-        Text = "閃避冷卻",
-        Default = 1,
-        Min = 0.5,
-        Max = 5,
-        Rounding = 1
-    })
-
-    DodgeMainGroup:AddSlider("DetectionRange", {
-        Text = "檢測範圍",
-        Default = 15,
-        Min = 5,
-        Max = 50,
-        Rounding = 1
-    })
-end
-
-local DodgeSettingsGroup = Tabs.Dodge:AddRightGroupbox("閃避設定", "settings") do
-    DodgeSettingsGroup:AddToggle("DodgeProjectiles", {
-        Text = "閃避遠程攻擊",
-        Default = true
-    })
-
-    DodgeSettingsGroup:AddToggle("DodgeMelee", {
-        Text = "閃避近戰攻擊",
-        Default = true
-    })
-
-    DodgeSettingsGroup:AddToggle("DodgeInvincible", {
-        Text = "閃避後無敵1秒",
-        Default = true
-    })
-
-    DodgeSettingsGroup:AddToggle("DodgeVisual", {
-        Text = "閃避視覺效果",
-        Default = true
-    })
-
-    DodgeSettingsGroup:AddDropdown("DodgePriority", {
-        Text = "閃避優先級",
-        Values = {"安全方向", "隨機方向", "遠離攻擊源"},
-        Default = "安全方向"
-    })
-end
-
--- 閃避系統
-function startDodgeSystem()
-    dodgeConnection = game:GetService("RunService").Heartbeat:Connect(function()
-        if not perfectDodgeEnabled or isDodging then return end
-        
-        local player = game.Players.LocalPlayer
-        local character = player.Character
-        if not character then return end
-        
-        local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-        if not humanoidRootPart then return end
-        
-        -- 檢查冷卻
-        if tick() - lastDodgeTime < (Options.DodgeCooldown and Options.DodgeCooldown.Value or 1) then
-            return
-        end
-        
-        -- 檢測攻擊
-        local shouldDodge, attackPosition, attackType = detectIncomingAttack(character, humanoidRootPart)
-        
-        if shouldDodge then
-            performDodge(character, humanoidRootPart, attackPosition, attackType)
-        end
-    end)
-end
-
-function stopDodgeSystem()
-    if dodgeConnection then
-        dodgeConnection:Disconnect()
-        dodgeConnection = nil
-    end
-end
-
-function detectIncomingAttack(character, rootPart)
-    local detectionRange = Options.DetectionRange and Options.DetectionRange.Value or 15
-    local checkProjectiles = Options.DodgeProjectiles and Options.DodgeProjectiles.Value or true
-    local checkMelee = Options.DodgeMelee and Options.DodgeMelee.Value or true
-    
-    -- 檢測遠程攻擊（飛行的物體）
-    if checkProjectiles then
-        for _, obj in pairs(workspace:GetDescendants()) do
-            if obj:IsA("BasePart") and obj.Velocity.Magnitude > 10 then
-                local distance = (rootPart.Position - obj.Position).Magnitude
-                if distance <= detectionRange then
-                    -- 檢查是否朝向玩家飛來
-                    local directionToPlayer = (rootPart.Position - obj.Position).Unit
-                    local dotProduct = obj.Velocity.Unit:Dot(directionToPlayer)
-                    if dotProduct > 0.7 then -- 大致朝向玩家
-                        return true, obj.Position, "projectile"
-                    end
-                end
-            end
-        end
-    end
-    
-    -- 檢測近戰攻擊（附近的玩家）
-    if checkMelee then
-        for _, otherPlayer in pairs(game.Players:GetPlayers()) do
-            if otherPlayer ~= game.Players.LocalPlayer and otherPlayer.Character then
-                local otherCharacter = otherPlayer.Character
-                local otherRoot = otherCharacter:FindFirstChild("HumanoidRootPart")
-                local tool = otherCharacter:FindFirstChildOfClass("Tool")
-                
-                if otherRoot then
-                    local distance = (rootPart.Position - otherRoot.Position).Magnitude
-                    if distance <= detectionRange then
-                        -- 檢查是否在攻擊動畫或持有武器
-                        if tool or isPlayerAttacking(otherCharacter) then
-                            return true, otherRoot.Position, "melee"
-                        end
-                    end
-                end
-            end
-        end
-    end
-    
-    -- 檢測射線攻擊
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    raycastParams.FilterDescendantsInstances = {character}
-    
-    local directions = {
-        Vector3.new(1, 0, 0),   -- 右
-        Vector3.new(-1, 0, 0),  -- 左
-        Vector3.new(0, 1, 0),   -- 上
-        Vector3.new(0, -1, 0),  -- 下
-        Vector3.new(0, 0, 1),   -- 前
-        Vector3.new(0, 0, -1)   -- 後
-    }
-    
-    for _, direction in pairs(directions) do
-        local rayOrigin = rootPart.Position
-        local rayDirection = direction * detectionRange
-        local raycastResult = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
-        
-        if raycastResult then
-            local hit = raycastResult.Instance
-            -- 檢查是否為攻擊性物體
-            if hit and (hit.Name:lower():find("bullet") or hit.Name:lower():find("projectile") or hit.Name:lower():find("attack")) then
-                return true, raycastResult.Position, "raycast"
-            end
-        end
-    end
-    
-    return false, nil, nil
-end
-
-function isPlayerAttacking(character)
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        -- 檢查是否在攻擊動畫狀態
-        local tool = character:FindFirstChildOfClass("Tool")
-        if tool then
-            return true
-        end
-    end
-    return false
-end
-
-function performDodge(character, rootPart, attackPosition, attackType)
-    if isDodging then return end
-    
-    isDodging = true
-    lastDodgeTime = tick()
-    
-    local dodgeDistance = Options.DodgeDistance and Options.DodgeDistance.Value or 10
-    local priority = Options.DodgePriority and Options.DodgePriority.Value or "安全方向"
-    
-    -- 計算閃避方向
-    local dodgeDirection = calculateDodgeDirection(rootPart, attackPosition, priority, dodgeDistance)
-    
-    -- 執行閃避傳送
-    local newPosition = rootPart.Position + dodgeDirection * dodgeDistance
-    
-    -- 確保新位置安全（不在牆內）
-    local safePosition = findSafePosition(newPosition, character)
-    
-    -- 傳送到安全位置
-    rootPart.CFrame = CFrame.new(safePosition)
-    
-    -- 閃避視覺效果
-    if Options.DodgeVisual and Options.DodgeVisual.Value then
-        createDodgeEffect(character, safePosition)
-    end
-    
-    -- 無敵效果
-    if Options.DodgeInvincible and Options.DodgeInvincible.Value then
-        applyInvincibility(character)
-    end
-    
-    Library:Notify("完美閃避！", 2)
-    
-    -- 重置閃避狀態
-    wait(0.1)
-    isDodging = false
-end
-
-function calculateDodgeDirection(rootPart, attackPosition, priority, distance)
-    local directions = {
-        ["前"] = rootPart.CFrame.LookVector * distance,
-        ["後"] = -rootPart.CFrame.LookVector * distance,
-        ["左"] = -rootPart.CFrame.RightVector * distance,
-        ["右"] = rootPart.CFrame.RightVector * distance,
-        ["上"] = Vector3.new(0, distance, 0),
-        ["下"] = Vector3.new(0, -distance, 0)
-    }
-    
-    if priority == "隨機方向" then
-        local directionKeys = {"前", "後", "左", "右", "上", "下"}
-        local randomKey = directionKeys[math.random(1, #directionKeys)]
-        return directions[randomKey]
-        
-    elseif priority == "遠離攻擊源" and attackPosition then
-        local awayFromAttack = (rootPart.Position - attackPosition).Unit * distance
-        return awayFromAttack
-        
-    else -- 安全方向（默認）
-        -- 檢查每個方向的安全性
-        local safeDirections = {}
-        
-        for directionName, directionVector in pairs(directions) do
-            if isDirectionSafe(rootPart.Position, directionVector) then
-                table.insert(safeDirections, directionVector)
-            end
-        end
-        
-        if #safeDirections > 0 then
-            return safeDirections[math.random(1, #safeDirections)]
-        else
-            -- 如果沒有安全方向，隨機選擇
-            local directionKeys = {"前", "後", "左", "右"}
-            local randomKey = directionKeys[math.random(1, #directionKeys)]
-            return directions[randomKey]
-        end
-    end
-end
-
-function isDirectionSafe(startPosition, direction)
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    raycastParams.FilterDescendantsInstances = {game.Players.LocalPlayer.Character}
-    
-    local raycastResult = workspace:Raycast(startPosition, direction, raycastParams)
-    
-    -- 如果射線沒有碰到任何東西，或者碰到的東西距離足夠遠，則認為安全
-    if not raycastResult then
-        return true
-    end
-    
-    local hitDistance = (raycastResult.Position - startPosition).Magnitude
-    return hitDistance > 5 -- 至少5單位距離才安全
-end
-
-function findSafePosition(targetPosition, character)
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    raycastParams.FilterDescendantsInstances = {character}
-    
-    -- 從目標位置向上檢測，找到地面
-    local upRay = workspace:Raycast(targetPosition + Vector3.new(0, 50, 0), Vector3.new(0, -100, 0), raycastParams)
-    if upRay then
-        return upRay.Position + Vector3.new(0, 3, 0) -- 在地面上方3單位
-    end
-    
-    return targetPosition -- 如果找不到地面，返回原始位置
-end
-
-function createDodgeEffect(character, position)
-    -- 創建閃避特效
-    local effect = Instance.new("Part")
-    effect.Size = Vector3.new(5, 5, 5)
-    effect.Position = position
-    effect.Anchored = true
-    effect.CanCollide = false
-    effect.Material = Enum.Material.Neon
-    effect.BrickColor = BrickColor.new("Bright blue")
-    effect.Transparency = 0.3
-    
-    local highlight = Instance.new("Highlight")
-    highlight.FillColor = Color3.fromRGB(0, 150, 255)
-    highlight.OutlineColor = Color3.fromRGB(0, 100, 200)
-    highlight.FillTransparency = 0.5
-    highlight.Parent = effect
-    
-    effect.Parent = workspace
-    
-    -- 3秒後消失
-    game:GetService("Debris"):AddItem(effect, 3)
-end
-
-function applyInvincibility(character)
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return end
-    
-    -- 保存原始屬性
-    local originalHealth = humanoid.Health
-    local originalMaxHealth = humanoid.MaxHealth
-    
-    -- 設置無敵
-    humanoid.MaxHealth = math.huge
-    humanoid.Health = math.huge
-    
-    -- 添加視覺效果
-    local forceField = Instance.new("ForceField")
-    forceField.Visible = true
-    forceField.Parent = character
-    
-    local highlight = Instance.new("Highlight")
-    highlight.FillColor = Color3.fromRGB(0, 255, 0)
-    highlight.OutlineColor = Color3.fromRGB(0, 200, 0)
-    highlight.FillTransparency = 0.3
-    highlight.Parent = character
-    
-    -- 1秒後恢復
-    wait(1)
-    
-    -- 移除視覺效果
-    forceField:Destroy()
-    highlight:Destroy()
-    
-    -- 恢復原始生命值
-    humanoid.MaxHealth = originalMaxHealth
-    humanoid.Health = math.min(originalHealth, originalMaxHealth)
 end
 
 -- 簡化的碰撞箱擴展功能
@@ -1092,7 +731,7 @@ local CombatGroup = Tabs.Combat:AddLeftGroupbox("戰鬥設定", "target") do
     })
 end
 
--- 甩飛功能
+-- 甩飛功能 - 修正為甩飛別人
 local flingEnabled = false
 local flingConnection = nil
 
@@ -1107,24 +746,122 @@ local FlingGroup = Tabs.Combat:AddRightGroupbox("甩飛功能", "wind") do
                 flingConnection = game:GetService("RunService").Heartbeat:Connect(function()
                     if not flingEnabled then return end
                     
-                    local player = game.Players.LocalPlayer
-                    local character = player.Character
+                    local localPlayer = game.Players.LocalPlayer
+                    local localCharacter = localPlayer.Character
                     
-                    if character and character.Parent then
-                        local root = character:FindFirstChild("HumanoidRootPart")
-                        if root and root.Parent then
-                            root.Velocity = root.Velocity * 10 + Vector3.new(0, 1000, 0)
+                    if not localCharacter then return end
+                    
+                    local localRoot = localCharacter:FindFirstChild("HumanoidRootPart")
+                    if not localRoot then return end
+                    
+                    -- 甩飛其他玩家
+                    for _, player in ipairs(game.Players:GetPlayers()) do
+                        if player ~= localPlayer then
+                            local character = player.Character
+                            if character and character:FindFirstChild("HumanoidRootPart") then
+                                local targetRoot = character.HumanoidRootPart
+                                local distance = (localRoot.Position - targetRoot.Position).Magnitude
+                                
+                                -- 如果玩家在附近，甩飛他們
+                                if distance < 20 then
+                                    -- 計算甩飛方向（遠離自己）
+                                    local flingDirection = (targetRoot.Position - localRoot.Position).Unit
+                                    targetRoot.Velocity = flingDirection * 5000 + Vector3.new(0, 2000, 0)
+                                end
+                            end
                         end
                     end
                 end)
                 
-                Library:Notify("甩飛模式已啟用", 3)
+                Library:Notify("甩飛模式已啟用 - 甩飛其他玩家", 3)
             else
                 if flingConnection then
                     flingConnection:Disconnect()
                     flingConnection = nil
                 end
                 Library:Notify("甩飛模式已禁用", 3)
+            end
+        end
+    })
+
+    FlingGroup:AddSlider("FlingPower", {
+        Text = "甩飛力度",
+        Default = 5000,
+        Min = 1000,
+        Max = 10000,
+        Rounding = 1
+    })
+
+    FlingGroup:AddSlider("FlingRange", {
+        Text = "甩飛範圍",
+        Default = 20,
+        Min = 5,
+        Max = 50,
+        Rounding = 1
+    })
+end
+
+-- 防甩飛功能
+local antiFlingEnabled = false
+local antiFlingConnection = nil
+
+local DefenseGroup = Tabs.Combat:AddRightGroupbox("防禦功能", "shield") do
+    DefenseGroup:AddToggle("AntiFling", {
+        Text = "防甩飛",
+        Default = false,
+        Callback = function(value)
+            antiFlingEnabled = value
+            
+            if value then
+                local player = game.Players.LocalPlayer
+                local character = player.Character
+                
+                if character then
+                    local rootPart = character:FindFirstChild("HumanoidRootPart")
+                    if rootPart then
+                        rootPart:SetNetworkOwner(nil)
+                    end
+                end
+                
+                antiFlingConnection = game:GetService("RunService").Heartbeat:Connect(function()
+                    if not antiFlingEnabled then return end
+                    
+                    local currentCharacter = player.Character
+                    if not currentCharacter then return end
+                    
+                    local humanoid = currentCharacter:FindFirstChild("Humanoid")
+                    local rootPart = currentCharacter:FindFirstChild("HumanoidRootPart")
+                    
+                    if humanoid and rootPart then
+                        local velocity = rootPart.Velocity
+                        local rotVelocity = rootPart.RotVelocity
+                        
+                        if velocity.Magnitude > 100 or rotVelocity.Magnitude > 50 then
+                            rootPart.Velocity = Vector3.new(0, 0, 0)
+                            rootPart.RotVelocity = Vector3.new(0, 0, 0)
+                            rootPart.Anchored = true
+                            wait(0.05)
+                            rootPart.Anchored = false
+                            rootPart:SetNetworkOwner(nil)
+                        end
+                        
+                        if math.abs(rotVelocity.X) > 10 or math.abs(rotVelocity.Y) > 10 or math.abs(rotVelocity.Z) > 10 then
+                            rootPart.RotVelocity = Vector3.new(0, 0, 0)
+                        end
+                        
+                        if rootPart.Position.Y < -500 or rootPart.Position.Y > 1000 then
+                            rootPart.CFrame = CFrame.new(0, 50, 0)
+                        end
+                    end
+                end)
+                
+                Library:Notify("防甩飛已啟用", 3)
+            else
+                if antiFlingConnection then
+                    antiFlingConnection:Disconnect()
+                    antiFlingConnection = nil
+                end
+                Library:Notify("防甩飛已禁用", 3)
             end
         end
     })
@@ -1205,6 +942,14 @@ local SystemGroup = Tabs.Misc:AddRightGroupbox("系統功能", "cpu") do
             end
         end
         
+        if antiFlingEnabled then
+            antiFlingEnabled = false
+            if antiFlingConnection then
+                antiFlingConnection:Disconnect()
+                antiFlingConnection = nil
+            end
+        end
+        
         -- 重置無敵模式
         if godModeEnabled then
             godModeEnabled = false
@@ -1229,12 +974,6 @@ local SystemGroup = Tabs.Misc:AddRightGroupbox("系統功能", "cpu") do
         if hitboxEnabled then
             hitboxEnabled = false
             restoreHitboxes()
-        end
-        
-        -- 重置閃避
-        if perfectDodgeEnabled then
-            perfectDodgeEnabled = false
-            stopDodgeSystem()
         end
         
         Library:Notify("所有設定已重置為默認值", 3)
@@ -1280,12 +1019,6 @@ SaveManager:LoadAutoloadConfig()
 Library:OnUnload(function()
     print("UI已卸載")
     
-    -- 清理閃避系統
-    if dodgeConnection then
-        dodgeConnection:Disconnect()
-        dodgeConnection = nil
-    end
-    
     -- 清理碰撞箱
     if hitboxEnabled then
         restoreHitboxes()
@@ -1298,6 +1031,10 @@ Library:OnUnload(function()
     
     if flingConnection then
         flingConnection:Disconnect()
+    end
+    
+    if antiFlingConnection then
+        antiFlingConnection:Disconnect()
     end
     
     if aimbotConnection then
