@@ -38,7 +38,7 @@ local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/m
 
 -- 創建主視窗
 local Window = Library:CreateWindow({
-    Title = "LOL漢化Hub - V6",
+    Title = "LOL漢化Hub - V7",
     Footer = "LOL | 全新功能版本",
     Center = true,
     AutoShow = true,
@@ -124,8 +124,39 @@ local ToolsGroup = Tabs.Scripts:AddRightGroupbox("工具腳本", "wrench") do
         loadstring(game:HttpGet("https://raw.githubusercontent.com/0Ben1/fe./main/Fling%20GUI"))()
         Library:Notify("甩飛腳本已加載", 3)
     end)
-end
 
+    ToolsGroup:AddButton("力量傳奇腳本", function()
+        local GS,functions=function(...)return game:GetService(...) end,{};
+        local ReplicatedStorage,ren=GS'ReplicatedStorage',GS'Players'.LocalPlayer
+        function functions:event(name)return ReplicatedStorage.rEvents.orbEvent:FireServer('collectOrb',name,'City');end
+        task.spawn(function()
+        ren.Character.Head:Destroy();end)
+        getgenv().AllToggle=false --总闸,如果想停止改为 true
+        getgenv().Orange=true
+        getgenv().Hoop=true
+        getgenv().Gem=true
+        getgenv().Red=true
+        getgenv().Yellow=true
+        getgenv().Blue=true
+        spawn(function()
+        if getenv().AllToggle==true then
+        getgenv().Orange=false
+        getgenv().Hoop=false
+        getgenv().Gem=false
+        getgenv().Red=false
+        getgenv().Yellow=false
+        getgenv().Blue=false
+        end
+        end)
+        spawn(function()while getgenv().Orange==true do wait() functions:event('Orange Orb');end;end)
+        spawn(function()while getgenv().Red==true do wait() functions:event('Red Orb');end;end)
+        spawn(function()while getgenv().Yellow==true do wait() functions:event('Yellow Orb');end;end)
+        spawn(function()while getgenv().Blue==true do wait() functions:event('Blue Orb');end;end)
+        spawn(function()while getgenv().Gem==true do wait() functions:event('Gem');end;end)
+        spawn(function()while getgenv().Hoop==true do wait() for _,v in ipairs(workspace.Hoops:GetChildren()) do if v.Name=='Hoop' then v.CFrame=ren.Character.HumanoidRootPart.CFrame;v.Transparency=0;wait();end;end;end;end)
+        Library:Notify("力量傳奇腳本已加載", 3)
+    end)
+end
 -- 簡化的碰撞箱擴展功能
 local hitboxEnabled = false
 local originalSizes = {}
@@ -238,6 +269,7 @@ function restoreHitboxes()
     end
     originalSizes = {}
 end
+
 -- 視覺效果功能
 local lighting = game:GetService("Lighting")
 
@@ -336,7 +368,6 @@ local PostProcessGroup = Tabs.Visuals:AddRightGroupbox("後處理效果", "slide
         end
     })
 end
-
 -- ESP功能
 local espEnabled = false
 local espBoxes = {}
@@ -1000,7 +1031,6 @@ local DefenseGroup = Tabs.Combat:AddRightGroupbox("防禦功能", "shield") do
         end
     })
 end
-
 -- 雜項功能
 local ToolsGroup = Tabs.Misc:AddLeftGroupbox("實用工具", "tool") do
     ToolsGroup:AddButton("點擊傳送工具", function()
@@ -1110,9 +1140,40 @@ local SystemGroup = Tabs.Misc:AddRightGroupbox("系統功能", "cpu") do
             restoreHitboxes()
         end
         
+        -- 重置ESP
+        if espEnabled then
+            espEnabled = false
+            for player, espObjects in pairs(espBoxes) do
+                if espObjects.box then espObjects.box:Destroy() end
+                if espObjects.billboard then espObjects.billboard:Destroy() end
+            end
+            espBoxes = {}
+        end
+        
+        -- 重置靈魂出竅
+        if outOfBodyEnabled then
+            outOfBodyEnabled = false
+            if soulPart then
+                soulPart:Destroy()
+                soulPart = nil
+            end
+            if soulBody then
+                soulBody:Destroy()
+                soulBody = nil
+            end
+            if soulControl then
+                soulControl:Destroy()
+                soulControl = nil
+            end
+            if originalCharacter then
+                workspace.CurrentCamera.CameraSubject = originalCharacter.Humanoid
+            end
+        end
+        
         Library:Notify("所有設定已重置為默認值", 3)
     end)
 end
+
 -- UI設定
 local MenuGroup = Tabs.Settings:AddLeftGroupbox("選單", "menu") do
     MenuGroup:AddLabel("選單綁定"):AddKeyPicker("MenuKeybind", { 
