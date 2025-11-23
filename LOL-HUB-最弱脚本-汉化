@@ -38,8 +38,8 @@ local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/m
 
 -- 創建主視窗
 local Window = Library:CreateWindow({
-    Title = "LOL漢化Hub - V4",
-    Footer = "LOL | 修復無敵模式",
+    Title = "LOL漢化Hub - 完整整合版",
+    Footer = "LOL漢化組 | 全功能版本",
     Center = true,
     AutoShow = true,
     Resizable = true,
@@ -54,6 +54,9 @@ local Tabs = {
     Visuals = Window:AddTab("視覺效果", "eye"),
     Player = Window:AddTab("玩家功能", "user"),
     Combat = Window:AddTab("戰鬥功能", "sword"),
+    Aiming = Window:AddTab("自瞄功能", "target"),
+    Hitbox = Window:AddTab("碰撞箱擴展", "box"),
+    Dodge = Window:AddTab("完美閃避", "shield"),
     Misc = Window:AddTab("雜項功能", "settings"),
     Settings = Window:AddTab("UI設定", "sliders-horizontal")
 }
@@ -122,6 +125,479 @@ local ToolsGroup = Tabs.Scripts:AddRightGroupbox("工具腳本", "wrench") do
         loadstring(game:HttpGet("https://raw.githubusercontent.com/0Ben1/fe./main/Fling%20GUI"))()
         Library:Notify("甩飛腳本已加載", 3)
     end)
+end
+
+-- 完美閃避功能
+local perfectDodgeEnabled = false
+local dodgeConnection = nil
+local isDodging = false
+local lastDodgeTime = 0
+
+local DodgeMainGroup = Tabs.Dodge:AddLeftGroupbox("完美閃避", "shield") do
+    DodgeMainGroup:AddToggle("PerfectDodge", {
+        Text = "啟用完美閃避",
+        Default = false,
+        Callback = function(value)
+            perfectDodgeEnabled = value
+            if value then
+                startDodgeSystem()
+                Library:Notify("完美閃避已啟用", 3)
+            else
+                stopDodgeSystem()
+                Library:Notify("完美閃避已禁用", 3)
+            end
+        end
+    })
+
+    DodgeMainGroup:AddSlider("DodgeDistance", {
+        Text = "閃避距離",
+        Default = 10,
+        Min = 5,
+        Max = 30,
+        Rounding = 1
+    })
+
+    DodgeMainGroup:AddSlider("DodgeCooldown", {
+        Text = "閃避冷卻",
+        Default = 1,
+        Min = 0.5,
+        Max = 5,
+        Rounding = 1
+    })
+
+    DodgeMainGroup:AddSlider("DetectionRange", {
+        Text = "檢測範圍",
+        Default = 15,
+        Min = 5,
+        Max = 50,
+        Rounding = 1
+    })
+end
+
+local DodgeSettingsGroup = Tabs.Dodge:AddRightGroupbox("閃避設定", "settings") do
+    DodgeSettingsGroup:AddToggle("DodgeProjectiles", {
+        Text = "閃避遠程攻擊",
+        Default = true
+    })
+
+    DodgeSettingsGroup:AddToggle("DodgeMelee", {
+        Text = "閃避近戰攻擊",
+        Default = true
+    })
+
+    DodgeSettingsGroup:AddToggle("DodgeInvincible", {
+        Text = "閃避後無敵1秒",
+        Default = true
+    })
+
+    DodgeSettingsGroup:AddToggle("DodgeVisual", {
+        Text = "閃避視覺效果",
+        Default = true
+    })
+
+    DodgeSettingsGroup:AddDropdown("DodgePriority", {
+        Text = "閃避優先級",
+        Values = {"安全方向", "隨機方向", "遠離攻擊源"},
+        Default = "安全方向"
+    })
+end
+
+-- 閃避系統
+function startDodgeSystem()
+    dodgeConnection = game:GetService("RunService").Heartbeat:Connect(function()
+        if not perfectDodgeEnabled or isDodging then return end
+        
+        local player = game.Players.LocalPlayer
+        local character = player.Character
+        if not character then return end
+        
+        local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+        if not humanoidRootPart then return end
+        
+        -- 檢查冷卻
+        if tick() - lastDodgeTime < (Options.DodgeCooldown and Options.DodgeCooldown.Value or 1) then
+            return
+        end
+        
+        -- 檢測攻擊
+        local shouldDodge, attackPosition, attackType = detectIncomingAttack(character, humanoidRootPart)
+        
+        if shouldDodge then
+            performDodge(character, humanoidRootPart, attackPosition, attackType)
+        end
+    end)
+end
+
+function stopDodgeSystem()
+    if dodgeConnection then
+        dodgeConnection:Disconnect()
+        dodgeConnection = nil
+    end
+end
+
+function detectIncomingAttack(character, rootPart)
+    local detectionRange = Options.DetectionRange and Options.DetectionRange.Value or 15
+    local checkProjectiles = Options.DodgeProjectiles and Options.DodgeProjectiles.Value or true
+    local checkMelee = Options.DodgeMelee and Options.DodgeMelee.Value or true
+    
+    -- 檢測遠程攻擊（飛行的物體）
+    if checkProjectiles then
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("BasePart") and obj.Velocity.Magnitude > 10 then
+                local distance = (rootPart.Position - obj.Position).Magnitude
+                if distance <= detectionRange then
+                    -- 檢查是否朝向玩家飛來
+                    local directionToPlayer = (rootPart.Position - obj.Position).Unit
+                    local dotProduct = obj.Velocity.Unit:Dot(directionToPlayer)
+                    if dotProduct > 0.7 then -- 大致朝向玩家
+                        return true, obj.Position, "projectile"
+                    end
+                end
+            end
+        end
+    end
+    
+    -- 檢測近戰攻擊（附近的玩家）
+    if checkMelee then
+        for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+            if otherPlayer ~= game.Players.LocalPlayer and otherPlayer.Character then
+                local otherCharacter = otherPlayer.Character
+                local otherRoot = otherCharacter:FindFirstChild("HumanoidRootPart")
+                local tool = otherCharacter:FindFirstChildOfClass("Tool")
+                
+                if otherRoot then
+                    local distance = (rootPart.Position - otherRoot.Position).Magnitude
+                    if distance <= detectionRange then
+                        -- 檢查是否在攻擊動畫或持有武器
+                        if tool or isPlayerAttacking(otherCharacter) then
+                            return true, otherRoot.Position, "melee"
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    -- 檢測射線攻擊
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    raycastParams.FilterDescendantsInstances = {character}
+    
+    local directions = {
+        Vector3.new(1, 0, 0),   -- 右
+        Vector3.new(-1, 0, 0),  -- 左
+        Vector3.new(0, 1, 0),   -- 上
+        Vector3.new(0, -1, 0),  -- 下
+        Vector3.new(0, 0, 1),   -- 前
+        Vector3.new(0, 0, -1)   -- 後
+    }
+    
+    for _, direction in pairs(directions) do
+        local rayOrigin = rootPart.Position
+        local rayDirection = direction * detectionRange
+        local raycastResult = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+        
+        if raycastResult then
+            local hit = raycastResult.Instance
+            -- 檢查是否為攻擊性物體
+            if hit and (hit.Name:lower():find("bullet") or hit.Name:lower():find("projectile") or hit.Name:lower():find("attack")) then
+                return true, raycastResult.Position, "raycast"
+            end
+        end
+    end
+    
+    return false, nil, nil
+end
+
+function isPlayerAttacking(character)
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        -- 檢查是否在攻擊動畫狀態
+        local tool = character:FindFirstChildOfClass("Tool")
+        if tool then
+            return true
+        end
+    end
+    return false
+end
+
+function performDodge(character, rootPart, attackPosition, attackType)
+    if isDodging then return end
+    
+    isDodging = true
+    lastDodgeTime = tick()
+    
+    local dodgeDistance = Options.DodgeDistance and Options.DodgeDistance.Value or 10
+    local priority = Options.DodgePriority and Options.DodgePriority.Value or "安全方向"
+    
+    -- 計算閃避方向
+    local dodgeDirection = calculateDodgeDirection(rootPart, attackPosition, priority, dodgeDistance)
+    
+    -- 執行閃避傳送
+    local newPosition = rootPart.Position + dodgeDirection * dodgeDistance
+    
+    -- 確保新位置安全（不在牆內）
+    local safePosition = findSafePosition(newPosition, character)
+    
+    -- 傳送到安全位置
+    rootPart.CFrame = CFrame.new(safePosition)
+    
+    -- 閃避視覺效果
+    if Options.DodgeVisual and Options.DodgeVisual.Value then
+        createDodgeEffect(character, safePosition)
+    end
+    
+    -- 無敵效果
+    if Options.DodgeInvincible and Options.DodgeInvincible.Value then
+        applyInvincibility(character)
+    end
+    
+    Library:Notify("完美閃避！", 2)
+    
+    -- 重置閃避狀態
+    wait(0.1)
+    isDodging = false
+end
+
+function calculateDodgeDirection(rootPart, attackPosition, priority, distance)
+    local directions = {
+        ["前"] = rootPart.CFrame.LookVector * distance,
+        ["後"] = -rootPart.CFrame.LookVector * distance,
+        ["左"] = -rootPart.CFrame.RightVector * distance,
+        ["右"] = rootPart.CFrame.RightVector * distance,
+        ["上"] = Vector3.new(0, distance, 0),
+        ["下"] = Vector3.new(0, -distance, 0)
+    }
+    
+    if priority == "隨機方向" then
+        local directionKeys = {"前", "後", "左", "右", "上", "下"}
+        local randomKey = directionKeys[math.random(1, #directionKeys)]
+        return directions[randomKey]
+        
+    elseif priority == "遠離攻擊源" and attackPosition then
+        local awayFromAttack = (rootPart.Position - attackPosition).Unit * distance
+        return awayFromAttack
+        
+    else -- 安全方向（默認）
+        -- 檢查每個方向的安全性
+        local safeDirections = {}
+        
+        for directionName, directionVector in pairs(directions) do
+            if isDirectionSafe(rootPart.Position, directionVector) then
+                table.insert(safeDirections, directionVector)
+            end
+        end
+        
+        if #safeDirections > 0 then
+            return safeDirections[math.random(1, #safeDirections)]
+        else
+            -- 如果沒有安全方向，隨機選擇
+            local directionKeys = {"前", "後", "左", "右"}
+            local randomKey = directionKeys[math.random(1, #directionKeys)]
+            return directions[randomKey]
+        end
+    end
+end
+
+function isDirectionSafe(startPosition, direction)
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    raycastParams.FilterDescendantsInstances = {game.Players.LocalPlayer.Character}
+    
+    local raycastResult = workspace:Raycast(startPosition, direction, raycastParams)
+    
+    -- 如果射線沒有碰到任何東西，或者碰到的東西距離足夠遠，則認為安全
+    if not raycastResult then
+        return true
+    end
+    
+    local hitDistance = (raycastResult.Position - startPosition).Magnitude
+    return hitDistance > 5 -- 至少5單位距離才安全
+end
+
+function findSafePosition(targetPosition, character)
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    raycastParams.FilterDescendantsInstances = {character}
+    
+    -- 從目標位置向上檢測，找到地面
+    local upRay = workspace:Raycast(targetPosition + Vector3.new(0, 50, 0), Vector3.new(0, -100, 0), raycastParams)
+    if upRay then
+        return upRay.Position + Vector3.new(0, 3, 0) -- 在地面上方3單位
+    end
+    
+    return targetPosition -- 如果找不到地面，返回原始位置
+end
+
+function createDodgeEffect(character, position)
+    -- 創建閃避特效
+    local effect = Instance.new("Part")
+    effect.Size = Vector3.new(5, 5, 5)
+    effect.Position = position
+    effect.Anchored = true
+    effect.CanCollide = false
+    effect.Material = Enum.Material.Neon
+    effect.BrickColor = BrickColor.new("Bright blue")
+    effect.Transparency = 0.3
+    
+    local highlight = Instance.new("Highlight")
+    highlight.FillColor = Color3.fromRGB(0, 150, 255)
+    highlight.OutlineColor = Color3.fromRGB(0, 100, 200)
+    highlight.FillTransparency = 0.5
+    highlight.Parent = effect
+    
+    effect.Parent = workspace
+    
+    -- 3秒後消失
+    game:GetService("Debris"):AddItem(effect, 3)
+end
+
+function applyInvincibility(character)
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+    
+    -- 保存原始屬性
+    local originalHealth = humanoid.Health
+    local originalMaxHealth = humanoid.MaxHealth
+    
+    -- 設置無敵
+    humanoid.MaxHealth = math.huge
+    humanoid.Health = math.huge
+    
+    -- 添加視覺效果
+    local forceField = Instance.new("ForceField")
+    forceField.Visible = true
+    forceField.Parent = character
+    
+    local highlight = Instance.new("Highlight")
+    highlight.FillColor = Color3.fromRGB(0, 255, 0)
+    highlight.OutlineColor = Color3.fromRGB(0, 200, 0)
+    highlight.FillTransparency = 0.3
+    highlight.Parent = character
+    
+    -- 1秒後恢復
+    wait(1)
+    
+    -- 移除視覺效果
+    forceField:Destroy()
+    highlight:Destroy()
+    
+    -- 恢復原始生命值
+    humanoid.MaxHealth = originalMaxHealth
+    humanoid.Health = math.min(originalHealth, originalMaxHealth)
+end
+
+-- 簡化的碰撞箱擴展功能
+local hitboxEnabled = false
+local originalSizes = {}
+
+local HitboxGroup = Tabs.Hitbox:AddLeftGroupbox("碰撞箱擴展", "box") do
+    HitboxGroup:AddToggle("HitboxToggle", {
+        Text = "啟用碰撞箱擴展",
+        Default = false,
+        Callback = function(value)
+            hitboxEnabled = value
+            if value then
+                expandHitboxes()
+                Library:Notify("碰撞箱擴展已啟用", 3)
+            else
+                restoreHitboxes()
+                Library:Notify("碰撞箱擴展已禁用", 3)
+            end
+        end
+    })
+
+    HitboxGroup:AddSlider("HitboxSize", {
+        Text = "碰撞箱大小",
+        Default = 10,
+        Min = 5,
+        Max = 50,
+        Rounding = 1,
+        Callback = function(value)
+            if hitboxEnabled then
+                expandHitboxes()
+            end
+        end
+    })
+
+    HitboxGroup:AddToggle("HitboxTeamCheck", {
+        Text = "忽略隊友",
+        Default = true
+    })
+
+    HitboxGroup:AddToggle("HitboxVisible", {
+        Text = "顯示碰撞箱",
+        Default = true
+    })
+end
+
+function expandHitboxes()
+    local players = game:GetService("Players"):GetPlayers()
+    local localPlayer = game:GetService("Players").LocalPlayer
+    local hitboxSize = Options.HitboxSize and Options.HitboxSize.Value or 10
+    local ignoreTeam = Options.HitboxTeamCheck and Options.HitboxTeamCheck.Value or true
+    
+    for _, player in pairs(players) do
+        if player ~= localPlayer then
+            local character = player.Character
+            if character then
+                -- 檢查隊伍
+                if ignoreTeam and player.Team == localPlayer.Team then
+                    continue
+                end
+                
+                -- 擴展主要身體部位
+                local parts = {
+                    "Head",
+                    "HumanoidRootPart", 
+                    "Torso",
+                    "UpperTorso",
+                    "LowerTorso"
+                }
+                
+                for _, partName in pairs(parts) do
+                    local part = character:FindFirstChild(partName)
+                    if part and part:IsA("BasePart") then
+                        -- 保存原始大小
+                        if not originalSizes[player] then
+                            originalSizes[player] = {}
+                        end
+                        if not originalSizes[player][partName] then
+                            originalSizes[player][partName] = part.Size
+                        end
+                        
+                        -- 設置新大小
+                        part.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
+                        
+                        -- 設置透明度
+                        if Options.HitboxVisible and Options.HitboxVisible.Value then
+                            part.Transparency = 0.5
+                            part.Material = Enum.Material.Neon
+                            part.BrickColor = BrickColor.new("Bright red")
+                        else
+                            part.Transparency = 1
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+function restoreHitboxes()
+    for player, parts in pairs(originalSizes) do
+        if player and player.Character then
+            for partName, originalSize in pairs(parts) do
+                local part = player.Character:FindFirstChild(partName)
+                if part and part:IsA("BasePart") then
+                    part.Size = originalSize
+                    part.Transparency = 0
+                    part.Material = Enum.Material.Plastic
+                end
+            end
+        end
+    end
+    originalSizes = {}
 end
 
 -- 視覺效果功能
@@ -406,10 +882,9 @@ local UtilityGroup = Tabs.Player:AddRightGroupbox("實用功能", "zap") do
     })
 end
 
--- 無敵模式功能
+-- 無敵模式
 local godModeEnabled = false
 local godModeConnections = {}
-local godModeHooks = {}
 
 local GodModeGroup = Tabs.Player:AddLeftGroupbox("無敵模式", "shield") do
     GodModeGroup:AddToggle("GodMode", {
@@ -421,113 +896,43 @@ local GodModeGroup = Tabs.Player:AddLeftGroupbox("無敵模式", "shield") do
             if value then
                 local player = game.Players.LocalPlayer
                 
-                -- 保存原始鉤子函數
-                if not godModeHooks.originalNamecall then
-                    godModeHooks.originalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-                        local method = getnamecallmethod()
-                        local args = {...}
-                        
-                        -- 防止TakeDamage方法
-                        if method == "TakeDamage" and self:IsA("Humanoid") then
-                            if self.Parent == player.Character then
-                                return nil
-                            end
-                        end
-                        
-                        -- 防止FireServer傷害
-                        if method == "FireServer" then
-                            if tostring(self) == "TakeDamage" or tostring(self):find("Damage") then
-                                if args[1] and type(args[1]) == "table" and args[1].Player == player then
-                                    return nil
-                                end
-                            end
-                        end
-                        
-                        return godModeHooks.originalNamecall(self, ...)
-                    end)
-                end
-                
-                if not godModeHooks.originalIndex then
-                    godModeHooks.originalIndex = hookmetamethod(game, "__index", function(self, key)
-                        if key == "Health" and self:IsA("Humanoid") then
-                            if self.Parent == player.Character then
-                                return math.huge
-                            end
-                        end
-                        return godModeHooks.originalIndex(self, key)
-                    end)
-                end
-                
-                -- 方法1: 防止生命值減少
-                godModeConnections.healthChanged = player.CharacterAdded:Connect(function(character)
-                    wait(1) -- 等待角色加載完成
-                    
+                local function setupGodMode(character)
                     local humanoid = character:FindFirstChild("Humanoid")
                     if humanoid then
-                        -- 設置最大生命值
                         humanoid.MaxHealth = math.huge
                         humanoid.Health = math.huge
                         
-                        -- 監聽生命值變化
-                        godModeConnections.healthChange = humanoid.HealthChanged:Connect(function(newHealth)
-                            if newHealth < math.huge then
-                                humanoid.Health = math.huge
-                            end
-                        end)
-                    end
-                    
-                    -- 防止角色死亡
-                    godModeConnections.died = humanoid.Died:Connect(function()
-                        -- 立即重生角色
-                        if godModeEnabled then
-                            player:LoadCharacter()
-                        end
-                    end)
-                end)
-                
-                -- 為當前角色應用無敵
-                if player.Character then
-                    local humanoid = player.Character:FindFirstChild("Humanoid")
-                    if humanoid then
-                        humanoid.MaxHealth = math.huge
-                        humanoid.Health = math.huge
-                        
-                        godModeConnections.healthChange = humanoid.HealthChanged:Connect(function(newHealth)
+                        local healthConnection = humanoid.HealthChanged:Connect(function(newHealth)
                             if newHealth < math.huge then
                                 humanoid.Health = math.huge
                             end
                         end)
                         
-                        godModeConnections.died = humanoid.Died:Connect(function()
-                            if godModeEnabled then
-                                player:LoadCharacter()
-                            end
-                        end)
+                        table.insert(godModeConnections, healthConnection)
                     end
                 end
                 
-                Library:Notify("無敵模式已啟用！你現在不會受到任何傷害", 5)
+                if player.Character then
+                    setupGodMode(player.Character)
+                end
+                
+                local characterAddedConnection = player.CharacterAdded:Connect(function(character)
+                    wait(1)
+                    setupGodMode(character)
+                end)
+                
+                table.insert(godModeConnections, characterAddedConnection)
+                
+                Library:Notify("無敵模式已啟用！", 5)
+                
             else
-                -- 禁用無敵模式
-                for _, connection in pairs(godModeConnections) do
+                for _, connection in ipairs(godModeConnections) do
                     if connection and typeof(connection) == "RBXScriptConnection" then
                         connection:Disconnect()
                     end
                 end
                 godModeConnections = {}
                 
-                -- 恢復原始鉤子函數
-                if godModeHooks.originalNamecall then
-                    hookmetamethod(game, "__namecall", godModeHooks.originalNamecall)
-                    godModeHooks.originalNamecall = nil
-                end
-                
-                if godModeHooks.originalIndex then
-                    hookmetamethod(game, "__index", godModeHooks.originalIndex)
-                    godModeHooks.originalIndex = nil
-                end
-                
-                -- 恢復正常生命值
                 local player = game.Players.LocalPlayer
                 if player.Character then
                     local humanoid = player.Character:FindFirstChild("Humanoid")
@@ -541,570 +946,28 @@ local GodModeGroup = Tabs.Player:AddLeftGroupbox("無敵模式", "shield") do
             end
         end
     })
-
-    GodModeGroup:AddDropdown("GodModeType", {
-        Text = "無敵類型",
-        Values = {"完全無敵", "僅防傷害", "自動復活"},
-        Default = "完全無敵",
-        Callback = function(value)
-            Library:Notify("無敵類型設置為: " .. value, 3)
-        end
-    })
-
-    GodModeGroup:AddToggle("GodModeVisual", {
-        Text = "無敵視覺效果",
-        Default = true,
-        Callback = function(value)
-            if value and godModeEnabled then
-                local character = game.Players.LocalPlayer.Character
-                if character then
-                    -- 添加無敵視覺效果
-                    local forceField = Instance.new("ForceField")
-                    forceField.Visible = true
-                    forceField.Parent = character
-                    
-                    -- 添加發光效果
-                    local highlight = Instance.new("Highlight")
-                    highlight.FillColor = Color3.fromRGB(0, 255, 0)
-                    highlight.OutlineColor = Color3.fromRGB(0, 200, 0)
-                    highlight.FillTransparency = 0.5
-                    highlight.OutlineTransparency = 0
-                    highlight.Parent = character
-                    
-                    godModeConnections.forceField = forceField
-                    godModeConnections.highlight = highlight
-                end
-            else
-                local character = game.Players.LocalPlayer.Character
-                if character then
-                    for _, child in ipairs(character:GetChildren()) do
-                        if child:IsA("ForceField") or child:IsA("Highlight") then
-                            child:Destroy()
-                        end
-                    end
-                end
-            end
-        end
-    })
 end
 
--- 戰鬥功能
-local CombatGroup = Tabs.Combat:AddLeftGroupbox("戰鬥設定", "target") do
-    local killAuraEnabled = false
-    local killAuraRange = 20
+-- 自瞄功能
+local aimbotEnabled = false
+local aimbotConnection = nil
 
-    CombatGroup:AddToggle("KillAura", {
-        Text = "殺戮光環",
+local AimbotSettingsGroup = Tabs.Aiming:AddLeftGroupbox("自瞄設定", "settings") do
+    AimbotSettingsGroup:AddToggle("AimbotEnabled", {
+        Text = "啟用自瞄",
         Default = false,
         Callback = function(value)
-            killAuraEnabled = value
+            aimbotEnabled = value
             
             if value then
-                coroutine.wrap(function()
-                    while killAuraEnabled do
-                        wait(0.1)
-                        
-                        local localPlayer = game.Players.LocalPlayer
-                        local localCharacter = localPlayer.Character
-                        
-                        if localCharacter and localCharacter:FindFirstChild("HumanoidRootPart") then
-                            local localRoot = localCharacter.HumanoidRootPart
-                            
-                            for _, player in ipairs(game.Players:GetPlayers()) do
-                                if player ~= localPlayer then
-                                    local character = player.Character
-                                    if character and character:FindFirstChild("HumanoidRootPart") then
-                                        local targetRoot = character.HumanoidRootPart
-                                        local distance = (localRoot.Position - targetRoot.Position).Magnitude
-                                        
-                                        if distance <= killAuraRange then
-                                            localRoot.CFrame = targetRoot.CFrame
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end)()
-            end
-        end
-    })
-
-    CombatGroup:AddSlider("KillAuraRange", {
-        Text = "殺戮光環範圍",
-        Default = 20,
-        Min = 5,
-        Max = 50,
-        Rounding = 1,
-        Callback = function(value)
-            killAuraRange = value
-        end
-    })
-end
-
-local AttackGroup = Tabs.Combat:AddRightGroupbox("攻擊功能", "sword") do
-    local autoAttackEnabled = false
-    local autoAttackRange = 15
-
-    AttackGroup:AddToggle("AutoAttack", {
-        Text = "自動攻擊",
-        Default = false,
-        Callback = function(value)
-            autoAttackEnabled = value
-            
-            if value then
-                coroutine.wrap(function()
-                    while autoAttackEnabled do
-                        wait(0.2)
-                        
-                        local localPlayer = game.Players.LocalPlayer
-                        local localCharacter = localPlayer.Character
-                        
-                        if localCharacter and localCharacter:FindFirstChild("HumanoidRootPart") then
-                            local localRoot = localCharacter.HumanoidRootPart
-                            
-                            local closestTarget = nil
-                            local closestDistance = autoAttackRange
-                            
-                            for _, player in ipairs(game.Players:GetPlayers()) do
-                                if player ~= localPlayer then
-                                    local character = player.Character
-                                    if character and character:FindFirstChild("HumanoidRootPart") and character:FindFirstChild("Humanoid") then
-                                        local targetRoot = character.HumanoidRootPart
-                                        local humanoid = character.Humanoid
-                                        
-                                        if humanoid.Health > 0 then
-                                            local distance = (localRoot.Position - targetRoot.Position).Magnitude
-                                            
-                                            if distance < closestDistance then
-                                                closestDistance = distance
-                                                closestTarget = character
-                                            end
-                                        end
-                                    end
-                                end
-                            end
-                            
-                            if closestTarget then
-                                local targetRoot = closestTarget.HumanoidRootPart
-                                localRoot.CFrame = CFrame.new(localRoot.Position, targetRoot.Position)
-                            end
-                        end
-                    end
-                end)()
-            end
-        end
-    })
-
-    AttackGroup:AddSlider("AutoAttackRange", {
-        Text = "自動攻擊範圍",
-        Default = 15,
-        Min = 5,
-        Max = 30,
-        Rounding = 1,
-        Callback = function(value)
-            autoAttackRange = value
-        end
-    })
-end
-
-local WeaponGroup = Tabs.Combat:AddLeftGroupbox("武器功能", "zap") do
-    WeaponGroup:AddButton("無限傷害武器", function()
-        local player = game.Players.LocalPlayer
-        
-        local weapon = Instance.new("Tool")
-        weapon.Name = "LOL無限武器"
-        weapon.RequiresHandle = false
-        
-        local handle = Instance.new("Part")
-        handle.Name = "Handle"
-        handle.Size = Vector3.new(1, 1, 4)
-        handle.BrickColor = BrickColor.new("Bright red")
-        handle.Material = Enum.Material.Neon
-        handle.Parent = weapon
-        
-        local pointLight = Instance.new("PointLight")
-        pointLight.Brightness = 5
-        pointLight.Range = 10
-        pointLight.Color = Color3.fromRGB(255, 0, 0)
-        pointLight.Parent = handle
-        
-        weapon.Activated:Connect(function()
-            local character = player.Character
-            if not character then return end
-            
-            local humanoid = character:FindFirstChild("Humanoid")
-            if not humanoid then return end
-            
-            wait(0.3)
-            
-            local rayOrigin = character:FindFirstChild("HumanoidRootPart").Position
-            local rayDirection = character:FindFirstChild("HumanoidRootPart").CFrame.LookVector * 25
-            local raycastParams = RaycastParams.new()
-            raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-            raycastParams.FilterDescendantsInstances = {character}
-            
-            local raycastResult = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
-            
-            if raycastResult then
-                local hit = raycastResult.Instance
-                local model = hit:FindFirstAncestorOfClass("Model")
-                
-                if model then
-                    local targetHumanoid = model:FindFirstChildOfClass("Humanoid")
-                    local targetPlayer = game.Players:GetPlayerFromCharacter(model)
-                    
-                    if targetHumanoid and targetPlayer and targetPlayer ~= player then
-                        pcall(function()
-                            targetHumanoid.Health = 0
-                            targetHumanoid:TakeDamage(math.huge)
-                            model:BreakJoints()
-                            
-                            local explosion = Instance.new("Explosion")
-                            explosion.Position = raycastResult.Position
-                            explosion.BlastPressure = 0
-                            explosion.BlastRadius = 5
-                            explosion.DestroyJointRadiusPercent = 0
-                            explosion.Parent = workspace
-                        end)
-                    end
-                end
-            end
-        end)
-        
-        weapon.Parent = player.Backpack
-        
-        Library:Notify("無限傷害武器已添加到背包", 3)
-    end)
-end
-
--- 甩飛功能
-local flingEnabled = false
-local flingConnection = nil
-
-local FlingGroup = Tabs.Combat:AddRightGroupbox("甩飛功能", "wind") do
-    FlingGroup:AddToggle("FlingToggle", {
-        Text = "甩飛模式",
-        Default = false,
-        Callback = function(value)
-            flingEnabled = value
-            
-            if value then
-                local function setNoclip(state)
-                    -- 啟用穿牆配合甩飛
-                    local character = game.Players.LocalPlayer.Character
-                    if character then
-                        for _, part in pairs(character:GetDescendants()) do
-                            if part:IsA("BasePart") then
-                                part.CanCollide = not state
-                            end
-                        end
-                    end
-                end
-
-                setNoclip(true)
-                
-                flingConnection = game:GetService("RunService").Heartbeat:Connect(function()
-                    if not flingEnabled then return end
+                aimbotConnection = game:GetService("RunService").RenderStepped:Connect(function()
+                    if not aimbotEnabled then return end
                     
                     local player = game.Players.LocalPlayer
                     local character = player.Character
+                    local camera = workspace.CurrentCamera
                     
-                    if character and character.Parent then
-                        local root = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso")
-                        if root and root.Parent then
-                            local originalVel = root.Velocity
-                            -- 創造甩飛效果
-                            root.Velocity = originalVel * 10000 + Vector3.new(0, 10000, 0)
-                            game:GetService("RunService").RenderStepped:Wait()
-                            
-                            if character and character.Parent and root and root.Parent then
-                                root.Velocity = originalVel
-                            end
-                            
-                            game:GetService("RunService").Stepped:Wait()
-                            
-                            if character and character.Parent and root and root.Parent then
-                                local movel = 0.1
-                                root.Velocity = originalVel + Vector3.new(0, movel, 0)
-                            end
-                        end
-                    end
-                end)
-                
-                Library:Notify("甩飛模式已啟用", 3)
-            else
-                if flingConnection then
-                    flingConnection:Disconnect()
-                    flingConnection = nil
-                end
-                
-                setNoclip(false)
-                Library:Notify("甩飛模式已禁用", 3)
-            end
-        end
-    })
-
-    FlingGroup:AddSlider("FlingPower", {
-        Text = "甩飛力度",
-        Default = 10000,
-        Min = 5000,
-        Max = 20000,
-        Rounding = 1,
-        Callback = function(value)
-            -- 甩飛力度調整
-        end
-    })
-end
-
--- 防甩飛功能
-local antiFlingEnabled = false
-local antiFlingConnection = nil
-
-local DefenseGroup = Tabs.Combat:AddRightGroupbox("防禦功能", "shield") do
-    DefenseGroup:AddToggle("AntiFling", {
-        Text = "防甩飛",
-        Default = false,
-        Callback = function(value)
-            antiFlingEnabled = value
-            
-            if value then
-                local player = game.Players.LocalPlayer
-                local character = player.Character
-                
-                if character then
+                    if not character or not camera then return end
+                    
                     local rootPart = character:FindFirstChild("HumanoidRootPart")
-                    if rootPart then
-                        rootPart:SetNetworkOwner(nil)
-                    end
-                end
-                
-                antiFlingConnection = game:GetService("RunService").Heartbeat:Connect(function()
-                    if not antiFlingEnabled then return end
-                    
-                    local currentCharacter = player.Character
-                    if not currentCharacter then return end
-                    
-                    local humanoid = currentCharacter:FindFirstChild("Humanoid")
-                    local rootPart = currentCharacter:FindFirstChild("HumanoidRootPart")
-                    
-                    if humanoid and rootPart then
-                        local velocity = rootPart.Velocity
-                        local rotVelocity = rootPart.RotVelocity
-                        
-                        if velocity.Magnitude > 100 or rotVelocity.Magnitude > 50 then
-                            rootPart.Velocity = Vector3.new(0, 0, 0)
-                            rootPart.RotVelocity = Vector3.new(0, 0, 0)
-                            rootPart.Anchored = true
-                            wait(0.05)
-                            rootPart.Anchored = false
-                            rootPart:SetNetworkOwner(nil)
-                        end
-                        
-                        if math.abs(rotVelocity.X) > 10 or math.abs(rotVelocity.Y) > 10 or math.abs(rotVelocity.Z) > 10 then
-                            rootPart.RotVelocity = Vector3.new(0, 0, 0)
-                        end
-                        
-                        if rootPart.Position.Y < -500 or rootPart.Position.Y > 1000 then
-                            rootPart.CFrame = CFrame.new(0, 50, 0)
-                        end
-                    end
-                end)
-                
-                Library:Notify("防甩飛已啟用", 3)
-            else
-                if antiFlingConnection then
-                    antiFlingConnection:Disconnect()
-                    antiFlingConnection = nil
-                end
-                Library:Notify("防甩飛已禁用", 3)
-            end
-        end
-    })
-end
-
--- 雜項功能
-local ToolsGroup = Tabs.Misc:AddLeftGroupbox("實用工具", "tool") do
-    ToolsGroup:AddButton("點擊傳送工具", function()
-        local mouse = game.Players.LocalPlayer:GetMouse()
-        local tool = Instance.new("Tool")
-        tool.RequiresHandle = false
-        tool.Name = "LOL點擊傳送"
-        tool.Activated:connect(function()
-            local pos = mouse.Hit+Vector3.new(0,2.5,0)
-            pos = CFrame.new(pos.X,pos.Y,pos.Z)
-            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = pos
-        end)
-        tool.Parent = game.Players.LocalPlayer.Backpack
-        
-        Library:Notify("點擊傳送工具已添加到背包", 3)
-    end)
-
-    ToolsGroup:AddButton("移除碰撞箱", function()
-        local player = game.Players.LocalPlayer
-        local character = player.Character
-        
-        if character then
-            for _, part in pairs(character:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = false
-                end
-            end
-            
-            character.DescendantAdded:Connect(function(part)
-                if part:IsA("BasePart") then
-                    part.CanCollide = false
-                end
-            end)
-            
-            Library:Notify("玩家碰撞箱已移除", 3)
-        end
-    end)
-end
-
-local SystemGroup = Tabs.Misc:AddRightGroupbox("系統功能", "cpu") do
-    SystemGroup:AddToggle("AntiAFK", {
-        Text = "防掛機",
-        Default = true,
-        Callback = function(value)
-            if value then
-                local VirtualUser = game:GetService("VirtualUser")
-                game:GetService("Players").LocalPlayer.Idled:connect(function()
-                    VirtualUser:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-                    wait(1)
-                    VirtualUser:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-                end)
-            end
-        end
-    })
-
-    SystemGroup:AddButton("重置所有設定", function()
-        -- 重置移動
-        local character = game.Players.LocalPlayer.Character
-        if character and character:FindFirstChild("Humanoid") then
-            character.Humanoid.WalkSpeed = 16
-            character.Humanoid.JumpPower = 50
-        end
-        
-        -- 重置視覺效果
-        lighting.ExposureCompensation = 0
-        
-        -- 重置戰鬥
-        if antiFlingEnabled then
-            antiFlingEnabled = false
-            if antiFlingConnection then
-                antiFlingConnection:Disconnect()
-                antiFlingConnection = nil
-            end
-        end
-        
-        if flingEnabled then
-            flingEnabled = false
-            if flingConnection then
-                flingConnection:Disconnect()
-                flingConnection = nil
-            end
-        end
-        
-        -- 重置無敵模式
-        if godModeEnabled then
-            godModeEnabled = false
-            for _, connection in pairs(godModeConnections) do
-                if connection and typeof(connection) == "RBXScriptConnection" then
-                    connection:Disconnect()
-                end
-            end
-            godModeConnections = {}
-            
-            if godModeHooks.originalNamecall then
-                hookmetamethod(game, "__namecall", godModeHooks.originalNamecall)
-                godModeHooks.originalNamecall = nil
-            end
-            
-            if godModeHooks.originalIndex then
-                hookmetamethod(game, "__index", godModeHooks.originalIndex)
-                godModeHooks.originalIndex = nil
-            end
-        end
-        
-        Library:Notify("所有設定已重置為默認值", 3)
-    end)
-end
-
--- UI設定
-local MenuGroup = Tabs.Settings:AddLeftGroupbox("選單", "menu") do
-    MenuGroup:AddLabel("選單綁定"):AddKeyPicker("MenuKeybind", { 
-        Default = "RightShift", 
-        NoUI = false, 
-        Text = "選單按鍵" 
-    })
-    
-    Library.ToggleKeybind = Options.MenuKeybind
-
-    MenuGroup:AddToggle("ShowCustomCursor", {
-        Text = "自定義游標",
-        Default = true,
-        Callback = function(Value)
-            Library.ShowCustomCursor = Value
-        end
-    })
-
-    MenuGroup:AddButton("卸載UI", function() 
-        Library:Unload() 
-    end)
-end
-
--- 主題設定
-ThemeManager:SetLibrary(Library)
-SaveManager:SetLibrary(Library)
-SaveManager:IgnoreThemeSettings()
-ThemeManager:SetFolder("LOLHanhuaHub")
-SaveManager:SetFolder("LOLHanhuaHub/settings")
-ThemeManager:ApplyToTab(Tabs.Settings)
-SaveManager:BuildConfigSection(Tabs.Settings)
-
--- 加載配置
-SaveManager:LoadAutoloadConfig()
-
--- 加載完成提示
-Library:Notify("LOL漢化Hub加載完成！享受遊戲吧！", 5)
-
--- 卸載清理
-Library:OnUnload(function()
-    print("UI已卸載")
-    
-    -- 清理所有連接
-    if noclipConnection then
-        noclipConnection:Disconnect()
-    end
-    
-    if antiFlingConnection then
-        antiFlingConnection:Disconnect()
-    end
-    
-    if flingConnection then
-        flingConnection:Disconnect()
-    end
-    
-    -- 清理無敵模式連接
-    for _, connection in pairs(godModeConnections) do
-        if connection and typeof(connection) == "RBXScriptConnection" then
-            connection:Disconnect()
-        end
-    end
-    
-    -- 恢復無敵模式鉤子
-    if godModeHooks.originalNamecall then
-        hookmetamethod(game, "__namecall", godModeHooks.originalNamecall)
-    end
-    
-    if godModeHooks.originalIndex then
-        hookmetamethod(game, "__index", godModeHooks.originalIndex)
-    end
-    
-    -- 清理ESP
-    for player, espObjects in pairs(espBoxes) do
-        if espObjects.box then espObjects.box:Destroy() end
-        if espObjects.billboard then espObjects.billboard:Destroy() end
-    end
-end)
+                    if not rootPart then return
