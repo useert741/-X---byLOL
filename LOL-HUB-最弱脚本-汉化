@@ -38,8 +38,8 @@ local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/m
 
 -- 創建主視窗
 local Window = Library:CreateWindow({
-    Title = "LOL漢化Hub - 完整整合版",
-    Footer = "LOL漢化組 | 全功能版本",
+    Title = "LOL漢化Hub - V5",
+    Footer = "LOL | 全功能版本",
     Center = true,
     AutoShow = true,
     Resizable = true,
@@ -970,4 +970,353 @@ local AimbotSettingsGroup = Tabs.Aiming:AddLeftGroupbox("自瞄設定", "setting
                     if not character or not camera then return end
                     
                     local rootPart = character:FindFirstChild("HumanoidRootPart")
-                    if not rootPart then return
+                    if not rootPart then return end
+                    
+                    -- 尋找最佳目標
+                    local bestTarget = nil
+                    local closestDistance = 1000
+                    
+                    for _, targetPlayer in ipairs(game.Players:GetPlayers()) do
+                        if targetPlayer ~= player and targetPlayer.Character then
+                            local targetCharacter = targetPlayer.Character
+                            local targetHumanoid = targetCharacter:FindFirstChild("Humanoid")
+                            local targetRoot = targetCharacter:FindFirstChild("HumanoidRootPart")
+                            
+                            if targetHumanoid and targetHumanoid.Health > 0 and targetRoot then
+                                local distance = (rootPart.Position - targetRoot.Position).Magnitude
+                                
+                                local screenPoint, onScreen = camera:WorldToViewportPoint(targetRoot.Position)
+                                if onScreen then
+                                    local mouse = game:GetService("UserInputService"):GetMouseLocation()
+                                    local distanceToCenter = (Vector2.new(screenPoint.X, screenPoint.Y) - Vector2.new(mouse.X, mouse.Y)).Magnitude
+                                    
+                                    if distanceToCenter < closestDistance then
+                                        closestDistance = distanceToCenter
+                                        bestTarget = targetCharacter
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    
+                    if bestTarget then
+                        local targetPart = bestTarget:FindFirstChild("Head") or bestTarget:FindFirstChild("HumanoidRootPart")
+                        if targetPart then
+                            local camera = workspace.CurrentCamera
+                            local aimPosition = targetPart.Position
+                            
+                            local currentCFrame = camera.CFrame
+                            local targetCFrame = CFrame.lookAt(camera.CFrame.Position, aimPosition)
+                            
+                            camera.CFrame = currentCFrame:Lerp(targetCFrame, 0.1)
+                        end
+                    end
+                end)
+            else
+                if aimbotConnection then
+                    aimbotConnection:Disconnect()
+                    aimbotConnection = nil
+                end
+            end
+        end
+    })
+
+    AimbotSettingsGroup:AddSlider("AimbotFOV", {
+        Text = "自瞄FOV",
+        Default = 100,
+        Min = 10,
+        Max = 500,
+        Rounding = 1
+    })
+
+    AimbotSettingsGroup:AddSlider("AimbotSmoothness", {
+        Text = "瞄準平滑度",
+        Default = 10,
+        Min = 1,
+        Max = 30,
+        Rounding = 1
+    })
+end
+
+-- 戰鬥功能
+local CombatGroup = Tabs.Combat:AddLeftGroupbox("戰鬥設定", "target") do
+    local killAuraEnabled = false
+    local killAuraRange = 20
+
+    CombatGroup:AddToggle("KillAura", {
+        Text = "殺戮光環",
+        Default = false,
+        Callback = function(value)
+            killAuraEnabled = value
+            
+            if value then
+                coroutine.wrap(function()
+                    while killAuraEnabled do
+                        wait(0.1)
+                        
+                        local localPlayer = game.Players.LocalPlayer
+                        local localCharacter = localPlayer.Character
+                        
+                        if localCharacter and localCharacter:FindFirstChild("HumanoidRootPart") then
+                            local localRoot = localCharacter.HumanoidRootPart
+                            
+                            for _, player in ipairs(game.Players:GetPlayers()) do
+                                if player ~= localPlayer then
+                                    local character = player.Character
+                                    if character and character:FindFirstChild("HumanoidRootPart") then
+                                        local targetRoot = character.HumanoidRootPart
+                                        local distance = (localRoot.Position - targetRoot.Position).Magnitude
+                                        
+                                        if distance <= killAuraRange then
+                                            localRoot.CFrame = targetRoot.CFrame
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end)()
+            end
+        end
+    })
+
+    CombatGroup:AddSlider("KillAuraRange", {
+        Text = "殺戮光環範圍",
+        Default = 20,
+        Min = 5,
+        Max = 50,
+        Rounding = 1,
+        Callback = function(value)
+            killAuraRange = value
+        end
+    })
+end
+
+-- 甩飛功能
+local flingEnabled = false
+local flingConnection = nil
+
+local FlingGroup = Tabs.Combat:AddRightGroupbox("甩飛功能", "wind") do
+    FlingGroup:AddToggle("FlingToggle", {
+        Text = "甩飛模式",
+        Default = false,
+        Callback = function(value)
+            flingEnabled = value
+            
+            if value then
+                flingConnection = game:GetService("RunService").Heartbeat:Connect(function()
+                    if not flingEnabled then return end
+                    
+                    local player = game.Players.LocalPlayer
+                    local character = player.Character
+                    
+                    if character and character.Parent then
+                        local root = character:FindFirstChild("HumanoidRootPart")
+                        if root and root.Parent then
+                            root.Velocity = root.Velocity * 10 + Vector3.new(0, 1000, 0)
+                        end
+                    end
+                end)
+                
+                Library:Notify("甩飛模式已啟用", 3)
+            else
+                if flingConnection then
+                    flingConnection:Disconnect()
+                    flingConnection = nil
+                end
+                Library:Notify("甩飛模式已禁用", 3)
+            end
+        end
+    })
+end
+
+-- 雜項功能
+local ToolsGroup = Tabs.Misc:AddLeftGroupbox("實用工具", "tool") do
+    ToolsGroup:AddButton("點擊傳送工具", function()
+        local mouse = game.Players.LocalPlayer:GetMouse()
+        local tool = Instance.new("Tool")
+        tool.RequiresHandle = false
+        tool.Name = "LOL點擊傳送"
+        tool.Activated:connect(function()
+            local pos = mouse.Hit+Vector3.new(0,2.5,0)
+            pos = CFrame.new(pos.X,pos.Y,pos.Z)
+            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = pos
+        end)
+        tool.Parent = game.Players.LocalPlayer.Backpack
+        
+        Library:Notify("點擊傳送工具已添加到背包", 3)
+    end)
+
+    ToolsGroup:AddButton("移除碰撞箱", function()
+        local player = game.Players.LocalPlayer
+        local character = player.Character
+        
+        if character then
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+            
+            character.DescendantAdded:Connect(function(part)
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end)
+            
+            Library:Notify("玩家碰撞箱已移除", 3)
+        end
+    end)
+end
+
+local SystemGroup = Tabs.Misc:AddRightGroupbox("系統功能", "cpu") do
+    SystemGroup:AddToggle("AntiAFK", {
+        Text = "防掛機",
+        Default = true,
+        Callback = function(value)
+            if value then
+                local VirtualUser = game:GetService("VirtualUser")
+                game:GetService("Players").LocalPlayer.Idled:connect(function()
+                    VirtualUser:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+                    wait(1)
+                    VirtualUser:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+                end)
+            end
+        end
+    })
+
+    SystemGroup:AddButton("重置所有設定", function()
+        -- 重置移動
+        local character = game.Players.LocalPlayer.Character
+        if character and character:FindFirstChild("Humanoid") then
+            character.Humanoid.WalkSpeed = 16
+            character.Humanoid.JumpPower = 50
+        end
+        
+        -- 重置視覺效果
+        lighting.ExposureCompensation = 0
+        
+        -- 重置戰鬥
+        if flingEnabled then
+            flingEnabled = false
+            if flingConnection then
+                flingConnection:Disconnect()
+                flingConnection = nil
+            end
+        end
+        
+        -- 重置無敵模式
+        if godModeEnabled then
+            godModeEnabled = false
+            for _, connection in ipairs(godModeConnections) do
+                if connection and typeof(connection) == "RBXScriptConnection" then
+                    connection:Disconnect()
+                end
+            end
+            godModeConnections = {}
+        end
+        
+        -- 重置自瞄
+        if aimbotEnabled then
+            aimbotEnabled = false
+            if aimbotConnection then
+                aimbotConnection:Disconnect()
+                aimbotConnection = nil
+            end
+        end
+        
+        -- 重置碰撞箱
+        if hitboxEnabled then
+            hitboxEnabled = false
+            restoreHitboxes()
+        end
+        
+        -- 重置閃避
+        if perfectDodgeEnabled then
+            perfectDodgeEnabled = false
+            stopDodgeSystem()
+        end
+        
+        Library:Notify("所有設定已重置為默認值", 3)
+    end)
+end
+
+-- UI設定
+local MenuGroup = Tabs.Settings:AddLeftGroupbox("選單", "menu") do
+    MenuGroup:AddLabel("選單綁定"):AddKeyPicker("MenuKeybind", { 
+        Default = "RightShift", 
+        NoUI = true, 
+        Text = "選單按鍵" 
+    })
+    
+    Library.ToggleKeybind = Options.MenuKeybind
+
+    MenuGroup:AddToggle("ShowCustomCursor", {
+        Text = "自定義游標",
+        Default = true,
+        Callback = function(Value)
+            Library.ShowCustomCursor = Value
+        end
+    })
+
+    MenuGroup:AddButton("卸載UI", function() 
+        Library:Unload() 
+    end)
+end
+
+-- 主題設定
+ThemeManager:SetLibrary(Library)
+SaveManager:SetLibrary(Library)
+SaveManager:IgnoreThemeSettings()
+ThemeManager:SetFolder("LOLHanhuaHub")
+SaveManager:SetFolder("LOLHanhuaHub/settings")
+ThemeManager:ApplyToTab(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
+
+-- 加載配置
+SaveManager:LoadAutoloadConfig()
+
+-- 卸載清理
+Library:OnUnload(function()
+    print("UI已卸載")
+    
+    -- 清理閃避系統
+    if dodgeConnection then
+        dodgeConnection:Disconnect()
+        dodgeConnection = nil
+    end
+    
+    -- 清理碰撞箱
+    if hitboxEnabled then
+        restoreHitboxes()
+    end
+    
+    -- 清理所有連接
+    if noclipConnection then
+        noclipConnection:Disconnect()
+    end
+    
+    if flingConnection then
+        flingConnection:Disconnect()
+    end
+    
+    if aimbotConnection then
+        aimbotConnection:Disconnect()
+    end
+    
+    -- 清理無敵模式連接
+    for _, connection in ipairs(godModeConnections) do
+        if connection and typeof(connection) == "RBXScriptConnection" then
+            connection:Disconnect()
+        end
+    end
+    
+    -- 清理ESP
+    for player, espObjects in pairs(espBoxes) do
+        if espObjects.box then espObjects.box:Destroy() end
+        if espObjects.billboard then espObjects.billboard:Destroy() end
+    end
+end)
+
+-- 加載完成提示
+Library:Notify("LOL漢化Hub加載完成！享受遊戲吧！", 5)
