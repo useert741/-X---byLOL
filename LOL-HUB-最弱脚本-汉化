@@ -39,7 +39,7 @@ local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/m
 -- 創建主視窗
 local Window = Library:CreateWindow({
     Title = "LOL漢化Hub - V4",
-    Footer = "LOL-HUB | 绝对无敌",
+    Footer = "LOL | 修復無敵模式",
     Center = true,
     AutoShow = true,
     Resizable = true,
@@ -409,6 +409,7 @@ end
 -- 無敵模式功能
 local godModeEnabled = false
 local godModeConnections = {}
+local godModeHooks = {}
 
 local GodModeGroup = Tabs.Player:AddLeftGroupbox("無敵模式", "shield") do
     GodModeGroup:AddToggle("GodMode", {
@@ -419,6 +420,43 @@ local GodModeGroup = Tabs.Player:AddLeftGroupbox("無敵模式", "shield") do
             
             if value then
                 local player = game.Players.LocalPlayer
+                
+                -- 保存原始鉤子函數
+                if not godModeHooks.originalNamecall then
+                    godModeHooks.originalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+                        local method = getnamecallmethod()
+                        local args = {...}
+                        
+                        -- 防止TakeDamage方法
+                        if method == "TakeDamage" and self:IsA("Humanoid") then
+                            if self.Parent == player.Character then
+                                return nil
+                            end
+                        end
+                        
+                        -- 防止FireServer傷害
+                        if method == "FireServer" then
+                            if tostring(self) == "TakeDamage" or tostring(self):find("Damage") then
+                                if args[1] and type(args[1]) == "table" and args[1].Player == player then
+                                    return nil
+                                end
+                            end
+                        end
+                        
+                        return godModeHooks.originalNamecall(self, ...)
+                    end)
+                end
+                
+                if not godModeHooks.originalIndex then
+                    godModeHooks.originalIndex = hookmetamethod(game, "__index", function(self, key)
+                        if key == "Health" and self:IsA("Humanoid") then
+                            if self.Parent == player.Character then
+                                return math.huge
+                            end
+                        end
+                        return godModeHooks.originalIndex(self, key)
+                    end)
+                end
                 
                 -- 方法1: 防止生命值減少
                 godModeConnections.healthChanged = player.CharacterAdded:Connect(function(character)
@@ -468,56 +506,26 @@ local GodModeGroup = Tabs.Player:AddLeftGroupbox("無敵模式", "shield") do
                     end
                 end
                 
-                -- 方法2: 防止傷害
-                godModeConnections.damageHook = hookmetamethod(game, "__namecall", function(self, ...)
-                    local method = getnamecallmethod()
-                    local args = {...}
-                    
-                    -- 防止TakeDamage方法
-                    if method == "TakeDamage" and self:IsA("Humanoid") then
-                        if self.Parent == player.Character then
-                            return nil
-                        end
-                    end
-                    
-                    -- 防止FireServer傷害
-                    if method == "FireServer" then
-                        if tostring(self) == "TakeDamage" or tostring(self):find("Damage") then
-                            if args[1] and type(args[1]) == "table" and args[1].Player == player then
-                                return nil
-                            end
-                        end
-                    end
-                    
-                    return godModeConnections.damageHook(self, ...)
-                end)
-                
-                -- 方法3: 防止擊殺
-                godModeConnections.killHook = hookmetamethod(game, "__index", function(self, key)
-                    if key == "Health" and self:IsA("Humanoid") then
-                        if self.Parent == player.Character then
-                            return math.huge
-                        end
-                    end
-                    return godModeConnections.killHook(self, key)
-                end)
-                
                 Library:Notify("無敵模式已啟用！你現在不會受到任何傷害", 5)
             else
                 -- 禁用無敵模式
                 for _, connection in pairs(godModeConnections) do
-                    if connection then
-                        pcall(function()
-                            if typeof(connection) == "RBXScriptConnection" then
-                                connection:Disconnect()
-                            elseif type(connection) == "function" then
-                                hookmetamethod(game, "__namecall", connection)
-                                hookmetamethod(game, "__index", connection)
-                            end
-                        end)
+                    if connection and typeof(connection) == "RBXScriptConnection" then
+                        connection:Disconnect()
                     end
                 end
                 godModeConnections = {}
+                
+                -- 恢復原始鉤子函數
+                if godModeHooks.originalNamecall then
+                    hookmetamethod(game, "__namecall", godModeHooks.originalNamecall)
+                    godModeHooks.originalNamecall = nil
+                end
+                
+                if godModeHooks.originalIndex then
+                    hookmetamethod(game, "__index", godModeHooks.originalIndex)
+                    godModeHooks.originalIndex = nil
+                end
                 
                 -- 恢復正常生命值
                 local player = game.Players.LocalPlayer
@@ -562,6 +570,9 @@ local GodModeGroup = Tabs.Player:AddLeftGroupbox("無敵模式", "shield") do
                     highlight.FillTransparency = 0.5
                     highlight.OutlineTransparency = 0
                     highlight.Parent = character
+                    
+                    godModeConnections.forceField = forceField
+                    godModeConnections.highlight = highlight
                 end
             else
                 local character = game.Players.LocalPlayer.Character
@@ -999,18 +1010,21 @@ local SystemGroup = Tabs.Misc:AddRightGroupbox("系統功能", "cpu") do
         if godModeEnabled then
             godModeEnabled = false
             for _, connection in pairs(godModeConnections) do
-                if connection then
-                    pcall(function()
-                        if typeof(connection) == "RBXScriptConnection" then
-                            connection:Disconnect()
-                        elseif type(connection) == "function" then
-                            hookmetamethod(game, "__namecall", connection)
-                            hookmetamethod(game, "__index", connection)
-                        end
-                    end)
+                if connection and typeof(connection) == "RBXScriptConnection" then
+                    connection:Disconnect()
                 end
             end
             godModeConnections = {}
+            
+            if godModeHooks.originalNamecall then
+                hookmetamethod(game, "__namecall", godModeHooks.originalNamecall)
+                godModeHooks.originalNamecall = nil
+            end
+            
+            if godModeHooks.originalIndex then
+                hookmetamethod(game, "__index", godModeHooks.originalIndex)
+                godModeHooks.originalIndex = nil
+            end
         end
         
         Library:Notify("所有設定已重置為默認值", 3)
@@ -1077,6 +1091,15 @@ Library:OnUnload(function()
         if connection and typeof(connection) == "RBXScriptConnection" then
             connection:Disconnect()
         end
+    end
+    
+    -- 恢復無敵模式鉤子
+    if godModeHooks.originalNamecall then
+        hookmetamethod(game, "__namecall", godModeHooks.originalNamecall)
+    end
+    
+    if godModeHooks.originalIndex then
+        hookmetamethod(game, "__index", godModeHooks.originalIndex)
     end
     
     -- 清理ESP
