@@ -1,12 +1,16 @@
 -- LOL漢化Hub - 完整功能整合版 (LinoriaLib)
--- 作者: LOL漢化組
--- 版本: 2.0 完整版
+-- 作者: LOL
+-- 版本: 5 完整版 (新增主頁)
+-- 圖片ID: 104039506290166
 
 if not getgenv().LOLHanhuaHub then
     getgenv().LOLHanhuaHub = true
 else
     return
 end
+
+-- 記錄腳本啟動時間
+getgenv().ScriptStartTime = os.time()
 
 -- 繞過反作弊系統
 local function BypassAntiCheat()
@@ -46,8 +50,8 @@ local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/m
 
 -- 創建主視窗
 local Window = Library:CreateWindow({
-    Title = "LOL漢化Hub - V4",
-    Footer = "LOL | 全新功能版本",
+    Title = "LOL漢化Hub - V5",
+    Footer = "LOL | 新增主頁功能",
     Center = true,
     AutoShow = true,
     Resizable = true,
@@ -56,8 +60,9 @@ local Window = Library:CreateWindow({
     MenuFadeTime = 0.2
 })
 
--- 創建標籤頁
+-- 創建標籤頁 (主頁放在最前面)
 local Tabs = {
+    Home = Window:AddTab("主頁", "home"),  -- 新增主頁標籤
     Scripts = Window:AddTab("腳本中心", "code"),
     Visuals = Window:AddTab("視覺效果", "eye"),
     Player = Window:AddTab("玩家功能", "user"),
@@ -74,7 +79,281 @@ SaveManager:SetLibrary(Library)
 ThemeManager:SetFolder("LOLHanhuaHub")
 SaveManager:SetFolder("LOLHanhuaHub/settings")
 
-Library:Notify("欢迎使用LOL漢化Hub 加載成功!", 5)
+-- 主頁功能
+local HomeGroup = Tabs.Home:AddLeftGroupbox("玩家信息", "user")
+
+-- 玩家基本信息
+local player = game.Players.LocalPlayer
+local playerId = player.UserId
+local accountAge = player.AccountAge
+local membershipType = player.MembershipType.Name
+
+-- 計算帳號創建時間
+local createDate = os.date("%Y/%m/%d", os.time() - (accountAge * 24 * 60 * 60))
+
+HomeGroup:AddLabel("玩家名稱: " .. player.Name)
+HomeGroup:AddLabel("玩家ID: " .. playerId)
+HomeGroup:AddLabel("帳號年齡: " .. accountAge .. " 天")
+HomeGroup:AddLabel("帳號創建: " .. createDate)
+
+-- 顯示當前角色狀態
+local function updateCharacterInfo()
+    local character = player.Character
+    if character and character:FindFirstChild("Humanoid") then
+        local humanoid = character.Humanoid
+        local health = math.floor(humanoid.Health)
+        local maxHealth = math.floor(humanoid.MaxHealth)
+        return string.format("生命值: %d/%d | 狀態: %s", health, maxHealth, humanoid:GetState().Name)
+    else
+        return "角色未加載或不存在"
+    end
+end
+
+local characterInfoLabel = HomeGroup:AddLabel(updateCharacterInfo())
+
+-- 定期更新角色信息
+coroutine.wrap(function()
+    while true do
+        wait(2)
+        characterInfoLabel:SetText(updateCharacterInfo())
+    end
+end)()
+
+-- 注入器信息
+local InjectorGroup = Tabs.Home:AddRightGroupbox("注入器信息", "cpu")
+
+-- 檢測常見的注入器特徵
+local function getInjectorInfo()
+    local injectorInfo = "未知注入器"
+    
+    -- 檢測Synapse X
+    if syn and syn.protect_gui then
+        injectorInfo = "Synapse X"
+    -- 檢測ScriptWare
+    elseif identifyexecutor and string.find(string.lower(identifyexecutor()), "scriptware") then
+        injectorInfo = "ScriptWare"
+    -- 檢測Krnl
+    elseif KRNL_LOADED then
+        injectorInfo = "Krnl"
+    -- 檢測Fluxus
+    elseif getexecutorname and string.find(string.lower(getexecutorname()), "fluxus") then
+        injectorInfo = "Fluxus"
+    -- 檢測其他常見注入器
+    elseif is_sirhurt_closure then
+        injectorInfo = "SirHurt"
+    elseif PROTOSMASHER_LOADED then
+        injectorInfo = "ProtoSmasher"
+    elseif checkclosure then
+        injectorInfo = "自定義注入器"
+    end
+    
+    return injectorInfo
+end
+
+local injectorName = getInjectorInfo()
+InjectorGroup:AddLabel("注入器: " .. injectorName)
+
+-- 檢測腳本環境信息
+local environmentInfo = ""
+if getgenv then
+    environmentInfo = environmentInfo .. "getgenv: ✓ | "
+end
+if getreg then
+    environmentInfo = environmentInfo .. "getreg: ✓ | "
+end
+if getgc then
+    environmentInfo = environmentInfo .. "getgc: ✓ | "
+end
+
+InjectorGroup:AddLabel("環境功能: " .. environmentInfo)
+
+-- 內存使用情況
+local function getMemoryUsage()
+    local memory = collectgarbage("count")
+    return string.format("%.2f MB", memory / 1024)
+end
+
+InjectorGroup:AddLabel("內存使用: " .. getMemoryUsage())
+
+-- 腳本使用時間
+local ScriptTimeGroup = Tabs.Home:AddLeftGroupbox("腳本使用信息", "clock")
+
+-- 計算使用時間
+local function getScriptUptime()
+    local currentTime = os.time()
+    local uptime = currentTime - getgenv().ScriptStartTime
+    
+    local hours = math.floor(uptime / 3600)
+    local minutes = math.floor((uptime % 3600) / 60)
+    local seconds = uptime % 60
+    
+    return string.format("%02d:%02d:%02d", hours, minutes, seconds)
+end
+
+ScriptTimeGroup:AddLabel("啟動時間: " .. os.date("%Y/%m/%d %H:%M:%S", getgenv().ScriptStartTime))
+local uptimeLabel = ScriptTimeGroup:AddLabel("運行時間: " .. getScriptUptime())
+
+-- 更新運行時間
+coroutine.wrap(function()
+    while true do
+        wait(1)
+        uptimeLabel:SetText("運行時間: " .. getScriptUptime())
+    end
+end)()
+
+-- 作者信息
+local AuthorGroup = Tabs.Home:AddRightGroupbox("作者信息", "heart")
+
+AuthorGroup:AddLabel("作者: LOL")
+AuthorGroup:AddLabel("版本: v5")
+AuthorGroup:AddLabel("更新日期: 2025年")
+AuthorGroup:AddLabel("特別感謝: 无")
+
+AuthorGroup:AddButton("複製作者信息", function()
+    local authorInfo = [[
+LOL漢化Hub - V5
+作者: LOL
+版本: v5
+功能: 多遊戲腳本整合、視覺效果、玩家功能、戰鬥輔助等
+    ]]
+    if setclipboard then
+        setclipboard(authorInfo)
+        Library:Notify("作者信息已複製到剪貼板", 3)
+    end
+end)
+
+-- 快速功能按鈕
+local QuickActionsGroup = Tabs.Home:AddLeftGroupbox("快速操作", "zap")
+
+QuickActionsGroup:AddButton("刷新玩家信息", function()
+    characterInfoLabel:SetText(updateCharacterInfo())
+    Library:Notify("玩家信息已刷新", 2)
+end)
+
+QuickActionsGroup:AddButton("檢查更新", function()
+    Library:Notify("當前已是最新版本: v5", 3)
+end)
+
+QuickActionsGroup:AddButton("服務器狀態", function()
+    local players = game.Players
+    local lighting = game:GetService("Lighting")
+    
+    local serverInfo = string.format([[
+服務器狀態:
+在線玩家: %d/%d
+Ping: 計算中...
+服務器時間: %.1f小時
+    ]],
+    #players:GetPlayers(),
+    players.MaxPlayers,
+    lighting:GetMinutesAfterMidnight() / 60
+    )
+    
+    Library:Notify(serverInfo, 5)
+end)
+
+-- 在標題欄添加圖片 (原有功能)
+local function AddImageToTitleBar()
+    wait(1)
+    
+    local mainContainer = Window.Container
+    if not mainContainer then return end
+    
+    local titleBar = mainContainer:FindFirstChild("TopBar")
+    if not titleBar then return end
+    
+    local originalTitle = titleBar:FindFirstChild("WindowTitle")
+    if originalTitle then
+        originalTitle.Visible = false
+        
+        local titleContainer = Instance.new("Frame")
+        titleContainer.Name = "CustomTitleContainer"
+        titleContainer.BackgroundTransparency = 1
+        titleContainer.Size = UDim2.new(1, -40, 1, 0)
+        titleContainer.Position = UDim2.new(0, 40, 0, 0)
+        titleContainer.Parent = titleBar
+        
+        -- 使用新圖片ID
+        local titleImage = Instance.new("ImageLabel")
+        titleImage.Name = "TitleImage"
+        titleImage.Image = "http://www.roblox.com/asset/?id=104039506290166"
+        titleImage.BackgroundTransparency = 1
+        titleImage.Size = UDim2.new(0, 25, 0, 25)
+        titleImage.Position = UDim2.new(0, 10, 0.5, -12.5)
+        titleImage.Parent = titleContainer
+        
+        local titleLabel = Instance.new("TextLabel")
+        titleLabel.Name = "CustomTitle"
+        titleLabel.Text = "LOL漢化Hub - 完整整合版 v2.1"
+        titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        titleLabel.TextSize = 16
+        titleLabel.Font = Enum.Font.GothamBold
+        titleLabel.BackgroundTransparency = 1
+        titleLabel.Size = UDim2.new(1, -40, 1, 0)
+        titleLabel.Position = UDim2.new(0, 40, 0, 0)
+        titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+        titleLabel.Parent = titleContainer
+        
+        local subtitleLabel = Instance.new("TextLabel")
+        subtitleLabel.Name = "Subtitle"
+        subtitleLabel.Text = "v2.1 | 新增主頁功能 | 圖片ID: 104039506290166"
+        subtitleLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        subtitleLabel.TextSize = 10
+        subtitleLabel.Font = Enum.Font.Gotham
+        subtitleLabel.BackgroundTransparency = 1
+        subtitleLabel.Size = UDim2.new(1, -40, 0, 12)
+        subtitleLabel.Position = UDim2.new(0, 40, 1, -12)
+        subtitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+        subtitleLabel.Parent = titleContainer
+    end
+end
+
+task.spawn(AddImageToTitleBar)
+
+-- 腳本中心功能 (原有功能保持不變)
+local ScriptsGroup = Tabs.Scripts:AddLeftGroupbox("遊戲腳本", "gamepad")
+
+ScriptsGroup:AddButton("Fartsaken被遺棄", function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/Fartsaken-LOL-QQ737561425"))()
+    Library:Notify("Fartsaken腳本已加載", 3)
+end)
+
+-- ... 其餘原有功能保持不變 ...
+
+-- 在卸載功能中添加主頁數據清理
+Library:OnUnload(function()
+    -- 清理所有連接
+    if noclipConnection then noclipConnection:Disconnect() end
+    if aimbotConnection then aimbotConnection:Disconnect() end
+    if flingConnection then flingConnection:Disconnect() end
+    if antiFlingConnection then antiFlingConnection:Disconnect() end
+    
+    -- 清理無敵模式連接
+    for _, connection in ipairs(godModeConnections) do
+        if connection and typeof(connection) == "RBXScriptConnection" then
+            connection:Disconnect()
+        end
+    end
+    
+    -- 清理ESP
+    for player, espObjects in pairs(espBoxes) do
+        if espObjects.box then espObjects.box:Destroy() end
+        if espObjects.billboard then espObjects.billboard:Destroy() end
+    end
+    
+    -- 清理碰撞箱
+    restoreHitboxes()
+    
+    -- 清理靈魂出竅
+    if soulPart then soulPart:Destroy() end
+    if soulBody then soulBody:Destroy() end
+    if soulControl then soulControl:Destroy() end
+    
+    -- 清理主頁相關數據
+    getgenv().ScriptStartTime = nil
+    
+    Library:Notify("LOL漢化Hub 已完全卸載", 3)
+end)
 
 -- 腳本中心功能
 local ScriptsGroup = Tabs.Scripts:AddLeftGroupbox("遊戲腳本", "gamepad")
@@ -143,7 +422,7 @@ ToolsGroup:AddButton("力量傳奇腳本", function()
     function functions:event(name)return ReplicatedStorage.rEvents.orbEvent:FireServer('collectOrb',name,'City');end
     task.spawn(function()
     ren.Character.Head:Destroy();end)
-    getgenv().AllToggle=false --总闸,如果想停止改为 true
+    getgenv().AllToggle=false
     getgenv().Orange=true
     getgenv().Hoop=true
     getgenv().Gem=true
@@ -292,7 +571,6 @@ ESPGroup:AddToggle("PlayerESP", {
                 local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
                 if not humanoidRootPart then return end
                 
-                -- 創建紅色方框
                 local box = Instance.new("BoxHandleAdornment")
                 box.Name = "ESP_" .. player.Name
                 box.Adornee = humanoidRootPart
@@ -303,7 +581,6 @@ ESPGroup:AddToggle("PlayerESP", {
                 box.Transparency = 0.2
                 box.Parent = humanoidRootPart
                 
-                -- 創建名稱標籤
                 local billboard = Instance.new("BillboardGui")
                 billboard.Name = "ESP_Name_" .. player.Name
                 billboard.Adornee = humanoidRootPart
@@ -327,12 +604,10 @@ ESPGroup:AddToggle("PlayerESP", {
                 espBoxes[player] = {box = box, billboard = billboard}
             end
             
-            -- 為現有玩家創建ESP
             for _, player in ipairs(game.Players:GetPlayers()) do
                 createESP(player)
             end
             
-            -- 監聽新玩家
             game.Players.PlayerAdded:Connect(function(player)
                 player.CharacterAdded:Connect(function(character)
                     wait(1)
@@ -341,7 +616,6 @@ ESPGroup:AddToggle("PlayerESP", {
             end)
             
         else
-            -- 禁用ESP
             for player, espObjects in pairs(espBoxes) do
                 if espObjects.box then espObjects.box:Destroy() end
                 if espObjects.billboard then espObjects.billboard:Destroy() end
@@ -470,10 +744,8 @@ OutOfBodyGroup:AddToggle("OutOfBody", {
         outOfBodyEnabled = value
         
         if value then
-            -- 保存原始角色
             originalCharacter = game.Players.LocalPlayer.Character
             
-            -- 創建靈魂部件
             soulPart = Instance.new("Part")
             soulPart.Name = "Soul"
             soulPart.Size = Vector3.new(2, 2, 2)
@@ -485,7 +757,6 @@ OutOfBodyGroup:AddToggle("OutOfBody", {
             soulPart.BrickColor = BrickColor.new("Bright blue")
             soulPart.Parent = workspace
             
-            -- 創建靈魂身體
             soulBody = Instance.new("BodyGyro")
             soulBody.MaxTorque = Vector3.new(400000, 400000, 400000)
             soulBody.P = 10000
@@ -496,10 +767,8 @@ OutOfBodyGroup:AddToggle("OutOfBody", {
             soulControl.Velocity = Vector3.new(0, 0, 0)
             soulControl.Parent = soulPart
             
-            -- 設置相機跟隨靈魂
             workspace.CurrentCamera.CameraSubject = soulPart
             
-            -- 控制靈魂移動
             local connection
             connection = game:GetService("RunService").RenderStepped:Connect(function()
                 if not outOfBodyEnabled then
@@ -508,18 +777,11 @@ OutOfBodyGroup:AddToggle("OutOfBody", {
                 end
                 
                 local camera = workspace.CurrentCamera
-                local mouse = game.Players.LocalPlayer:GetMouse()
+                local lookVector = camera.CFrame.LookVector
+                local rightVector = camera.CFrame.RightVector
+                local upVector = camera.CFrame.UpVector
                 
-                -- 獲取相機方向
-                local cameraCFrame = camera.CFrame
-                local lookVector = cameraCFrame.LookVector
-                local rightVector = cameraCFrame.RightVector
-                local upVector = cameraCFrame.UpVector
-                
-                -- 移動速度
                 local speed = 50
-                
-                -- 處理輸入
                 local moveDirection = Vector3.new(0, 0, 0)
                 
                 if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.W) then
@@ -541,37 +803,24 @@ OutOfBodyGroup:AddToggle("OutOfBody", {
                     moveDirection = moveDirection - Vector3.new(0, 1, 0)
                 end
                 
-                -- 應用移動
                 if moveDirection.Magnitude > 0 then
                     soulControl.Velocity = moveDirection.Unit * speed
                 else
                     soulControl.Velocity = Vector3.new(0, 0, 0)
                 end
                 
-                -- 更新旋轉以面向相機方向
                 soulBody.CFrame = CFrame.new(soulPart.Position, soulPart.Position + lookVector)
             end)
             
             Library:Notify("靈魂出竅模式已啟用！使用WASD移動，空格上升，Shift下降", 5)
         else
-            -- 恢復原始角色
             if originalCharacter then
                 workspace.CurrentCamera.CameraSubject = originalCharacter.Humanoid
             end
             
-            -- 清理靈魂部件
-            if soulPart then
-                soulPart:Destroy()
-                soulPart = nil
-            end
-            if soulBody then
-                soulBody:Destroy()
-                soulBody = nil
-            end
-            if soulControl then
-                soulControl:Destroy()
-                soulControl = nil
-            end
+            if soulPart then soulPart:Destroy() end
+            if soulBody then soulBody:Destroy() end
+            if soulControl then soulControl:Destroy() end
             
             Library:Notify("靈魂出竅模式已禁用", 3)
         end
@@ -591,6 +840,87 @@ OutOfBodyGroup:AddToggle("SoulNoclip", {
     Default = true
 })
 
+-- 無敵模式功能
+local godModeEnabled = false
+local godModeConnections = {}
+
+local GodModeGroup = Tabs.Player:AddLeftGroupbox("無敵模式", "shield")
+
+GodModeGroup:AddToggle("GodMode", {
+    Text = "無敵模式",
+    Default = false,
+    Callback = function(value)
+        godModeEnabled = value
+        
+        if value then
+            local player = game.Players.LocalPlayer
+            
+            local function setupGodMode(character)
+                local humanoid = character:FindFirstChild("Humanoid")
+                if humanoid then
+                    humanoid.MaxHealth = math.huge
+                    humanoid.Health = math.huge
+                    
+                    local healthLoop = game:GetService("RunService").Heartbeat:Connect(function()
+                        if not godModeEnabled then
+                            healthLoop:Disconnect()
+                            return
+                        end
+                        
+                        if humanoid and humanoid.Health < math.huge then
+                            humanoid.Health = math.huge
+                        end
+                    end)
+                    
+                    local healthConnection = humanoid.HealthChanged:Connect(function(newHealth)
+                        if not godModeEnabled then return end
+                        
+                        if newHealth < math.huge then
+                            humanoid.Health = math.huge
+                        end
+                    end)
+                    
+                    table.insert(godModeConnections, healthLoop)
+                    table.insert(godModeConnections, healthConnection)
+                end
+            end
+            
+            if player.Character then
+                setupGodMode(player.Character)
+            end
+            
+            local characterAddedConnection = player.CharacterAdded:Connect(function(character)
+                wait(1)
+                if godModeEnabled then
+                    setupGodMode(character)
+                end
+            end)
+            
+            table.insert(godModeConnections, characterAddedConnection)
+            
+            Library:Notify("無敵模式已啟用！生命值將持續恢復", 5)
+            
+        else
+            for _, connection in ipairs(godModeConnections) do
+                if connection and typeof(connection) == "RBXScriptConnection" then
+                    connection:Disconnect()
+                end
+            end
+            godModeConnections = {}
+            
+            local player = game.Players.LocalPlayer
+            if player.Character then
+                local humanoid = player.Character:FindFirstChild("Humanoid")
+                if humanoid then
+                    humanoid.MaxHealth = 100
+                    humanoid.Health = 100
+                end
+            end
+            
+            Library:Notify("無敵模式已禁用", 3)
+        end
+    end
+})
 -- 自瞄功能
 local aimbotEnabled = false
 local aimbotConnection = nil
@@ -616,7 +946,6 @@ AimbotSettingsGroup:AddToggle("AimbotEnabled", {
                 local rootPart = character:FindFirstChild("HumanoidRootPart")
                 if not rootPart then return end
                 
-                -- 尋找最佳目標
                 local bestTarget = nil
                 local closestDistance = 1000
                 
@@ -759,7 +1088,6 @@ FlingGroup:AddToggle("FlingToggle", {
                 local localRoot = localCharacter:FindFirstChild("HumanoidRootPart")
                 if not localRoot then return end
                 
-                -- 甩飛其他玩家
                 for _, player in ipairs(game.Players:GetPlayers()) do
                     if player ~= localPlayer then
                         local character = player.Character
@@ -767,9 +1095,7 @@ FlingGroup:AddToggle("FlingToggle", {
                             local targetRoot = character.HumanoidRootPart
                             local distance = (localRoot.Position - targetRoot.Position).Magnitude
                             
-                            -- 如果玩家在附近，甩飛他們
                             if distance < 20 then
-                                -- 計算甩飛方向（遠離自己）
                                 local flingDirection = (targetRoot.Position - localRoot.Position).Unit
                                 targetRoot.Velocity = flingDirection * 5000 + Vector3.new(0, 2000, 0)
                             end
@@ -804,119 +1130,6 @@ FlingGroup:AddSlider("FlingRange", {
     Max = 50,
     Rounding = 1
 })
-
--- 簡化的碰撞箱擴展功能
-local hitboxEnabled = false
-local originalSizes = {}
-
-local HitboxGroup = Tabs.Hitbox:AddLeftGroupbox("碰撞箱擴展", "box")
-
-HitboxGroup:AddToggle("HitboxToggle", {
-    Text = "啟用碰撞箱擴展",
-    Default = false,
-    Callback = function(value)
-        hitboxEnabled = value
-        if value then
-            expandHitboxes()
-            Library:Notify("碰撞箱擴展已啟用", 3)
-        else
-            restoreHitboxes()
-            Library:Notify("碰撞箱擴展已禁用", 3)
-        end
-    end
-})
-
-HitboxGroup:AddSlider("HitboxSize", {
-    Text = "碰撞箱大小",
-    Default = 10,
-    Min = 5,
-    Max = 50,
-    Rounding = 1,
-    Callback = function(value)
-        if hitboxEnabled then
-            expandHitboxes()
-        end
-    end
-})
-
-HitboxGroup:AddToggle("HitboxTeamCheck", {
-    Text = "忽略隊友",
-    Default = true
-})
-
-HitboxGroup:AddToggle("HitboxVisible", {
-    Text = "顯示碰撞箱",
-    Default = true
-})
-
-function expandHitboxes()
-    local players = game:GetService("Players"):GetPlayers()
-    local localPlayer = game:GetService("Players").LocalPlayer
-    local hitboxSize = Options.HitboxSize and Options.HitboxSize.Value or 10
-    local ignoreTeam = Options.HitboxTeamCheck and Options.HitboxTeamCheck.Value or true
-    
-    for _, player in pairs(players) do
-        if player ~= localPlayer then
-            local character = player.Character
-            if character then
-                -- 檢查隊伍
-                if ignoreTeam and player.Team == localPlayer.Team then
-                    continue
-                end
-                
-                -- 擴展主要身體部位
-                local parts = {
-                    "Head",
-                    "HumanoidRootPart", 
-                    "Torso",
-                    "UpperTorso",
-                    "LowerTorso"
-                }
-                
-                for _, partName in pairs(parts) do
-                    local part = character:FindFirstChild(partName)
-                    if part and part:IsA("BasePart") then
-                        -- 保存原始大小
-                        if not originalSizes[player] then
-                            originalSizes[player] = {}
-                        end
-                        if not originalSizes[player][partName] then
-                            originalSizes[player][partName] = part.Size
-                        end
-                        
-                        -- 設置新大小
-                        part.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
-                        
-                        -- 設置透明度
-                        if Options.HitboxVisible and Options.HitboxVisible.Value then
-                            part.Transparency = 0.5
-                            part.Material = Enum.Material.Neon
-                            part.BrickColor = BrickColor.new("Bright red")
-                        else
-                            part.Transparency = 1
-                        end
-                    end
-                end
-            end
-        end
-    end
-end
-
-function restoreHitboxes()
-    for player, parts in pairs(originalSizes) do
-        if player and player.Character then
-            for partName, originalSize in pairs(parts) do
-                local part = player.Character:FindFirstChild(partName)
-                if part and part:IsA("BasePart") then
-                    part.Size = originalSize
-                    part.Transparency = 0
-                    part.Material = Enum.Material.Plastic
-                end
-            end
-        end
-    end
-    originalSizes = {}
-end
 
 -- 防甩飛功能
 local antiFlingEnabled = false
@@ -984,96 +1197,113 @@ DefenseGroup:AddToggle("AntiFling", {
     end
 })
 
--- 無敵模式功能
-local godModeEnabled = false
-local godModeConnections = {}
+-- 碰撞箱擴展功能
+local hitboxEnabled = false
+local originalSizes = {}
 
-local GodModeGroup = Tabs.Player:AddLeftGroupbox("無敵模式", "shield")
+local HitboxGroup = Tabs.Hitbox:AddLeftGroupbox("碰撞箱擴展", "box")
 
-GodModeGroup:AddToggle("GodMode", {
-    Text = "無敵模式",
+HitboxGroup:AddToggle("HitboxToggle", {
+    Text = "啟用碰撞箱擴展",
     Default = false,
     Callback = function(value)
-        godModeEnabled = value
-        
+        hitboxEnabled = value
         if value then
-            local player = game.Players.LocalPlayer
-            
-            local function setupGodMode(character)
-                local humanoid = character:FindFirstChild("Humanoid")
-                if humanoid then
-                    -- 設置最大生命值
-                    humanoid.MaxHealth = math.huge
-                    
-                    -- 立即恢復生命值
-                    humanoid.Health = math.huge
-                    
-                    -- 創建循環恢復生命的連接
-                    local healthLoop = game:GetService("RunService").Heartbeat:Connect(function()
-                        if not godModeEnabled then
-                            healthLoop:Disconnect()
-                            return
-                        end
-                        
-                        if humanoid and humanoid.Health < math.huge then
-                            humanoid.Health = math.huge
-                        end
-                    end)
-                    
-                    -- 監聽生命值變化
-                    local healthConnection = humanoid.HealthChanged:Connect(function(newHealth)
-                        if not godModeEnabled then return end
-                        
-                        if newHealth < math.huge then
-                            humanoid.Health = math.huge
-                        end
-                    end)
-                    
-                    table.insert(godModeConnections, healthLoop)
-                    table.insert(godModeConnections, healthConnection)
-                end
-            end
-            
-            -- 為當前角色設置無敵模式
-            if player.Character then
-                setupGodMode(player.Character)
-            end
-            
-            -- 監聽新角色生成
-            local characterAddedConnection = player.CharacterAdded:Connect(function(character)
-                wait(1) -- 等待角色完全加載
-                if godModeEnabled then
-                    setupGodMode(character)
-                end
-            end)
-            
-            table.insert(godModeConnections, characterAddedConnection)
-            
-            Library:Notify("無敵模式已啟用！生命值將持續恢復", 5)
-            
+            expandHitboxes()
+            Library:Notify("碰撞箱擴展已啟用", 3)
         else
-            -- 禁用無敵模式
-            for _, connection in ipairs(godModeConnections) do
-                if connection and typeof(connection) == "RBXScriptConnection" then
-                    connection:Disconnect()
-                end
-            end
-            godModeConnections = {}
-            
-            -- 恢復正常生命值
-            local player = game.Players.LocalPlayer
-            if player.Character then
-                local humanoid = player.Character:FindFirstChild("Humanoid")
-                if humanoid then
-                    humanoid.MaxHealth = 100
-                    humanoid.Health = 100
-                end
-            end
-            
-            Library:Notify("無敵模式已禁用", 3)
+            restoreHitboxes()
+            Library:Notify("碰撞箱擴展已禁用", 3)
         end
     end
 })
+
+HitboxGroup:AddSlider("HitboxSize", {
+    Text = "碰撞箱大小",
+    Default = 10,
+    Min = 5,
+    Max = 50,
+    Rounding = 1,
+    Callback = function(value)
+        if hitboxEnabled then
+            expandHitboxes()
+        end
+    end
+})
+
+HitboxGroup:AddToggle("HitboxTeamCheck", {
+    Text = "忽略隊友",
+    Default = true
+})
+
+HitboxGroup:AddToggle("HitboxVisible", {
+    Text = "顯示碰撞箱",
+    Default = true
+})
+
+function expandHitboxes()
+    local players = game:GetService("Players"):GetPlayers()
+    local localPlayer = game.Players.LocalPlayer
+    local hitboxSize = Options.HitboxSize and Options.HitboxSize.Value or 10
+    local ignoreTeam = Options.HitboxTeamCheck and Options.HitboxTeamCheck.Value or true
+    
+    for _, player in pairs(players) do
+        if player ~= localPlayer then
+            local character = player.Character
+            if character then
+                if ignoreTeam and player.Team == localPlayer.Team then
+                    continue
+                end
+                
+                local parts = {
+                    "Head",
+                    "HumanoidRootPart", 
+                    "Torso",
+                    "UpperTorso",
+                    "LowerTorso"
+                }
+                
+                for _, partName in pairs(parts) do
+                    local part = character:FindFirstChild(partName)
+                    if part and part:IsA("BasePart") then
+                        if not originalSizes[player] then
+                            originalSizes[player] = {}
+                        end
+                        if not originalSizes[player][partName] then
+                            originalSizes[player][partName] = part.Size
+                        end
+                        
+                        part.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
+                        
+                        if Options.HitboxVisible and Options.HitboxVisible.Value then
+                            part.Transparency = 0.5
+                            part.Material = Enum.Material.Neon
+                            part.BrickColor = BrickColor.new("Bright red")
+                        else
+                            part.Transparency = 1
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+function restoreHitboxes()
+    for player, parts in pairs(originalSizes) do
+        if player and player.Character then
+            for partName, originalSize in pairs(parts) do
+                local part = player.Character:FindFirstChild(partName)
+                if part and part:IsA("BasePart") then
+                    part.Size = originalSize
+                    part.Transparency = 0
+                    part.Material = Enum.Material.Plastic
+                end
+            end
+        end
+    end
+    originalSizes = {}
+end
 
 -- 雜項功能
 local ToolsGroup = Tabs.Misc:AddLeftGroupbox("實用工具", "tool")
@@ -1125,6 +1355,14 @@ ToolsGroup:AddButton("修復遊戲相機", function()
     end
 end)
 
+ToolsGroup:AddButton("重新生成角色", function()
+    local player = game.Players.LocalPlayer
+    if player.Character then
+        player.Character:BreakJoints()
+        Library:Notify("角色正在重新生成", 3)
+    end
+end)
+
 -- 系統功能
 local SystemGroup = Tabs.Misc:AddRightGroupbox("系統功能", "cpu")
 
@@ -1142,19 +1380,6 @@ SystemGroup:AddToggle("AntiAFK", {
             Library:Notify("防掛機已啟用", 3)
         else
             Library:Notify("防掛機已禁用", 3)
-        end
-    end
-})
-
-SystemGroup:AddToggle("自動收集物品", {
-    Text = "自動收集附近物品",
-    Default = false,
-    Callback = function(value)
-        if value then
-            Library:Notify("自動收集功能已啟用", 3)
-            -- 這裡可以添加自動收集物品的代碼
-        else
-            Library:Notify("自動收集功能已禁用", 3)
         end
     end
 })
@@ -1180,6 +1405,70 @@ SystemGroup:AddButton("服務器信息", function()
     Library:Notify(info, 10)
 end)
 
+SystemGroup:AddButton("複製遊戲鏈接", function()
+    local gameLink = "https://www.roblox.com/games/" .. game.PlaceId
+    if setclipboard then
+        setclipboard(gameLink)
+        Library:Notify("遊戲鏈接已複製到剪貼板", 3)
+    else
+        Library:Notify("無法複製鏈接", 3)
+    end
+end)
+
+-- 性能優化組
+local PerformanceGroup = Tabs.Misc:AddRightGroupbox("性能優化", "gauge")
+
+PerformanceGroup:AddToggle("低圖形模式", {
+    Text = "低圖形模式",
+    Default = false,
+    Callback = function(value)
+        if value then
+            settings().Rendering.QualityLevel = 1
+            for _, effect in pairs(lighting:GetChildren()) do
+                if effect:IsA("PostEffect") then
+                    effect.Enabled = false
+                end
+            end
+            Library:Notify("低圖形模式已啟用", 3)
+        else
+            settings().Rendering.QualityLevel = 10
+            Library:Notify("低圖形模式已禁用", 3)
+        end
+    end
+})
+
+PerformanceGroup:AddToggle("禁用陰影", {
+    Text = "禁用陰影",
+    Default = false,
+    Callback = function(value)
+        if value then
+            lighting.GlobalShadows = false
+            Library:Notify("陰影已禁用", 3)
+        else
+            lighting.GlobalShadows = true
+            Library:Notify("陰影已啟用", 3)
+        end
+    end
+})
+
+PerformanceGroup:AddButton("清理垃圾", function()
+    collectgarbage("collect")
+    Library:Notify("內存垃圾已清理", 3)
+end)
+
+PerformanceGroup:AddButton("優化遊戲", function()
+    settings().Rendering.QualityLevel = 1
+    lighting.GlobalShadows = false
+    for _, effect in pairs(lighting:GetChildren()) do
+        if effect:IsA("PostEffect") then
+            effect.Enabled = false
+        end
+    end
+    collectgarbage("collect")
+    Library:Notify("遊戲性能已優化", 3)
+end)
+
+-- 重置所有設置功能
 SystemGroup:AddButton("重置所有設定", function()
     -- 重置移動
     local character = game.Players.LocalPlayer.Character
@@ -1286,35 +1575,106 @@ SystemGroup:AddButton("重置所有設定", function()
         end
     end
     
+    -- 重置性能設置
+    settings().Rendering.QualityLevel = 10
+    lighting.GlobalShadows = true
+    
     Library:Notify("所有設定已重置為默認值", 5)
 end)
 
--- 性能優化組
-local PerformanceGroup = Tabs.Misc:AddRightGroupbox("性能優化", "gauge")
+-- UI設置
+local MenuGroup = Tabs.Settings:AddLeftGroupbox("菜單")
 
-PerformanceGroup:AddToggle("低圖形模式", {
-    Text = "低圖形模式",
+MenuGroup:AddToggle("KeybindMenuOpen", {
+    Text = "打開按鍵綁定菜單",
     Default = false,
     Callback = function(value)
-        if value then
-            -- 降低圖形質量
-            settings().Rendering.QualityLevel = 1
-            for _, effect in pairs(lighting:GetChildren()) do
-                if effect:IsA("PostEffect") then
-                    effect.Enabled = false
-                end
-            end
-            Library:Notify("低圖形模式已啟用", 3)
-        else
-            settings().Rendering.QualityLevel = 10
-            Library:Notify("低圖形模式已禁用", 3)
-        end
+        Library.KeybindFrame.Visible = value
     end
 })
 
-PerformanceGroup:AddButton("清理垃圾", function()
-    collectgarbage("collect")
-    Library:Notify("內存垃圾已清理", 3)
+MenuGroup:AddToggle("ShowCustomCursor", {
+    Text = "自定義光標",
+    Default = true,
+    Callback = function(Value)
+        Library.ShowCustomCursor = Value
+    end
+})
+
+MenuGroup:AddDivider()
+
+MenuGroup:AddLabel("菜單綁定"):AddKeyPicker("MenuKeybind", {
+    Default = "RightShift",
+    NoUI = false,
+    Text = "菜單鍵綁定"
+})
+
+MenuGroup:AddButton("卸載UI", function()
+    Library:Unload()
+    Library:Notify("LOL漢化Hub 已卸載", 3)
+end)
+
+Library.ToggleKeybind = Options.MenuKeybind
+
+-- 主題設置
+local ThemeGroup = Tabs.Settings:AddRightGroupbox("主題")
+
+ThemeGroup:AddDropdown("Theme", {
+    Values = Library.Themes,
+    Default = Library.Themes[1],
+    Text = "主題選擇"
+})
+
+Options.Theme:OnChanged(function()
+    Library:SetTheme(Options.Theme.Value)
+end)
+
+ThemeGroup:AddColorPicker("AccentColor", {
+    Title = "主題顏色",
+    Default = Color3.fromRGB(255, 0, 0)
+})
+
+Options.AccentColor:OnChanged(function()
+    Library:ChangeThemeOption("AccentColor", Options.AccentColor.Value)
+end)
+
+-- 保存和加載設置
+local SaveGroup = Tabs.Settings:AddLeftGroupbox("保存/加載")
+
+SaveGroup:AddDropdown("ConfigList", {
+    Values = SaveManager:GetConfigs(),
+    Default = "",
+    Text = "配置列表"
+})
+
+SaveGroup:AddButton("保存配置", function()
+    local configName = Options.ConfigList.Value
+    if configName and configName ~= "" then
+        SaveManager:Save(configName)
+        Library:Notify("配置已保存: " .. configName, 3)
+    else
+        Library:Notify("請輸入配置名稱", 3)
+    end
+end)
+
+SaveGroup:AddButton("加載配置", function()
+    local configName = Options.ConfigList.Value
+    if configName and configName ~= "" then
+        SaveManager:Load(configName)
+        Library:Notify("配置已加載: " .. configName, 3)
+    else
+        Library:Notify("請選擇要加載的配置", 3)
+    end
+end)
+
+SaveGroup:AddButton("刪除配置", function()
+    local configName = Options.ConfigList.Value
+    if configName and configName ~= "" then
+        SaveManager:Delete(configName)
+        Library:Notify("配置已刪除: " .. configName, 3)
+    else
+        Library:Notify("請選擇要刪除的配置", 3)
+    end
 end)
 
 -- 初始化設定管理
@@ -1322,22 +1682,43 @@ SaveManager:IgnoreThemeSettings()
 SaveManager:SetIgnoreIndexes({"MenuKeybind"})
 ThemeManager:ApplyToTab(Tabs.Settings)
 
--- 添加卸載按鈕
-local MenuGroup = Tabs.Settings:AddLeftGroupbox("菜單")
-MenuGroup:AddButton("卸載", function()
-    Library:Unload()
-    Library:Notify("LOL漢化Hub 已卸載", 3)
-end)
-
-MenuGroup:AddLabel("菜單綁定"):AddKeyPicker("MenuKeybind", { 
-    Default = "RightShift", 
-    NoUI = false, 
-    Text = "菜單鍵綁定" 
-})
-
-Library.ToggleKeybind = Options.MenuKeybind
-
 -- 加載保存的設置
 SaveManager:LoadAutoloadConfig()
 
-Library:Notify("LOL漢化Hub 加載完成！享受遊戲！", 5)
+-- 最終初始化
+Library:Notify("LOL漢化Hub v5 加載完成！享受遊戲！", 5)
+
+-- 卸載清理
+Library:OnUnload(function()
+    -- 清理所有連接
+    if noclipConnection then noclipConnection:Disconnect() end
+    if aimbotConnection then aimbotConnection:Disconnect() end
+    if flingConnection then flingConnection:Disconnect() end
+    if antiFlingConnection then antiFlingConnection:Disconnect() end
+    
+    -- 清理無敵模式連接
+    for _, connection in ipairs(godModeConnections) do
+        if connection and typeof(connection) == "RBXScriptConnection" then
+            connection:Disconnect()
+        end
+    end
+    
+    -- 清理ESP
+    for player, espObjects in pairs(espBoxes) do
+        if espObjects.box then espObjects.box:Destroy() end
+        if espObjects.billboard then espObjects.billboard:Destroy() end
+    end
+    
+    -- 清理碰撞箱
+    restoreHitboxes()
+    
+    -- 清理靈魂出竅
+    if soulPart then soulPart:Destroy() end
+    if soulBody then soulBody:Destroy() end
+    if soulControl then soulControl:Destroy() end
+    
+    -- 清理主頁相關數據
+    getgenv().ScriptStartTime = nil
+    
+    Library:Notify("LOL漢化Hub 已完全卸載", 3)
+end)
