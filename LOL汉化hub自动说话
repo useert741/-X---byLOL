@@ -1,0 +1,65 @@
+-- ================ 自动发言功能（安全版） ================
+local TextChatService = game:GetService("TextChatService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+-- 使用极简消息减少被屏蔽风险
+local SIMPLE_MSG = "LOL Hub v5 -作者LOL 多游戏脚本整合、视觉效果、玩家功能、战斗辅助等"
+
+local function trySendMessage()
+    local player = Players.LocalPlayer
+    if not player then return false end
+    
+    -- 方法1: 新版聊天系统
+    local success = pcall(function()
+        if TextChatService and TextChatService.TextChannels then
+            local channel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+            if channel and channel.SendAsync then
+                channel:SendAsync(SIMPLE_MSG)
+                return true
+            end
+        end
+    end)
+    
+    -- 方法2: 旧版聊天系统
+    if not success then
+        success = pcall(function()
+            local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+            if chatEvents then
+                local sayMessage = chatEvents:FindFirstChild("SayMessageRequest")
+                if sayMessage then
+                    sayMessage:FireServer(SIMPLE_MSG, "All")
+                    return true
+                end
+            end
+        end)
+    end
+    
+    return success
+end
+
+-- 主执行流程
+spawn(function()
+    -- 等待玩家加载
+    if not Players.LocalPlayer then
+        Players.PlayerAdded:Wait()
+    end
+    wait(1)
+    
+    -- 尝试发送简化消息
+    local sent = trySendMessage()
+    
+    -- 无论是否发送成功，都执行脚本
+    print("🔄 正在加载主脚本...")
+    
+    -- 执行您的脚本
+    local success, err = pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/LOL-HUB-%E6%9C%80%E5%BC%B1%E8%84%9A%E6%9C%AC-%E6%B1%89%E5%8C%96"))()
+    end)
+    
+    if not success then
+        warn("❌ 脚本加载失败: " .. tostring(err))
+    else
+        print("✅ 脚本加载成功")
+    end
+end)
