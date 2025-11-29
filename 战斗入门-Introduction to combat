@@ -1,0 +1,1099 @@
+-- 戰鬥入門腳本
+-- 作者: LOL
+
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+-- 創建窗口
+local Window = Rayfield:CreateWindow({
+    Name = "戰鬥入門",
+    LoadingTitle = "戰鬥入門",
+    LoadingSubtitle = "作者: LOL",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "戰鬥入門",
+        FileName = "配置"
+    },
+    Discord = {
+        Enabled = false,
+        Invite = "noinvitelink",
+        RememberJoins = true
+    },
+    KeySystem = false,
+})
+
+-- 自瞄標籤頁
+local AimTab = Window:CreateTab("自瞄", 4483362458)
+
+-- 自瞄功能變量
+local Aiming = {
+    Enabled = false,
+    FunctionAim = false,
+    AIAim = false,
+    NPCAim = false, -- 新增NPC自瞄
+    FOV = 50,
+    Distance = 100,
+    Speed = 0.1,
+    Smoothness = 0.5,
+    TeamCheck = true,
+    Target = nil,
+    NPCTarget = nil -- NPC目標
+}
+
+-- 檢查是否為隊友
+function IsTeammate(player)
+    if not Aiming.TeamCheck then
+        return false -- 如果關閉隊伍檢測，所有人都不是隊友
+    end
+    
+    local localPlayer = game:GetService("Players").LocalPlayer
+    local targetPlayer = player
+    
+    -- 方法1: 檢查遊戲的隊伍系統
+    if game:GetService("Players").LocalPlayer.Team then
+        if localPlayer.Team and targetPlayer.Team then
+            return localPlayer.Team == targetPlayer.Team
+        end
+    end
+    
+    -- 方法2: 檢查隊伍顏色
+    if localPlayer.TeamColor and targetPlayer.TeamColor then
+        return localPlayer.TeamColor == targetPlayer.TeamColor
+    end
+    
+    -- 方法3: 檢查是否有相同的隊伍標籤
+    local localCharacter = localPlayer.Character
+    local targetCharacter = targetPlayer.Character
+    
+    if localCharacter and targetCharacter then
+        local localHumanoid = localCharacter:FindFirstChildOfClass("Humanoid")
+        local targetHumanoid = targetCharacter:FindFirstChildOfClass("Humanoid")
+        
+        if localHumanoid and targetHumanoid then
+            return localHumanoid.Team == targetHumanoid.Team
+        end
+    end
+    
+    -- 方法4: 檢查玩家名稱前綴（某些遊戲使用）
+    local localName = localPlayer.Name:lower()
+    local targetName = targetPlayer.Name:lower()
+    
+    -- 常見的隊伍前綴檢測
+    local teamPrefixes = {"red", "blue", "green", "team", "tm"}
+    for _, prefix in pairs(teamPrefixes) do
+        if localName:find(prefix) and targetName:find(prefix) then
+            return localName:find(prefix) == targetName:find(prefix)
+        end
+    end
+    
+    return false
+end
+
+-- 檢查是否為有效玩家目標
+function IsValidPlayerTarget(player)
+    if player == game:GetService("Players").LocalPlayer then
+        return false -- 忽略自己
+    end
+    
+    if not player.Character then
+        return false -- 沒有角色
+    end
+    
+    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+    if not humanoid or humanoid.Health <= 0 then
+        return false -- 沒有生命值或已死亡
+    end
+    
+    local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then
+        return false -- 沒有根部零件
+    end
+    
+    -- 檢查隊伍關係
+    if Aiming.TeamCheck and IsTeammate(player) then
+        return false -- 是隊友，跳過
+    end
+    
+    return true
+end
+
+-- 檢查是否為有效NPC目標
+function IsValidNPCTarget(npc)
+    if not npc then
+        return false
+    end
+    
+    -- 檢查是否有Humanoid（表示是生物）
+    local humanoid = npc:FindFirstChildOfClass("Humanoid")
+    if not humanoid or humanoid.Health <= 0 then
+        return false -- 沒有生命值或已死亡
+    end
+    
+    -- 檢查是否有根部零件
+    local rootPart = npc:FindFirstChild("HumanoidRootPart") or npc:FindFirstChild("Torso") or npc:FindFirstChild("UpperTorso")
+    if not rootPart then
+        return false -- 沒有有效的根部零件
+    end
+    
+    -- 檢查是否為玩家角色（避免瞄準玩家）
+    local isPlayer = false
+    for _, player in pairs(game:GetService("Players"):GetPlayers()) do
+        if player.Character == npc then
+            isPlayer = true
+            break
+        end
+    end
+    
+    return not isPlayer -- 如果是玩家角色則返回false
+end
+
+-- 獲取NPC列表
+function GetNPCs()
+    local npcs = {}
+    local localPlayer = game:GetService("Players").LocalPlayer
+    local localRoot = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+    
+    if not localRoot then return npcs end
+    
+    -- 搜索工作區中的模型
+    for _, model in pairs(workspace:GetChildren()) do
+        if model:IsA("Model") and model ~= localPlayer.Character then
+            if IsValidNPCTarget(model) then
+                table.insert(npcs, model)
+            end
+        end
+    end
+    
+    return npcs
+end
+
+-- 獲取最近的玩家
+function GetNearestPlayer()
+    local nearestPlayer = nil
+    local shortestDistance = Aiming.Distance
+    local localPlayer = game:GetService("Players").LocalPlayer
+    local localRoot = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+    
+    if not localRoot then return nil end
+    
+    for _, player in pairs(game:GetService("Players"):GetPlayers()) do
+        if IsValidPlayerTarget(player) then
+            local targetRoot = player.Character:FindFirstChild("HumanoidRootPart")
+            if targetRoot then
+                local distance = (targetRoot.Position - localRoot.Position).Magnitude
+                
+                -- FOV檢查
+                local screenPoint = workspace.CurrentCamera:WorldToViewportPoint(targetRoot.Position)
+                local viewportSize = workspace.CurrentCamera.ViewportSize
+                local center = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
+                local targetPoint = Vector2.new(screenPoint.X, screenPoint.Y)
+                local fovDistance = (targetPoint - center).Magnitude
+                
+                if distance <= shortestDistance and fovDistance <= Aiming.FOV then
+                    shortestDistance = distance
+                    nearestPlayer = player
+                end
+            end
+        end
+    end
+    
+    return nearestPlayer
+end
+
+-- 獲取最近的NPC
+function GetNearestNPC()
+    local nearestNPC = nil
+    local shortestDistance = Aiming.Distance
+    local localPlayer = game:GetService("Players").LocalPlayer
+    local localRoot = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+    
+    if not localRoot then return nil end
+    
+    local npcs = GetNPCs()
+    for _, npc in pairs(npcs) do
+        local rootPart = npc:FindFirstChild("HumanoidRootPart") or npc:FindFirstChild("Torso") or npc:FindFirstChild("UpperTorso")
+        if rootPart then
+            local distance = (rootPart.Position - localRoot.Position).Magnitude
+            
+            -- FOV檢查
+            local screenPoint = workspace.CurrentCamera:WorldToViewportPoint(rootPart.Position)
+            local viewportSize = workspace.CurrentCamera.ViewportSize
+            local center = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
+            local targetPoint = Vector2.new(screenPoint.X, screenPoint.Y)
+            local fovDistance = (targetPoint - center).Magnitude
+            
+            if distance <= shortestDistance and fovDistance <= Aiming.FOV then
+                shortestDistance = distance
+                nearestNPC = npc
+            end
+        end
+    end
+    
+    return nearestNPC
+end
+
+-- 函數自瞄計算
+function CalculateFunctionAim(target, isNPC)
+    if not target then return nil end
+    
+    local targetRoot = nil
+    if isNPC then
+        targetRoot = target:FindFirstChild("HumanoidRootPart") or target:FindFirstChild("Torso") or target:FindFirstChild("UpperTorso")
+    else
+        targetRoot = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+    end
+    
+    local localRoot = game:GetService("Players").LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    
+    if targetRoot and localRoot then
+        -- 簡單的預測計算
+        local targetVelocity = targetRoot.Velocity
+        local distance = (targetRoot.Position - localRoot.Position).Magnitude
+        
+        -- 根據距離和速度計算預測位置
+        local prediction = targetVelocity * (distance / 1000) * Aiming.Smoothness
+        return targetRoot.Position + prediction
+    end
+    
+    return nil
+end
+
+-- AI自瞄模擬（簡化版）
+function CalculateAIAim(target, isNPC)
+    if not target then return nil end
+    
+    local targetRoot = nil
+    if isNPC then
+        targetRoot = target:FindFirstChild("HumanoidRootPart") or target:FindFirstChild("Torso") or target:FindFirstChild("UpperTorso")
+    else
+        targetRoot = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+    end
+    
+    local localRoot = game:GetService("Players").LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    
+    if targetRoot and localRoot then
+        -- 模擬AI分析（更複雜的預測）
+        local targetVelocity = targetRoot.Velocity
+        local targetAcceleration = targetRoot.AssemblyLinearVelocity - targetVelocity
+        
+        local distance = (targetRoot.Position - localRoot.Position).Magnitude
+        local timeToHit = distance / 100 -- 假設子彈速度
+        
+        -- 更高級的預測計算
+        local prediction = targetVelocity * timeToHit + 0.5 * targetAcceleration * (timeToHit ^ 2)
+        return targetRoot.Position + prediction * Aiming.Smoothness
+    end
+    
+    return nil
+end
+
+-- 自瞄主循環
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+
+RunService.RenderStepped:Connect(function()
+    if not Aiming.Enabled then return end
+    
+    local localPlayer = game:GetService("Players").LocalPlayer
+    if not localPlayer.Character then return end
+    
+    local localRoot = localPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not localRoot then return end
+    
+    -- 選擇目標
+    local target = nil
+    local isNPC = false
+    
+    if Aiming.NPCAim then
+        -- NPC自瞄模式
+        target = Aiming.NPCTarget
+        isNPC = true
+    else
+        -- 玩家自瞄模式
+        target = Aiming.Target
+    end
+    
+    if not target then return end
+    
+    -- 重新驗證目標
+    if isNPC then
+        if not IsValidNPCTarget(target) then
+            Aiming.NPCTarget = GetNearestNPC()
+            return
+        end
+    else
+        if not IsValidPlayerTarget(target) then
+            Aiming.Target = GetNearestPlayer()
+            return
+        end
+    end
+    
+    -- 獲取目標位置
+    local targetPosition = nil
+    
+    if Aiming.FunctionAim then
+        targetPosition = CalculateFunctionAim(target, isNPC)
+    elseif Aiming.AIAim then
+        targetPosition = CalculateAIAim(target, isNPC)
+    else
+        -- 基礎自瞄
+        local targetRoot = nil
+        if isNPC then
+            targetRoot = target:FindFirstChild("HumanoidRootPart") or target:FindFirstChild("Torso") or target:FindFirstChild("UpperTorso")
+        else
+            targetRoot = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+        end
+        
+        if targetRoot then
+            targetPosition = targetRoot.Position
+        end
+    end
+    
+    if targetPosition then
+        -- 計算瞄準方向
+        local direction = (targetPosition - localRoot.Position).Unit
+        
+        -- 應用平滑度
+        local currentLook = localRoot.CFrame.LookVector
+        local smoothedDirection = currentLook:Lerp(direction, Aiming.Speed * Aiming.Smoothness)
+        
+        -- 創建新的CFrame
+        local newCFrame = CFrame.lookAt(localRoot.Position, localRoot.Position + smoothedDirection)
+        
+        -- 應用到角色
+        localRoot.CFrame = newCFrame
+        
+        -- 同時旋轉相機以匹配角色方向
+        local cameraCFrame = CFrame.lookAt(Camera.CFrame.Position, targetPosition)
+        Camera.CFrame = cameraCFrame
+    end
+end)
+
+-- 目標更新循環
+spawn(function()
+    while wait(0.1) do
+        if Aiming.Enabled then
+            if Aiming.NPCAim then
+                Aiming.NPCTarget = GetNearestNPC()
+            else
+                Aiming.Target = GetNearestPlayer()
+            end
+        else
+            Aiming.Target = nil
+            Aiming.NPCTarget = nil
+        end
+    end
+end)
+
+-- 自瞄開關
+AimTab:CreateToggle({
+    Name = "自瞄",
+    CurrentValue = false,
+    Flag = "AimToggle",
+    Callback = function(Value)
+        Aiming.Enabled = Value
+        if Value then
+            local mode = Aiming.NPCAim and "NPC" or "玩家"
+            Rayfield:Notify({
+                Title = "自瞄已開啟",
+                Content = string.format("自瞄功能已啟動 - 模式: %s", mode),
+                Duration = 1,
+                Image = 4483362458,
+            })
+        else
+            Rayfield:Notify({
+                Title = "自瞄已關閉",
+                Content = "自瞄功能已停用",
+                Duration = 1,
+                Image = 4483362458,
+            })
+        end
+    end,
+})
+
+-- NPC自瞄開關
+AimTab:CreateToggle({
+    Name = "NPC自瞄",
+    CurrentValue = false,
+    Flag = "NPCAim",
+    Callback = function(Value)
+        Aiming.NPCAim = Value
+        if Value then
+            Rayfield:Notify({
+                Title = "NPC自瞄已開啟",
+                Content = "現在會瞄準NPC和怪物",
+                Duration = 1,
+                Image = 4483362458,
+            })
+        else
+            Rayfield:Notify({
+                Title = "NPC自瞄已關閉",
+                Content = "現在會瞄準玩家",
+                Duration = 1,
+                Image = 4483362458,
+            })
+        end
+    end,
+})
+
+-- 隊伍檢測開關
+AimTab:CreateToggle({
+    Name = "隊伍檢測",
+    CurrentValue = true,
+    Flag = "TeamCheck",
+    Callback = function(Value)
+        Aiming.TeamCheck = Value
+        if Value then
+            Rayfield:Notify({
+                Title = "隊伍檢測已開啟",
+                Content = "不會瞄準隊友",
+                Duration = 1,
+                Image = 4483362458,
+            })
+        else
+            Rayfield:Notify({
+                Title = "隊伍檢測已關閉",
+                Content = "可能會瞄準隊友",
+                Duration = 1,
+                Image = 4483362458,
+            })
+        end
+    end,
+})
+
+-- 函數自瞄
+AimTab:CreateToggle({
+    Name = "函數自瞄",
+    CurrentValue = false,
+    Flag = "FunctionAim",
+    Callback = function(Value)
+        Aiming.FunctionAim = Value
+        if Value then
+            Aiming.AIAim = false
+        end
+    end,
+})
+
+-- AI自瞄
+AimTab:CreateToggle({
+    Name = "AI自瞄",
+    CurrentValue = false,
+    Flag = "AIAim",
+    Callback = function(Value)
+        Aiming.AIAim = Value
+        if Value then
+            Aiming.FunctionAim = false
+        end
+    end,
+})
+
+-- FOV滑桿
+AimTab:CreateSlider({
+    Name = "FOV",
+    Range = {10, 200},
+    Increment = 1,
+    Suffix = "度",
+    CurrentValue = 50,
+    Flag = "FOVSlider",
+    Callback = function(Value)
+        Aiming.FOV = Value
+    end,
+})
+
+-- 自瞄距離
+AimTab:CreateSlider({
+    Name = "自瞄距離",
+    Range = {10, 500},
+    Increment = 5,
+    Suffix = "米",
+    CurrentValue = 100,
+    Flag = "DistanceSlider",
+    Callback = function(Value)
+        Aiming.Distance = Value
+    end,
+})
+
+-- 自瞄速度
+AimTab:CreateSlider({
+    Name = "自瞄速度",
+    Range = {0.01, 1},
+    Increment = 0.01,
+    Suffix = "倍",
+    CurrentValue = 0.1,
+    Flag = "SpeedSlider",
+    Callback = function(Value)
+        Aiming.Speed = Value
+    end,
+})
+
+-- 自瞄平滑度
+AimTab:CreateSlider({
+    Name = "自瞄平滑度",
+    Range = {0.1, 1},
+    Increment = 0.05,
+    Suffix = "倍",
+    CurrentValue = 0.5,
+    Flag = "SmoothnessSlider",
+    Callback = function(Value)
+        Aiming.Smoothness = Value
+    end,
+})
+
+-- ESP標籤頁
+local ESPTab = Window:CreateTab("ESP", 4483362458)
+
+-- ESP功能變量
+local ESP = {
+    Enabled = false,
+    EnemyESP = true,
+    TeamESP = true,
+    Tracers = true,
+    Distance = true,
+    ESPObjects = {} -- 儲存ESP物件
+}
+
+-- 創建ESP框
+function CreateESPBox(player, isTeammate)
+    if not player.Character then return end
+    
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "ESP_Highlight"
+    highlight.Adornee = player.Character
+    highlight.Parent = player.Character
+    
+    -- 設置顏色
+    if isTeammate then
+        highlight.FillColor = Color3.fromRGB(0, 100, 255)  -- 隊友藍色
+        highlight.OutlineColor = Color3.fromRGB(0, 150, 255)
+    else
+        highlight.FillColor = Color3.fromRGB(255, 50, 50)  -- 敵人紅色
+        highlight.OutlineColor = Color3.fromRGB(255, 0, 0)
+    end
+    
+    highlight.FillTransparency = 0.7
+    highlight.OutlineTransparency = 0
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    
+    -- 創建距離顯示
+    if ESP.Distance then
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "ESP_Distance"
+        billboard.Adornee = player.Character:FindFirstChild("Head") or player.Character:FindFirstChild("HumanoidRootPart")
+        billboard.Size = UDim2.new(0, 200, 0, 50)
+        billboard.StudsOffset = Vector3.new(0, 3, 0)
+        billboard.AlwaysOnTop = true
+        billboard.Parent = player.Character
+        
+        local label = Instance.new("TextLabel")
+        label.Name = "DistanceLabel"
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.BackgroundTransparency = 1
+        label.TextScaled = true
+        label.Font = Enum.Font.GothamBold
+        label.TextColor3 = isTeammate and Color3.fromRGB(100, 150, 255) or Color3.fromRGB(255, 100, 100)
+        label.TextStrokeTransparency = 0
+        label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        label.Parent = billboard
+    end
+    
+    -- 創建天線
+    if ESP.Tracers then
+        local tracer = Instance.new("BoxHandleAdornment")
+        tracer.Name = "ESP_Tracer"
+        tracer.Adornee = player.Character:FindFirstChild("HumanoidRootPart")
+        tracer.Size = Vector3.new(1, 1, 1)
+        tracer.Color3 = isTeammate and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(255, 0, 0)
+        tracer.Transparency = 0.5
+        tracer.AlwaysOnTop = true
+        tracer.ZIndex = 10
+        tracer.Parent = player.Character
+    end
+    
+    ESP.ESPObjects[player] = {
+        Highlight = highlight,
+        Billboard = billboard,
+        Tracer = tracer
+    }
+end
+
+-- 更新ESP顯示
+function UpdateESP()
+    for player, espObjects in pairs(ESP.ESPObjects) do
+        if player.Character and (ESP.EnemyESP or ESP.TeamESP) then
+            local isTeammate = IsTeammate(player)
+            
+            -- 顯示/隱藏邏輯
+            if (isTeammate and ESP.TeamESP) or (not isTeammate and ESP.EnemyESP) then
+                if espObjects.Highlight then
+                    espObjects.Highlight.Enabled = true
+                    -- 更新顏色
+                    if isTeammate then
+                        espObjects.Highlight.FillColor = Color3.fromRGB(0, 100, 255)
+                        espObjects.Highlight.OutlineColor = Color3.fromRGB(0, 150, 255)
+                    else
+                        espObjects.Highlight.FillColor = Color3.fromRGB(255, 50, 50)
+                        espObjects.Highlight.OutlineColor = Color3.fromRGB(255, 0, 0)
+                    end
+                end
+                
+                -- 更新距離顯示
+                if espObjects.Billboard and ESP.Distance then
+                    local localPlayer = game:GetService("Players").LocalPlayer
+                    if localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                        local distance = (player.Character:FindFirstChild("HumanoidRootPart").Position - localPlayer.Character:FindFirstChild("HumanoidRootPart").Position).Magnitude
+                        local label = espObjects.Billboard:FindFirstChild("DistanceLabel")
+                        if label then
+                            label.Text = string.format("%s (%dm)", player.Name, math.floor(distance))
+                        end
+                    end
+                    espObjects.Billboard.Enabled = true
+                else
+                    if espObjects.Billboard then
+                        espObjects.Billboard.Enabled = false
+                    end
+                end
+                
+                -- 更新天線
+                if espObjects.Tracer then
+                    espObjects.Tracer.Enabled = ESP.Tracers
+                    if ESP.Tracers then
+                        espObjects.Tracer.Color3 = isTeammate and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(255, 0, 0)
+                    end
+                end
+            else
+                -- 隱藏ESP
+                if espObjects.Highlight then
+                    espObjects.Highlight.Enabled = false
+                end
+                if espObjects.Billboard then
+                    espObjects.Billboard.Enabled = false
+                end
+                if espObjects.Tracer then
+                    espObjects.Tracer.Enabled = false
+                end
+            end
+        else
+            -- 玩家沒有角色或ESP關閉，隱藏所有
+            if espObjects.Highlight then
+                espObjects.Highlight.Enabled = false
+            end
+            if espObjects.Billboard then
+                espObjects.Billboard.Enabled = false
+            end
+            if espObjects.Tracer then
+                espObjects.Tracer.Enabled = false
+            end
+        end
+    end
+end
+
+-- 初始化所有玩家的ESP
+function InitializeESP()
+    for _, player in pairs(game:GetService("Players"):GetPlayers()) do
+        if player ~= game:GetService("Players").LocalPlayer then
+            CreateESPBox(player, IsTeammate(player))
+        end
+    end
+end
+
+-- 清理ESP
+function CleanupESP()
+    for player, espObjects in pairs(ESP.ESPObjects) do
+        if espObjects.Highlight then
+            espObjects.Highlight:Destroy()
+        end
+        if espObjects.Billboard then
+            espObjects.Billboard:Destroy()
+        end
+        if espObjects.Tracer then
+            espObjects.Tracer:Destroy()
+        end
+    end
+    ESP.ESPObjects = {}
+end
+
+-- 玩家加入遊戲時創建ESP
+game:GetService("Players").PlayerAdded:Connect(function(player)
+    if ESP.Enabled then
+        CreateESPBox(player, IsTeammate(player))
+    end
+end)
+
+-- 玩家離開遊戲時清理ESP
+game:GetService("Players").PlayerRemoving:Connect(function(player)
+    if ESP.ESPObjects[player] then
+        if ESP.ESPObjects[player].Highlight then
+            ESP.ESPObjects[player].Highlight:Destroy()
+        end
+        if ESP.ESPObjects[player].Billboard then
+            ESP.ESPObjects[player].Billboard:Destroy()
+        end
+        if ESP.ESPObjects[player].Tracer then
+            ESP.ESPObjects[player].Tracer:Destroy()
+        end
+        ESP.ESPObjects[player] = nil
+    end
+end)
+
+-- ESP更新循環
+spawn(function()
+    while wait(0.1) do
+        if ESP.Enabled then
+            UpdateESP()
+        end
+    end
+end)
+
+-- ESP開關
+ESPTab:CreateToggle({
+    Name = "ESP開關",
+    CurrentValue = false,
+    Flag = "ESPToggle",
+    Callback = function(Value)
+        ESP.Enabled = Value
+        if Value then
+            InitializeESP()
+            Rayfield:Notify({
+                Title = "ESP已開啟",
+                Content = "透視功能已啟動",
+                Duration = 1,
+                Image = 4483362458,
+            })
+        else
+            CleanupESP()
+            Rayfield:Notify({
+                Title = "ESP已關閉",
+                Content = "透視功能已停用",
+                Duration = 1,
+                Image = 4483362458,
+            })
+        end
+    end,
+})
+
+-- 敵人ESP
+ESPTab:CreateToggle({
+    Name = "敵人ESP",
+    CurrentValue = true,
+    Flag = "EnemyESP",
+    Callback = function(Value)
+        ESP.EnemyESP = Value
+    end,
+})
+
+-- 隊友ESP
+ESPTab:CreateToggle({
+    Name = "隊友ESP",
+    CurrentValue = true,
+    Flag = "TeamESP",
+    Callback = function(Value)
+        ESP.TeamESP = Value
+    end,
+})
+
+-- 天線
+ESPTab:CreateToggle({
+    Name = "天線",
+    CurrentValue = true,
+    Flag = "Tracers",
+    Callback = function(Value)
+        ESP.Tracers = Value
+    end,
+})
+
+-- 距離顯示
+ESPTab:CreateToggle({
+    Name = "距離顯示",
+    CurrentValue = true,
+    Flag = "DistanceDisplay",
+    Callback = function(Value)
+        ESP.Distance = Value
+    end,
+})
+
+-- ESP說明部分
+local ESPSection = ESPTab:CreateSection("ESP使用說明")
+
+ESPTab:CreateLabel("敵人ESP: 紅色邊框顯示敵方玩家")
+ESPTab:CreateLabel("隊友ESP: 藍色邊框顯示友方玩家")
+ESPTab:CreateLabel("天線: 顯示玩家位置指引線")
+ESPTab:CreateLabel("距離顯示: 顯示玩家名稱和距離")
+
+-- 戰鬥標籤頁
+local CombatTab = Window:CreateTab("戰鬥", 4483362458)
+
+-- 殺戮光環功能變量
+local KillAura = {
+    Enabled = false,
+    TargetNPC = false, -- 是否攻擊NPC
+    Range = 20, -- 攻擊範圍
+    Cooldown = 0.5, -- 攻擊冷卻
+    TeleportHeight = 5, -- 傳送高度
+    LastAttack = 0, -- 上次攻擊時間
+    Attacking = false -- 是否正在攻擊
+}
+
+-- 獲取攻擊目標列表
+function GetAttackTargets()
+    local targets = {}
+    local localPlayer = game:GetService("Players").LocalPlayer
+    local localRoot = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+    
+    if not localRoot then return targets end
+    
+    -- 獲取玩家目標
+    for _, player in pairs(game:GetService("Players"):GetPlayers()) do
+        if IsValidPlayerTarget(player) then
+            local targetRoot = player.Character:FindFirstChild("HumanoidRootPart")
+            if targetRoot then
+                local distance = (targetRoot.Position - localRoot.Position).Magnitude
+                if distance <= KillAura.Range then
+                    table.insert(targets, {
+                        Type = "Player",
+                        Object = player,
+                        RootPart = targetRoot,
+                        Distance = distance
+                    })
+                end
+            end
+        end
+    end
+    
+    -- 獲取NPC目標
+    if KillAura.TargetNPC then
+        local npcs = GetNPCs()
+        for _, npc in pairs(npcs) do
+            local rootPart = npc:FindFirstChild("HumanoidRootPart") or npc:FindFirstChild("Torso") or npc:FindFirstChild("UpperTorso")
+            if rootPart then
+                local distance = (rootPart.Position - localRoot.Position).Magnitude
+                if distance <= KillAura.Range then
+                    table.insert(targets, {
+                        Type = "NPC",
+                        Object = npc,
+                        RootPart = rootPart,
+                        Distance = distance
+                    })
+                end
+            end
+        end
+    end
+    
+    -- 按距離排序
+    table.sort(targets, function(a, b)
+        return a.Distance < b.Distance
+    end)
+    
+    return targets
+end
+
+-- 傳送到目標後上方
+function TeleportToTarget(target)
+    local localPlayer = game:GetService("Players").LocalPlayer
+    local localCharacter = localPlayer.Character
+    local localRoot = localCharacter and localCharacter:FindFirstChild("HumanoidRootPart")
+    
+    if not localRoot or not target.RootPart then return false end
+    
+    -- 計算目標後上方位置
+    local targetCFrame = target.RootPart.CFrame
+    local behindOffset = -targetCFrame.LookVector * 3 -- 目標後方3米
+    local heightOffset = Vector3.new(0, KillAura.TeleportHeight, 0) -- 上方高度
+    
+    local teleportPosition = targetCFrame.Position + behindOffset + heightOffset
+    
+    -- 設置角色位置
+    localRoot.CFrame = CFrame.new(teleportPosition)
+    
+    return true
+end
+
+-- 模擬攻擊（需要玩家自己操作攻擊）
+function SimulateAttack(target)
+    -- 這裡可以添加自動攻擊邏輯，但根據要求讓玩家自己操作
+    -- 可以添加視覺效果或提示
+    
+    Rayfield:Notify({
+        Title = "攻擊機會",
+        Content = string.format("已傳送到%s後方，請手動攻擊！", target.Type == "Player" and target.Object.Name or "NPC"),
+        Duration = 1,
+        Image = 4483362458,
+    })
+    
+    -- 可以添加自動揮劍等攻擊動作（可選）
+    -- 這裡保持讓玩家手動操作
+end
+
+-- 殺戮光環主循環
+spawn(function()
+    while wait(0.1) do
+        if KillAura.Enabled and not KillAura.Attacking then
+            local targets = GetAttackTargets()
+            if #targets > 0 then
+                local target = targets[1] -- 選擇最近的目標
+                
+                -- 檢查冷卻
+                local currentTime = tick()
+                if currentTime - KillAura.LastAttack >= KillAura.Cooldown then
+                    KillAura.Attacking = true
+                    
+                    -- 傳送到目標後方
+                    if TeleportToTarget(target) then
+                        -- 模擬攻擊
+                        SimulateAttack(target)
+                        
+                        -- 更新攻擊時間
+                        KillAura.LastAttack = currentTime
+                    end
+                    
+                    KillAura.Attacking = false
+                end
+            end
+        end
+    end
+end)
+
+-- 殺戮光環開關
+CombatTab:CreateToggle({
+    Name = "殺戮光環",
+    CurrentValue = false,
+    Flag = "KillAuraToggle",
+    Callback = function(Value)
+        KillAura.Enabled = Value
+        if Value then
+            Rayfield:Notify({
+                Title = "殺戮光環已開啟",
+                Content = "會自動傳送到目標後方進行攻擊",
+                Duration = 2,
+                Image = 4483362458,
+            })
+        else
+            Rayfield:Notify({
+                Title = "殺戮光環已關閉",
+                Content = "停止自動傳送攻擊",
+                Duration = 1,
+                Image = 4483362458,
+            })
+        end
+    end,
+})
+
+-- NPC攻擊開關
+CombatTab:CreateToggle({
+    Name = "攻擊NPC",
+    CurrentValue = false,
+    Flag = "AttackNPC",
+    Callback = function(Value)
+        KillAura.TargetNPC = Value
+        if Value then
+            Rayfield:Notify({
+                Title = "NPC攻擊已開啟",
+                Content = "現在也會攻擊NPC和怪物",
+                Duration = 1,
+                Image = 4483362458,
+            })
+        else
+            Rayfield:Notify({
+                Title = "NPC攻擊已關閉",
+                Content = "只攻擊玩家",
+                Duration = 1,
+                Image = 4483362458,
+            })
+        end
+    end,
+})
+
+-- 攻擊範圍滑桿
+CombatTab:CreateSlider({
+    Name = "攻擊範圍",
+    Range = {5, 50},
+    Increment = 1,
+    Suffix = "米",
+    CurrentValue = 20,
+    Flag = "AttackRange",
+    Callback = function(Value)
+        KillAura.Range = Value
+    end,
+})
+
+-- 攻擊冷卻滑桿
+CombatTab:CreateSlider({
+    Name = "攻擊冷卻",
+    Range = {0.1, 2},
+    Increment = 0.1,
+    Suffix = "秒",
+    CurrentValue = 0.5,
+    Flag = "AttackCooldown",
+    Callback = function(Value)
+        KillAura.Cooldown = Value
+    end,
+})
+
+-- 傳送高度滑桿
+CombatTab:CreateSlider({
+    Name = "傳送高度",
+    Range = {2, 10},
+    Increment = 0.5,
+    Suffix = "米",
+    CurrentValue = 5,
+    Flag = "TeleportHeight",
+    Callback = function(Value)
+        KillAura.TeleportHeight = Value
+    end,
+})
+
+-- 戰鬥說明部分
+local CombatSection = CombatTab:CreateSection("殺戮光環使用說明")
+
+CombatTab:CreateLabel("1. 開啟後會自動尋找範圍內目標")
+CombatTab:CreateLabel("2. 傳送到目標後上方位置")
+CombatTab:CreateLabel("3. 需要玩家手動進行攻擊操作")
+CombatTab:CreateLabel("4. 可以選擇是否攻擊NPC")
+CombatTab:CreateLabel("5. 調整範圍和冷卻優化攻擊頻率")
+
+-- 戰鬥狀態顯示
+local CombatStatus = CombatTab:CreateSection("戰鬥狀態")
+
+local CombatStatusLabel = CombatTab:CreateLabel("狀態: 未啟動")
+
+-- 更新戰鬥狀態顯示
+spawn(function()
+    while wait(0.5) do
+        if KillAura.Enabled then
+            local targets = GetAttackTargets()
+            if #targets > 0 then
+                local target = targets[1]
+                CombatStatusLabel:Set(string.format("狀態: 戰鬥中 - 目標: %s (%dm)", 
+                    target.Type == "Player" and target.Object.Name or "NPC", 
+                    math.floor(target.Distance)))
+            else
+                CombatStatusLabel:Set("狀態: 搜尋目標中...")
+            end
+        else
+            CombatStatusLabel:Set("狀態: 未啟動")
+        end
+    end
+end)
+
+-- 自瞄模式狀態顯示
+local AimModeStatus = AimTab:CreateSection("自瞄模式狀態")
+
+local AimModeLabel = AimTab:CreateLabel("當前模式: 玩家自瞄")
+
+-- 更新自瞄模式狀態顯示
+spawn(function()
+    while wait(1) do
+        if Aiming.NPCAim then
+            AimModeLabel:Set("當前模式: NPC自瞄 (瞄準怪物和NPC)")
+        else
+            AimModeLabel:Set("當前模式: 玩家自瞄" .. (Aiming.TeamCheck and " (開啟隊伍檢測)" or " (關閉隊伍檢測)"))
+        end
+    end
+end)
+
+Rayfield:Notify({
+    Title = "戰鬥入門加載成功",
+    Content = "作者: LOL - 自瞄、ESP和戰鬥功能已就緒",
+    Duration = 3,
+    Image = 4483362458,
+})
+
+Rayfield:LoadConfiguration()
