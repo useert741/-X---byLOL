@@ -1,0 +1,82 @@
+local Players = game:GetService("Players")
+local SoundService = game:GetService("SoundService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+if not character:FindFirstChild("Humanoid") then
+    character:WaitForChild("Humanoid")
+end
+
+local humanoid = character:FindFirstChildOfClass("Humanoid")
+
+-- 播放音乐
+local sound = Instance.new("Sound")
+sound.SoundId = "rbxassetid://90323407842935"
+sound.Volume = 1
+sound.Looped = true
+sound.Parent = character.HumanoidRootPart
+sound:Play()
+
+-- 设置玩家速度
+if humanoid then
+    humanoid.WalkSpeed = 150
+end
+
+-- 设置相机视野为120（广角效果）
+local Camera = workspace.CurrentCamera
+local targetFOV = 120
+
+-- 立即设置FOV
+if Camera then
+    Camera.FieldOfView = targetFOV
+end
+
+-- 持续监控和重置FOV的函数
+local function maintainFOV()
+    while true do
+        wait(0.1) -- 每0.1秒检查一次
+        if Camera and Camera.FieldOfView ~= targetFOV then
+            Camera.FieldOfView = targetFOV
+        end
+    end
+end
+
+-- 启动FOV监控
+spawn(maintainFOV)
+
+-- 监听相机变化（如果游戏切换相机）
+workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+    Camera = workspace.CurrentCamera
+    if Camera then
+        Camera.FieldOfView = targetFOV
+    end
+end)
+
+-- 加载远程脚本
+loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-boogie-down-r6-by-loresxpp-64119"))()
+
+-- 角色重生时重新设置
+player.CharacterAdded:Connect(function(newCharacter)
+    newCharacter:WaitForChild("Humanoid")
+    local newHumanoid = newCharacter:FindFirstChildOfClass("Humanoid")
+    
+    -- 重新设置速度
+    if newHumanoid then
+        newHumanoid.WalkSpeed = 150
+    end
+    
+    -- 重新播放音乐
+    local newSound = Instance.new("Sound")
+    newSound.SoundId = "rbxassetid://90323407842935"
+    newSound.Volume = 1
+    newSound.Looped = true
+    newSound.Parent = newCharacter.HumanoidRootPart
+    newSound:Play()
+    
+    -- 重新设置广角
+    if Camera then
+        Camera.FieldOfView = targetFOV
+    end
+end)
