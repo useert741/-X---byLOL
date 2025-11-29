@@ -1,6 +1,6 @@
 -- LOL漢化Hub - 完整功能整合版 (LinoriaLib)
--- 作者: LOL
--- 版本: 5 完整版 (新增主頁)
+-- 作者: LOL漢化組
+-- 版本: 2.1 完整版 (新增主頁)
 -- 圖片ID: 104039506290166
 
 if not getgenv().LOLHanhuaHub then
@@ -50,7 +50,7 @@ local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/m
 
 -- 創建主視窗
 local Window = Library:CreateWindow({
-    Title = "LOL漢化Hub - V5",
+    Title = "LOL漢化Hub - v5",
     Footer = "LOL | 新增主頁功能",
     Center = true,
     AutoShow = true,
@@ -205,13 +205,13 @@ end)()
 local AuthorGroup = Tabs.Home:AddRightGroupbox("作者信息", "heart")
 
 AuthorGroup:AddLabel("作者: LOL")
-AuthorGroup:AddLabel("版本: v5")
+AuthorGroup:AddLabel("版本: v5 ")
 AuthorGroup:AddLabel("更新日期: 2025年")
 AuthorGroup:AddLabel("特別感謝: 无")
 
 AuthorGroup:AddButton("複製作者信息", function()
     local authorInfo = [[
-LOL漢化Hub - V5
+LOL漢化Hub - v5
 作者: LOL
 版本: v5
 功能: 多遊戲腳本整合、視覺效果、玩家功能、戰鬥輔助等
@@ -252,7 +252,7 @@ Ping: 計算中...
     Library:Notify(serverInfo, 5)
 end)
 
--- 在標題欄添加圖片 (原有功能)
+-- 在標題欄添加圖片
 local function AddImageToTitleBar()
     wait(1)
     
@@ -310,51 +310,6 @@ end
 
 task.spawn(AddImageToTitleBar)
 
--- 腳本中心功能 (原有功能保持不變)
-local ScriptsGroup = Tabs.Scripts:AddLeftGroupbox("遊戲腳本", "gamepad")
-
-ScriptsGroup:AddButton("Fartsaken被遺棄", function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/Fartsaken-LOL-QQ737561425"))()
-    Library:Notify("Fartsaken腳本已加載", 3)
-end)
-
--- ... 其餘原有功能保持不變 ...
-
--- 在卸載功能中添加主頁數據清理
-Library:OnUnload(function()
-    -- 清理所有連接
-    if noclipConnection then noclipConnection:Disconnect() end
-    if aimbotConnection then aimbotConnection:Disconnect() end
-    if flingConnection then flingConnection:Disconnect() end
-    if antiFlingConnection then antiFlingConnection:Disconnect() end
-    
-    -- 清理無敵模式連接
-    for _, connection in ipairs(godModeConnections) do
-        if connection and typeof(connection) == "RBXScriptConnection" then
-            connection:Disconnect()
-        end
-    end
-    
-    -- 清理ESP
-    for player, espObjects in pairs(espBoxes) do
-        if espObjects.box then espObjects.box:Destroy() end
-        if espObjects.billboard then espObjects.billboard:Destroy() end
-    end
-    
-    -- 清理碰撞箱
-    restoreHitboxes()
-    
-    -- 清理靈魂出竅
-    if soulPart then soulPart:Destroy() end
-    if soulBody then soulBody:Destroy() end
-    if soulControl then soulControl:Destroy() end
-    
-    -- 清理主頁相關數據
-    getgenv().ScriptStartTime = nil
-    
-    Library:Notify("LOL漢化Hub 已完全卸載", 3)
-end)
-
 -- 腳本中心功能
 local ScriptsGroup = Tabs.Scripts:AddLeftGroupbox("遊戲腳本", "gamepad")
 
@@ -390,6 +345,11 @@ end)
 
 -- 工具腳本
 local ToolsGroup = Tabs.Scripts:AddRightGroupbox("工具腳本", "wrench")
+
+ToolsGroup:AddButton("戰鬥入門", function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/%E6%88%98%E6%96%97%E5%85%A5%E9%97%A8-Introduction%20to%20combat"))()
+    Library:Notify("戰鬥入門腳本已加載", 3)
+end)
 
 ToolsGroup:AddButton("飛行腳本", function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/useert741/-X---byLOL/refs/heads/main/%E6%B1%89%E5%8C%96%E9%A3%9E%E8%A1%8C"))()
@@ -921,6 +881,7 @@ GodModeGroup:AddToggle("GodMode", {
         end
     end
 })
+
 -- 自瞄功能
 local aimbotEnabled = false
 local aimbotConnection = nil
@@ -1686,7 +1647,7 @@ ThemeManager:ApplyToTab(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
 
 -- 最終初始化
-Library:Notify("LOL漢化Hub v5 加載完成！享受遊戲！", 5)
+Library:Notify("LOL漢化Hub v2.1 加載完成！享受遊戲！", 5)
 
 -- 卸載清理
 Library:OnUnload(function()
