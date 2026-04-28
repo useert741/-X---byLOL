@@ -20,6 +20,7 @@ local Tabs = {
     ["ESP"] = Window:AddTab("ESP[绘制]", "eye"),
     ["Generator"] = Window:AddTab("Generator[发电机]", "zap"),
     ["Actions"] = Window:AddTab("Actions[动作]", "activity"),
+    ["Bypass"] = Window:AddTab("Bypass/Violence[绕过/暴力]", "skull"),
     ["Misc"] = Window:AddTab("Misc[杂项]", "settings"),
     ["UI Settings"] = Window:AddTab("UI Settings[界面设置]", "settings"),
 }
@@ -186,20 +187,6 @@ StaminaGroup:AddSlider('StaminaLossSlider', {Text='Stamina Loss Rate[体力消�
 StaminaGroup:AddSlider('SprintSpeedSlider', {Text='Sprint Speed[奔跑速度]', Default=28, Min=0, Max=200, Rounding=0, Callback=function(v) StaminaSettings.SprintSpeed=v end})
 
 local MoveGroup = Tabs["Combat"]:AddRightGroupbox("Movement[移动]", "move")
-local speedValue = 0
-local speedToggle = false
-local function speedLoop()
-    while speedToggle do
-        local hum = localPlayer.Character and localPlayer.Character:FindFirstChild("Humanoid")
-        if hum and hum.MoveDirection ~= Vector3.zero then
-            localPlayer.Character:TranslateBy(hum.MoveDirection * speedValue * game:GetService("RunService").RenderStepped:Wait())
-        end
-        task.wait()
-    end
-end
-MoveGroup:AddSlider("SpeedBypass", {Text="Speed[速度]", Default=16, Min=1, Max=500, Rounding=0, Callback=function(v) speedValue=v end})
-MoveGroup:AddToggle("SpeedToggle", {Text="Enable Speed[启用速度]", Default=false, Callback=function(s) speedToggle=s; if s then task.spawn(speedLoop); Library:Notify({Title="Speed", Description="Enabled", Time=1}) else Library:Notify({Title="Speed", Description="Disabled", Time=1}) end end})
-
 local noclipParts = {}
 local noclipState = false
 local function enableNoclip()
@@ -214,39 +201,6 @@ local function disableNoclip()
     noclipParts = {}
 end
 MoveGroup:AddToggle("EnableNoclip", {Text="Noclip[穿墙]", Default=false, Callback=function(s) noclipState=s; if s then task.spawn(function() while noclipState do enableNoclip(); task.wait() end; disableNoclip() end); Library:Notify({Title="Noclip", Description="Enabled", Time=1}) else disableNoclip(); Library:Notify({Title="Noclip", Description="Disabled", Time=1}) end end})
-
-local CFSpeed = 50
-local CFLoop = nil
-local function StartCFly()
-    local char = localPlayer.Character; if not char then return end
-    local hum = char:FindFirstChildOfClass('Humanoid'); local head = char:WaitForChild("Head")
-    if not hum or not head then return end
-    hum.PlatformStand = true; head.Anchored = true
-    if CFLoop then CFLoop:Disconnect(); CFLoop = nil end
-    CFLoop = game:GetService("RunService").Heartbeat:Connect(function(dt)
-        if not char or not hum or not head then if CFLoop then CFLoop:Disconnect(); CFLoop = nil end return end
-        local moveDir = hum.MoveDirection * (CFSpeed * dt)
-        local headCF = head.CFrame
-        local cam = workspace.CurrentCamera; local camCF = cam.CFrame
-        local off = headCF:ToObjectSpace(camCF).Position
-        camCF = camCF * CFrame.new(-off.X, -off.Y, -off.Z + 1)
-        local camPos = camCF.Position; local headPos = headCF.Position
-        local objVel = CFrame.new(camPos, Vector3.new(headPos.X, camPos.Y, headPos.Z)):VectorToObjectSpace(moveDir)
-        head.CFrame = CFrame.new(headPos) * (camCF - camPos) * CFrame.new(objVel)
-    end)
-end
-local function StopCFly()
-    if CFLoop then CFLoop:Disconnect(); CFLoop = nil end
-    local char = localPlayer.Character
-    if char then
-        local hum = char:FindFirstChildOfClass('Humanoid'); local head = char:FindFirstChild("Head")
-        if hum then hum.PlatformStand = false end
-        if head then head.Anchored = false end
-    end
-end
-MoveGroup:AddToggle("CFlyToggle", {Text="Flight[飞行]", Default=false, Callback=function(v) if v then StartCFly(); Library:Notify({Title="Flight", Description="Enabled", Time=1}) else StopCFly(); Library:Notify({Title="Flight", Description="Disabled", Time=1}) end end})
-MoveGroup:AddSlider("CFlySpeed", {Text="Flight Speed[飞行速度]", Default=50, Min=1, Max=200, Rounding=1, Callback=function(v) CFSpeed=v end})
-
 MoveGroup:AddDivider()
 MoveGroup:AddLabel("Front Flip[前滚翻]")
 local ff_connection = nil; local ff_enabled = false; local ff_cd = false; local jumpHeight = 72; local jumpDistance = 35
@@ -311,6 +265,53 @@ end
 MoveGroup:AddToggle("FrontFlipToggle", {Text="Show Front Flip Button[显示前滚翻按钮]", Default=false, Callback=function(s) SetFrontFlip(s); Library:Notify({Title="Front Flip Button", Description=s and "Shown" or "Hidden", Time=1}) end})
 MoveGroup:AddSlider("JumpHeight", {Text="Jump Height[跳跃高度]", Step=1, Value={Min=20,Max=200,Default=jumpHeight}, Suffix="Unit", Callback=function(v) jumpHeight=v end})
 MoveGroup:AddSlider("JumpDistance", {Text="Jump Distance[跳跃距离]", Step=1, Value={Min=10,Max=100,Default=jumpDistance}, Suffix="Unit", Callback=function(v) jumpDistance=v end})
+
+local BypassGroupLeft = Tabs["Bypass"]:AddLeftGroupbox("Speed Modify[速度修改]", "gauge")
+local BypassGroupRight = Tabs["Bypass"]:AddRightGroupbox("Flight[飞行]", "plane")
+local speedValue = 0
+local speedToggle = false
+local function speedLoop()
+    while speedToggle do
+        local hum = localPlayer.Character and localPlayer.Character:FindFirstChild("Humanoid")
+        if hum and hum.MoveDirection ~= Vector3.zero then
+            localPlayer.Character:TranslateBy(hum.MoveDirection * speedValue * game:GetService("RunService").RenderStepped:Wait())
+        end
+        task.wait()
+    end
+end
+BypassGroupLeft:AddSlider("SpeedBypass", {Text="Speed[速度]", Default=16, Min=1, Max=500, Rounding=0, Callback=function(v) speedValue=v end})
+BypassGroupLeft:AddToggle("SpeedToggle", {Text="Enable Speed[启用速度]", Default=false, Callback=function(s) speedToggle=s; if s then task.spawn(speedLoop); Library:Notify({Title="Speed", Description="Enabled", Time=1}) else Library:Notify({Title="Speed", Description="Disabled", Time=1}) end end})
+local CFSpeed = 50
+local CFLoop = nil
+local function StartCFly()
+    local char = localPlayer.Character; if not char then return end
+    local hum = char:FindFirstChildOfClass('Humanoid'); local head = char:WaitForChild("Head")
+    if not hum or not head then return end
+    hum.PlatformStand = true; head.Anchored = true
+    if CFLoop then CFLoop:Disconnect(); CFLoop = nil end
+    CFLoop = game:GetService("RunService").Heartbeat:Connect(function(dt)
+        if not char or not hum or not head then if CFLoop then CFLoop:Disconnect(); CFLoop = nil end return end
+        local moveDir = hum.MoveDirection * (CFSpeed * dt)
+        local headCF = head.CFrame
+        local cam = workspace.CurrentCamera; local camCF = cam.CFrame
+        local off = headCF:ToObjectSpace(camCF).Position
+        camCF = camCF * CFrame.new(-off.X, -off.Y, -off.Z + 1)
+        local camPos = camCF.Position; local headPos = headCF.Position
+        local objVel = CFrame.new(camPos, Vector3.new(headPos.X, camPos.Y, headPos.Z)):VectorToObjectSpace(moveDir)
+        head.CFrame = CFrame.new(headPos) * (camCF - camPos) * CFrame.new(objVel)
+    end)
+end
+local function StopCFly()
+    if CFLoop then CFLoop:Disconnect(); CFLoop = nil end
+    local char = localPlayer.Character
+    if char then
+        local hum = char:FindFirstChildOfClass('Humanoid'); local head = char:FindFirstChild("Head")
+        if hum then hum.PlatformStand = false end
+        if head then head.Anchored = false end
+    end
+end
+BypassGroupRight:AddToggle("CFlyToggle", {Text="Flight[飞行]", Default=false, Callback=function(v) if v then StartCFly(); Library:Notify({Title="Flight", Description="Enabled", Time=1}) else StopCFly(); Library:Notify({Title="Flight", Description="Disabled", Time=1}) end end})
+BypassGroupRight:AddSlider("CFlySpeed", {Text="Flight Speed[飞行速度]", Default=50, Min=1, Max=200, Rounding=1, Callback=function(v) CFSpeed=v end})
 
 local AttackAnimIDs = {
     ["126830014841198"] = true, ["126355327951215"] = true, ["121086746534252"] = true,
@@ -639,8 +640,6 @@ local ExtendGroup = Tabs["Misc"]:AddRightGroupbox("Hitbox Extend[碰撞箱扩展
 local extendEnabled = false
 local extendPower = 3
 local extendDuration = 0.15
-local extendAngleCheck = false
-
 local function getNearestSurvivorUnlimited()
     local myRoot = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not myRoot then return nil end
@@ -661,18 +660,6 @@ local function getNearestSurvivorUnlimited()
     end
     return nearest
 end
-
-local function isFacingTarget(targetHRP)
-    if not extendAngleCheck then return true end
-    if not targetHRP then return true end
-    local myRoot = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return true end
-    local toTarget = (targetHRP.Position - myRoot.Position).Unit
-    local myForward = myRoot.CFrame.LookVector
-    local dot = myForward:Dot(toTarget)
-    return dot > 0.5
-end
-
 local function ExtendHitbox(studs, time)
     if getgenv().emergency_stop == nil then getgenv().emergency_stop = false end
     local distance = studs * 6
@@ -693,11 +680,9 @@ local function ExtendHitbox(studs, time)
     until tick() - start > tonumber(time) or getgenv().emergency_stop == true
     if getgenv().emergency_stop == true then getgenv().emergency_stop = false end
 end
-
 local function StopExtendingHitbox()
     getgenv().emergency_stop = true
 end
-
 local extendAnimConnection = nil
 local function hookLocalAnimationsForExtend()
     local char = localPlayer.Character
@@ -710,18 +695,11 @@ local function hookLocalAnimationsForExtend()
         if not extendEnabled then return end
         local animId = track.Animation.AnimationId:match("%d+")
         if animId and AttackAnimIDs[animId] then
-            if extendAngleCheck then
-                local target = getNearestSurvivorUnlimited()
-                if target and not isFacingTarget(target) then
-                    return
-                end
-            end
             ExtendHitbox(extendPower, extendDuration)
         end
     end)
     return conn
 end
-
 local function onExtendToggle(state)
     extendEnabled = state
     if state then
@@ -742,15 +720,12 @@ local function onExtendToggle(state)
     end
     Library:Notify({Title="Hitbox Extend", Description=state and "Enabled" or "Disabled", Time=1})
 end
-
 ExtendGroup:AddToggle("ExtendEnable", {Text="Hitbox Extend[碰撞箱扩展]", Default=false, Callback=function(s) onExtendToggle(s) end})
 ExtendGroup:AddSlider("ExtendPower", {Text="Extend Power[扩展强度]", Default=3, Min=1, Max=100, Rounding=1, Callback=function(v) extendPower=v end})
 ExtendGroup:AddSlider("ExtendDuration", {Text="Duration[持续时间]", Default=0.15, Min=0.05, Max=0.5, Rounding=2, Callback=function(v) extendDuration=v end})
-ExtendGroup:AddToggle("ExtendAngleCheck", {Text="Angle Check[角度检测]", Default=false, Callback=function(s) extendAngleCheck=s end})
 
 local HitboxButtonGroup = Tabs["Misc"]:AddRightGroupbox("Hitbox Track UI[hitbox追踪独立UI]", "target")
 local hitboxUILoaded = false
-
 local function loadHitboxUI()
     if hitboxUILoaded then return end
     hitboxUILoaded = true
@@ -762,7 +737,6 @@ local function loadHitboxUI()
     local HitboxGay = false
     local loopRunning = false
     local player = Players.LocalPlayer
-
     local function isAnimationPlaying(ids)
         local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
         local animator = hum and hum:FindFirstChildOfClass("Animator")
@@ -778,11 +752,9 @@ local function loadHitboxUI()
         end
         return false
     end
-
     local gui = Instance.new("ScreenGui")
     gui.Name = "HitboxGayGui"
     gui.Parent = CoreGui
-
     local button = Instance.new("TextButton")
     button.Size = UDim2.new(0, 150, 0, 50)
     button.Position = UDim2.new(0.4, 0, 0.2, 0)
@@ -792,7 +764,6 @@ local function loadHitboxUI()
     button.Active = true
     button.Draggable = true
     button.Parent = gui
-
     task.spawn(function()
         while true do
             RunService.RenderStepped:Wait()
@@ -803,17 +774,13 @@ local function loadHitboxUI()
             end
         end
     end)
-
     local function getRoot(character)
         return character and character:FindFirstChild("HumanoidRootPart")
     end
-
     local checkBoxSize = Vector3.new(100, 50, 100)
-
     local function isDescendantOf(obj, parent)
         return obj and parent and obj:IsDescendantOf(parent)
     end
-
     local function getNearestHumanoid()
         if not speaker.Character then return nil end
         local root = getRoot(speaker.Character)
@@ -869,7 +836,6 @@ local function loadHitboxUI()
         end
         return nearest
     end
-
     local function startHitboxGay()
         if loopRunning then return end
         loopRunning = true
@@ -929,7 +895,6 @@ local function loadHitboxUI()
             loopRunning = false
         end)
     end
-
     button.MouseButton1Click:Connect(function()
         HitboxGay = not HitboxGay
         if HitboxGay then
@@ -937,7 +902,6 @@ local function loadHitboxUI()
         end
     end)
 end
-
 HitboxButtonGroup:AddButton({
     Text = "Load Hitbox Track[加载hitbox追踪]",
     Func = function()
@@ -1400,7 +1364,8 @@ AdvancedGroup:AddCheckbox("AdvancedOutline", {Text="Outline[轮廓]", Default=tr
 AdvancedGroup:AddCheckbox("AdvancedNametag", {Text="Name Tag[名称标签]", Default=false, Callback=function(v) Settings.Advanced.ShowNametag=v; Library:Notify({Title="Skills Name Tag", Description=v and "Enabled" or "Disabled", Time=1}) end})
 AdvancedGroup:AddLabel("Color[颜色]"):AddColorPicker("AdvancedColor", {Default=Color3.fromRGB(0,255,255), Title="Skills Color[技能颜色]", Callback=function(v) Settings.Advanced.Color=v end})
 
-local GeneratorGroup = Tabs["Generator"]:AddLeftGroupbox("Auto Repair[自动修机]", "zap")
+local GeneratorLeftGroup = Tabs["Generator"]:AddLeftGroupbox("Main Control[主控]", "zap")
+local GeneratorRightGroup = Tabs["Generator"]:AddRightGroupbox("Settings[设置]", "settings")
 local repairMode = "Custom Mode[自调模式]"
 local repairInterval = 1
 local autoRepairEnabled = false
@@ -1442,31 +1407,102 @@ local function autoRepairLoop()
         else task.wait(0.1) end
     end
 end
-local function quickAutoRepairLoop() while quickAutoRepairEnabled do local gen = getNearestGenerator(); if gen then fireRepairRemote(gen) end; task.wait(quickRepairInterval) end end
-GeneratorGroup:AddDropdown("RepairMode", {Text="Repair Mode[修机模式]", Values={"Danger Mode[危险模式]","Safe Mode[安全模式]","Custom Mode[自调模式]"}, Default=3, Multi=false, Callback=function(selected) repairMode=selected end})
-GeneratorGroup:AddSlider("RepairInterval", {Text="Repair Interval[修理间隔(秒)]", Default=1, Min=0, Max=10, Rounding=1, Compact=false, Callback=function(v) repairInterval=v; if autoRepairEnabled and repairMode=="Custom Mode[自调模式]" then if repairThread then task.cancel(repairThread) end; repairThread=task.spawn(autoRepairLoop) end end})
-GeneratorGroup:AddToggle("AutoRepairToggle", {Text="Auto Repair[自动修机]", Default=false, Callback=function(state) autoRepairEnabled=state; if repairThread then task.cancel(repairThread); repairThread=nil end; if state then repairThread=task.spawn(autoRepairLoop) end; Library:Notify({Title="Auto Repair", Description=state and "Enabled" or "Disabled", Time=1}) end})
-GeneratorGroup:AddDivider()
-GeneratorGroup:AddLabel("Quick Auto Repair[快速自动修机]")
-GeneratorGroup:AddSlider("QuickRepairInterval", {Text="Quick Interval[快速间隔(秒)]", Default=1.25, Min=0, Max=10, Rounding=2, Compact=false, Callback=function(v) quickRepairInterval=v; if quickAutoRepairEnabled then if quickRepairThread then task.cancel(quickRepairThread) end; quickRepairThread=task.spawn(quickAutoRepairLoop) end end})
-GeneratorGroup:AddToggle("QuickAutoRepairToggle", {Text="Quick Auto Repair[快速自动修机]", Default=false, Callback=function(state) quickAutoRepairEnabled=state; if quickRepairThread then task.cancel(quickRepairThread); quickRepairThread=nil end; if state then quickRepairThread=task.spawn(quickAutoRepairLoop) end; Library:Notify({Title="Quick Auto Repair", Description=state and "Enabled" or "Disabled", Time=1}) end})
-GeneratorGroup:AddDivider()
-local function teleportToGenerator()
-    local char = localPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    local generators = {}
-    local mapFolder = workspace:FindFirstChild("Map")
-    if mapFolder and mapFolder:FindFirstChild("Ingame") and mapFolder.Ingame:FindFirstChild("Map") then
-        for _, gen in ipairs(mapFolder.Ingame.Map:GetChildren()) do if gen:IsA("Model") and gen.Name=="Generator" and gen:FindFirstChild("Progress") then table.insert(generators, gen) end end
+local function quickAutoRepairLoop()
+    while quickAutoRepairEnabled do
+        local gen = getNearestGenerator()
+        if gen then fireRepairRemote(gen) end
+        task.wait(quickRepairInterval)
     end
-    if #generators == 0 then Library:Notify({Title="No Generator Found", Description="No generator found.", Time=3}) return end
-    local target = nil
-    for _, gen in ipairs(generators) do if gen.Progress.Value < 100 then target=gen; break end end
-    if not target then target=generators[1] end
-    local part = target:FindFirstChild("Main") or target:FindFirstChild("PrimaryPart")
-    if part then char.HumanoidRootPart.CFrame = part.CFrame + Vector3.new(0,3,0); Library:Notify({Title="Teleported", Description="Teleported to generator: "..target.Name, Time=2}) else Library:Notify({Title="Error", Description="Generator part not found.", Time=2}) end
 end
-GeneratorGroup:AddButton({Text="Teleport to Generator[传送至发电机]", Func=teleportToGenerator, Tooltip="Teleports you to the nearest or unfinished generator"})
+GeneratorLeftGroup:AddToggle("AutoRepairToggle", {
+    Text = "Auto Repair[自动修机]",
+    Default = false,
+    Callback = function(state)
+        autoRepairEnabled = state
+        if repairThread then task.cancel(repairThread); repairThread = nil end
+        if state then repairThread = task.spawn(autoRepairLoop) end
+        Library:Notify({Title="Auto Repair", Description=state and "Enabled" or "Disabled", Time=1})
+    end
+})
+GeneratorLeftGroup:AddToggle("QuickAutoRepairToggle", {
+    Text = "Quick Auto Repair[快速自动修机]",
+    Default = false,
+    Callback = function(state)
+        quickAutoRepairEnabled = state
+        if quickRepairThread then task.cancel(quickRepairThread); quickRepairThread = nil end
+        if state then quickRepairThread = task.spawn(quickAutoRepairLoop) end
+        Library:Notify({Title="Quick Auto Repair", Description=state and "Enabled" or "Disabled", Time=1})
+    end
+})
+GeneratorLeftGroup:AddButton({
+    Text = "Teleport to Generator[传送至发电机]",
+    Func = function()
+        local char = localPlayer.Character
+        if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+        local generators = {}
+        local mapFolder = workspace:FindFirstChild("Map")
+        if mapFolder and mapFolder:FindFirstChild("Ingame") and mapFolder.Ingame:FindFirstChild("Map") then
+            for _, gen in ipairs(mapFolder.Ingame.Map:GetChildren()) do
+                if gen:IsA("Model") and gen.Name == "Generator" and gen:FindFirstChild("Progress") then
+                    table.insert(generators, gen)
+                end
+            end
+        end
+        if #generators == 0 then
+            Library:Notify({Title="No Generator Found", Description="No generator found.", Time=3})
+            return
+        end
+        local target = nil
+        for _, gen in ipairs(generators) do
+            if gen.Progress.Value < 100 then target = gen; break end
+        end
+        if not target then target = generators[1] end
+        local part = target:FindFirstChild("Main") or target:FindFirstChild("PrimaryPart")
+        if part then
+            char.HumanoidRootPart.CFrame = part.CFrame + Vector3.new(0,3,0)
+            Library:Notify({Title="Teleported", Description="Teleported to generator: " .. target.Name, Time=2})
+        else
+            Library:Notify({Title="Error", Description="Generator part not found.", Time=2})
+        end
+    end
+})
+GeneratorRightGroup:AddDropdown("RepairMode", {
+    Text = "Repair Mode[修机模式]",
+    Values = {"Danger Mode[危险模式]", "Safe Mode[安全模式]", "Custom Mode[自调模式]"},
+    Default = 3,
+    Multi = false,
+    Callback = function(selected) repairMode = selected end
+})
+GeneratorRightGroup:AddSlider("RepairInterval", {
+    Text = "Repair Interval[修理间隔(秒)]",
+    Default = 1,
+    Min = 0,
+    Max = 10,
+    Rounding = 1,
+    Compact = false,
+    Callback = function(v)
+        repairInterval = v
+        if autoRepairEnabled and repairMode == "Custom Mode[自调模式]" then
+            if repairThread then task.cancel(repairThread) end
+            repairThread = task.spawn(autoRepairLoop)
+        end
+    end
+})
+GeneratorRightGroup:AddSlider("QuickRepairInterval", {
+    Text = "Quick Interval[快速间隔(秒)]",
+    Default = 1.25,
+    Min = 0,
+    Max = 10,
+    Rounding = 2,
+    Compact = false,
+    Callback = function(v)
+        quickRepairInterval = v
+        if quickAutoRepairEnabled then
+            if quickRepairThread then task.cancel(quickRepairThread) end
+            quickRepairThread = task.spawn(quickAutoRepairLoop)
+        end
+    end
+})
 
 local ActionsGroup = Tabs["Actions"]:AddLeftGroupbox("Emotes[表情动作]", "smile")
 local function playEmote(animId, soundId, volume, looped, remoteName, effectAsset)
