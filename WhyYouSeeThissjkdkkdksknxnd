@@ -334,6 +334,7 @@ local BlockGroup = Tabs["Combat"]:AddRightGroupbox("Auto Block[自动格挡]", "
 local BlockSettings = {
     Enabled = false, TriggerDistance = 20, ShowRangeVisual = false,
     FacingCheck = true, LooseFacing = true, DoubleBlockTech = false,
+    InverseMode = false,
 }
 local AttackSoundIDs = {
     ["102228729296384"] = true, ["140242176732868"] = true, ["112809109188560"] = true,
@@ -350,6 +351,7 @@ local AttackSoundIDs = {
     ["120394605928086"] = true, ["134973085112081"] = true, ["79554277951408"] = true,
     ["115476331903507"] = true,
 }
+
 local function getKillersFolder()
     local players = workspace:FindFirstChild("Players")
     return players and players:FindFirstChild("Killers")
@@ -390,6 +392,7 @@ local function pressPunch()
     end
     return true
 end
+
 local function isKillerFacingPlayer(killerModel, myRoot)
     if not BlockSettings.FacingCheck then return true end
     if not killerModel or not myRoot then return true end
@@ -402,6 +405,7 @@ local function isKillerFacingPlayer(killerModel, myRoot)
     local dot = killerForward:Dot(toPlayer)
     if BlockSettings.LooseFacing then return dot > -0.3 else return dot > 0 end
 end
+
 local soundHooks = {}
 local soundBlockedUntil = {}
 local function getSoundIdNumber(sound)
@@ -463,6 +467,7 @@ end
 workspace.DescendantAdded:Connect(function(obj)
     if obj:IsA("Sound") then pcall(hookSound, obj) end
 end)
+
 local animConns = {}
 local animBlockedUntil = {}
 local KillerMeleeActions = {
@@ -564,19 +569,15 @@ if killersFolder then
     end)
     bindExistingKillers()
 end
-localPlayer.CharacterAdded:Connect(function()
-    task.wait(1)
-    bindExistingKillers()
-    if BlockSettings.ShowRangeVisual then UpdateRangeVisual() end
-end)
-local RangeVisual = nil
-local function UpdateRangeVisual()
-    if RangeVisual then RangeVisual:Destroy(); RangeVisual = nil end
-    if not BlockSettings.ShowRangeVisual or not localPlayer.Character then return end
-    local root = localPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+local inverseRangeVisuals = {}
+local function createInverseVisualForKiller(killerModel)
+    if not killerModel or not killerModel:IsA("Model") then return nil end
+    if inverseRangeVisuals[killerModel] then return end
+    local root = killerModel:FindFirstChild("HumanoidRootPart")
     if not root then return end
     local part = Instance.new("Part")
-    part.Name = "BlockRangeVisual"
+    part.Name = "InverseRangeVisual"
     part.Shape = Enum.PartType.Ball
     part.Size = Vector3.new(BlockSettings.TriggerDistance * 2, 1, BlockSettings.TriggerDistance * 2)
     part.Color = Color3.fromRGB(255, 50, 50)
@@ -585,22 +586,161 @@ local function UpdateRangeVisual()
     part.Anchored = false
     part.CanCollide = false
     part.CFrame = root.CFrame
-    local weld = Instance.new("WeldConstraint"); weld.Part0 = root; weld.Part1 = part; weld.Parent = part
+    local weld = Instance.new("WeldConstraint")
+    weld.Part0 = root
+    weld.Part1 = part
+    weld.Parent = part
     part.Parent = root
-    RangeVisual = part
+    inverseRangeVisuals[killerModel] = part
+    return part
 end
+local function removeInverseVisual(killerModel)
+    local vis = inverseRangeVisuals[killerModel]
+    if vis then
+        vis:Destroy()
+        inverseRangeVisuals[killerModel] = nil
+    end
+end
+local function updateInverseVisualsColor()
+    local myChar = localPlayer.Character
+    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return end
+    for killerModel, part in pairs(inverseRangeVisuals) do
+        if part and part.Parent then
+            local killerRoot = killerModel:FindFirstChild("HumanoidRootPart")
+            if killerRoot then
+                local dist = (killerRoot.Position - myRoot.Position).Magnitude
+                if dist <= BlockSettings.TriggerDistance then
+                    part.Color = Color3.fromRGB(0, 255, 0)
+                else
+                    part.Color = Color3.fromRGB(255, 50, 50)
+                end
+            else
+                part.Color = Color3.fromRGB(255, 50, 50)
+            end
+        end
+    end
+end
+local function clearAllInverseVisuals()
+    for killer, vis in pairs(inverseRangeVisuals) do
+        if vis then vis:Destroy() end
+    end
+    inverseRangeVisuals = {}
+end
+local function refreshInverseVisuals()
+    if not BlockSettings.ShowRangeVisual or not BlockSettings.InverseMode then return end
+    local killersFolder = getKillersFolder()
+    if not killersFolder then return end
+    for _, killer in ipairs(killersFolder:GetChildren()) do
+        if killer:IsA("Model") then
+            createInverseVisualForKiller(killer)
+        end
+    end
+end
+local function onKillerAdded(model)
+    if BlockSettings.ShowRangeVisual and BlockSettings.InverseMode then
+        createInverseVisualForKiller(model)
+    end
+end
+local function onKillerRemoved(model)
+    removeInverseVisual(model)
+end
+if killersFolder then
+    killersFolder.ChildAdded:Connect(function(model)
+        if model:IsA("Model") then onKillerAdded(model) end
+    end)
+    killersFolder.ChildRemoved:Connect(function(model)
+        if model:IsA("Model") then onKillerRemoved(model) end
+    end)
+end
+local RangeVisual = nil
+local function UpdateRangeVisual()
+    clearAllInverseVisuals()
+    if BlockSettings.InverseMode then
+        if BlockSettings.ShowRangeVisual then
+            refreshInverseVisuals()
+        end
+        if RangeVisual then RangeVisual:Destroy(); RangeVisual = nil end
+    else
+        if RangeVisual then RangeVisual:Destroy(); RangeVisual = nil end
+        if BlockSettings.ShowRangeVisual and localPlayer.Character then
+            local root = localPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if root then
+                local part = Instance.new("Part")
+                part.Name = "BlockRangeVisual"
+                part.Shape = Enum.PartType.Ball
+                part.Size = Vector3.new(BlockSettings.TriggerDistance * 2, 1, BlockSettings.TriggerDistance * 2)
+                part.Color = Color3.fromRGB(255, 50, 50)
+                part.Material = Enum.Material.ForceField
+                part.Transparency = 0.7
+                part.Anchored = false
+                part.CanCollide = false
+                part.CFrame = root.CFrame
+                local weld = Instance.new("WeldConstraint"); weld.Part0 = root; weld.Part1 = part; weld.Parent = part
+                part.Parent = root
+                RangeVisual = part
+            end
+        end
+    end
+end
+
+local function updateNormalRangeVisualColor()
+    if not RangeVisual or not RangeVisual.Parent then return end
+    if BlockSettings.InverseMode then return end
+    local myChar = localPlayer.Character
+    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if not myRoot then
+        RangeVisual.Color = Color3.fromRGB(255, 50, 50)
+        return
+    end
+    local killers = getKillersFolder()
+    if not killers then
+        RangeVisual.Color = Color3.fromRGB(255, 50, 50)
+        return
+    end
+    local anyInRange = false
+    for _, killer in ipairs(killers:GetChildren()) do
+        local killerRoot = killer:FindFirstChild("HumanoidRootPart")
+        if killerRoot then
+            local dist = (killerRoot.Position - myRoot.Position).Magnitude
+            if dist <= BlockSettings.TriggerDistance then
+                anyInRange = true
+                break
+            end
+        end
+    end
+    if anyInRange then
+        RangeVisual.Color = Color3.fromRGB(0, 255, 0)
+    else
+        RangeVisual.Color = Color3.fromRGB(255, 50, 50)
+    end
+end
+
 game:GetService("RunService").RenderStepped:Connect(function()
-    if RangeVisual and RangeVisual.Parent then
-        local root = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if root then RangeVisual.CFrame = root.CFrame end
+    if BlockSettings.ShowRangeVisual then
+        if BlockSettings.InverseMode then
+            updateInverseVisualsColor()
+        elseif RangeVisual and RangeVisual.Parent then
+            local root = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if root then
+                RangeVisual.CFrame = root.CFrame
+                updateNormalRangeVisualColor()
+            end
+        end
     end
 end)
+
 BlockGroup:AddToggle("AutoBlockToggle", {Text="Enable Auto Block[启用自动格挡]", Default=false, Callback=function(s) BlockSettings.Enabled=s; Library:Notify({Title="Auto Block", Description=s and "Enabled" or "Disabled", Time=1}) end})
 BlockGroup:AddSlider("TriggerDistance", {Text="Trigger Distance[触发距离]", Default=20, Min=5, Max=50, Rounding=0, Callback=function(v) BlockSettings.TriggerDistance=v; UpdateRangeVisual() end})
 BlockGroup:AddToggle("FacingCheck", {Text="Killer Facing Check[杀手面向检测]", Default=true, Callback=function(s) BlockSettings.FacingCheck=s end})
 BlockGroup:AddToggle("LooseFacing", {Text="Loose Facing[宽松面向]", Default=true, Callback=function(s) BlockSettings.LooseFacing=s end})
 BlockGroup:AddToggle("DoubleBlockTech", {Text="Double Block Tech[格挡+拳击]", Default=false, Callback=function(s) BlockSettings.DoubleBlockTech=s end})
 BlockGroup:AddToggle("ShowRangeVisual", {Text="Show Trigger Range[显示触发范围]", Default=false, Callback=function(s) BlockSettings.ShowRangeVisual=s; UpdateRangeVisual() end})
+BlockGroup:AddToggle("InverseMode", {Text="Inverse Mode[反转模式]", Default=false, Callback=function(s)
+    BlockSettings.InverseMode = s
+    UpdateRangeVisual()
+    Library:Notify({Title="Inverse Mode", Description=s and "Range circles attached to killers" or "Normal mode", Time=2})
+end})
 
 local AutoPunchGroup = Tabs["Combat"]:AddRightGroupbox("Auto Punch[自动拳击]", "punch")
 local autoPunchEnabled = false
@@ -1790,6 +1930,7 @@ ThemeManager:ApplyToTab(Tabs["UI Settings"])
 
 Library:OnUnload(function()
     if RangeVisual then RangeVisual:Destroy() end
+    clearAllInverseVisuals()
     if extendAnimConnection then extendAnimConnection:Disconnect() end
     local gui = game.CoreGui:FindFirstChild("HitboxGayGui")
     if gui then gui:Destroy() end
