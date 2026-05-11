@@ -54,7 +54,7 @@ InfoGroup:AddLabel("Display Name : " .. localPlayer.DisplayName)
 InfoGroup:AddLabel("Account Age : " .. localPlayer.AccountAge .. " days")
 local NewsGroup = Tabs["Player Info"]:AddLeftGroupbox("News[公告]", "rocket")
 NewsGroup:AddLabel("Dev: FixFox")
-NewsGroup:AddLabel("🇨🇳[2026.4.21] Fake Block Added 🇨🇳")
+NewsGroup:AddLabel("🇨🇳[2026.5.11] Fix Anti Bait 🇨🇳")
 NewsGroup:AddLabel("部分脚本功能感谢 Yuxinchen")
 
 local PlayerGroup = Tabs["Combat"]:AddLeftGroupbox("Player Enhancements[玩家增强]", "user")
@@ -323,8 +323,8 @@ local AttackAnimIDs = {
     ["92173139187970"] = true, ["18885909645"] = true, ["98456918873918"] = true,
     ["18885937766"] = true, ["18885940850"] = true, ["105458270463374"] = true,
     ["83829782357897"] = true, ["101736016625776"] = true, ["106538427162796"] = true,
-    ["114356208094580"] = true, ["135884061951801"] = true, ["99050723653468"] = true,
-    ["119181003138006"] = true, ["122709416391891"] = true, ["87989533095285"] = true,
+    ["114356208094580"] = true, ["135884061951801"] = true,
+    ["122709416391891"] = true, ["87989533095285"] = true,
     ["133363345661032"] = true, ["128414736976503"] = true, ["139309647473555"] = true,
     ["88451353906104"] = true, ["91628732643385"] = true, ["115403107018365"] = true,
     ["124619925708292"] = true,
@@ -435,6 +435,7 @@ local function attemptBlockFromSound(sound)
     if not myRoot then return end
     local killerModel = getKillerRootFromSound(sound)
     if killerModel then
+        if killerModel:GetAttribute("IsFakeNoli") == true then return end
         local killerRoot = killerModel:FindFirstChild("HumanoidRootPart")
         if killerRoot then
             if (killerRoot.Position - myRoot.Position).Magnitude > BlockSettings.TriggerDistance then return end
@@ -475,7 +476,7 @@ local KillerMeleeActions = {
     Slasher = { melee = { "Slash", "Behead", "EnragedSlash", "EnragedBehead", "GashingWoundStart" } },
     ["John Doe"] = { melee = { "Slash" } },
     Noli = { melee = { "Stab", "VoidRush", "NovaThrow" } },
-    ["1x1x1x1"] = { melee = { "Slash", "MassInfection", "UnstableEye", "RejuvenateTheRotten" } },
+    ["1x1x1x1"] = { melee = { "Slash" } },
     ["Guest 666"] = { melee = { "Slash", "Eviscerate", "DemonicPursuitLunge" } },
     Nosferatu = { melee = { "Slash", "Uppercut", "SpireStart", "AscentBite" } }
 }
@@ -492,12 +493,17 @@ local function buildAnimIdMapping()
     local jd = { Slash = "105458270463374" }
     for act, id in pairs(jd) do AnimIdToActionName[id] = act end
     local noli = {
-        Stab = "106538427162796", VoidRush = "91758760621955", VoidRush = "93841120533318",
-        VoidRush = "139835501033932", VoidRush = "126896426760253", VoidRush = "114356208094580",
-        VoidRush = "135884061951801", VoidRush = "139321362207112", NovaThrow = "107339108383093"
+        Stab = "106538427162796",
+        VoidRush = "91758760621955",
+        VoidRush = "93841120533318",
+        VoidRush = "139835501033932",
+        VoidRush = "126896426760253",
+        VoidRush = "114356208094580",
+        VoidRush = "135884061951801",
+        NovaThrow = "107339108383093"
     }
     for act, id in pairs(noli) do AnimIdToActionName[id] = act end
-    local one = { Slash = "83829782357897", MassInfection = "99050723653468", UnstableEye = "103951585216630", RejuvenateTheRotten = "116996902830888" }
+    local one = { Slash = "83829782357897" }
     for act, id in pairs(one) do AnimIdToActionName[id] = act end
     local guest = { Slash = "122709416391891", Eviscerate = "87989533095285", DemonicPursuitLunge = "139309647473555" }
     for act, id in pairs(guest) do AnimIdToActionName[id] = act end
@@ -519,8 +525,10 @@ local function watchKillerAnimations(killerModel)
     if not animator then return end
     local conn = animator.AnimationPlayed:Connect(function(track)
         if not BlockSettings.Enabled then return end
+        if killerModel:GetAttribute("IsFakeNoli") == true then return end
         local animId = track.Animation.AnimationId:match("%d+")
         if not animId then return end
+        if animId == "107339108383093" then return end
         if not isMeleeAttack(animId) then return end
         local t = tick()
         if animBlockedUntil[killerModel] and t < animBlockedUntil[killerModel] then return end
