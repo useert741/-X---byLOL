@@ -82,13 +82,16 @@ Old__namecall = hookmetamethod(game, "__namecall", function(Self, ...)
                     if myRoot then
                         local killerRoot = obj.HumanoidRootPart
                         if (killerRoot.Position - myRoot.Position).Magnitude <= BlockSettings.TriggerDistance then
+                            if BlockSettings.FacingCheck and not isKillerFacingPlayer(obj, myRoot) then
+                                return Old__namecall(Self, unpack(Args))
+                            end
                             local now = tick()
                             if not remoteBlockedUntil[obj] or now > remoteBlockedUntil[obj] then
                                 remoteBlockedUntil[obj] = now + 0.3
                                 local blockBtn = getBlockButton()
                                 if blockBtn then
                                     local cd = blockBtn:FindFirstChild("CooldownTime")
-                                    if cd and cd.Text ~= "" then return end
+                                    if cd and cd.Text ~= "" then return Old__namecall(Self, unpack(Args)) end
                                     pressBlock()
                                 end
                             end
