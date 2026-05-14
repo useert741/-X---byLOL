@@ -28,6 +28,19 @@ local Tabs = {
 local localPlayer = game.Players.LocalPlayer
 local playingState = "Playing"
 
+-- 玩家信息
+local InfoGroup = Tabs["Player Info"]:AddRightGroupbox("Player Info[玩家信息]", "info")
+InfoGroup:AddLabel("Executor : " .. (identifyexecutor and identifyexecutor() or "Unknown"))
+InfoGroup:AddLabel("Username : " .. localPlayer.Name)
+InfoGroup:AddLabel("UserID : " .. localPlayer.UserId)
+InfoGroup:AddLabel("Display Name : " .. localPlayer.DisplayName)
+InfoGroup:AddLabel("Account Age : " .. localPlayer.AccountAge .. " days")
+local NewsGroup = Tabs["Player Info"]:AddLeftGroupbox("News[公告]", "rocket")
+NewsGroup:AddLabel("Dev: FixFox")
+NewsGroup:AddLabel("🇨🇳[2026.5.11] Fix Anti Bait 🇨🇳")
+NewsGroup:AddLabel("部分脚本功能感谢 Yuxinchen")
+
+-- 自动格挡核心 Hook
 local Old__namecall
 local remoteCheck = false
 local remoteTimestamp = 0
@@ -37,7 +50,7 @@ local KillerMeleeActions = {
     c00lkidd = { melee = { "Attack", "WalkspeedOverrideHit", "WalkspeedOverrideMiss" } },
     Slasher = { melee = { "Slash", "Behead", "EnragedSlash", "EnragedBehead", "GashingWoundStart" } },
     ["John Doe"] = { melee = { "Slash" } },
-    Noli = { melee = { "Stab", "VoidRush", "NovaThrow" } },
+    Noli = { melee = { "Stab", "VoidRush" } },
     ["1x1x1x1"] = { melee = { "Slash" } },
     ["Guest 666"] = { melee = { "Slash", "Eviscerate", "DemonicPursuitLunge" } },
     Nosferatu = { melee = { "Slash", "Uppercut", "SpireStart", "AscentBite" } }
@@ -162,278 +175,12 @@ local function isKillerFacingPlayer(killerModel, myRoot)
     if BlockSettings.LooseFacing then return dot > -0.3 else return dot > 0 end
 end
 
-local InfoGroup = Tabs["Player Info"]:AddRightGroupbox("Player Info[玩家信息]", "info")
-InfoGroup:AddLabel("Executor : " .. (identifyexecutor and identifyexecutor() or "Unknown"))
-InfoGroup:AddLabel("Username : " .. localPlayer.Name)
-InfoGroup:AddLabel("UserID : " .. localPlayer.UserId)
-InfoGroup:AddLabel("Display Name : " .. localPlayer.DisplayName)
-InfoGroup:AddLabel("Account Age : " .. localPlayer.AccountAge .. " days")
-local NewsGroup = Tabs["Player Info"]:AddLeftGroupbox("News[公告]", "rocket")
-NewsGroup:AddLabel("Dev: FixFox")
-NewsGroup:AddLabel("🇨🇳[2026.5.11] Fix Anti Bait 🇨🇳")
-NewsGroup:AddLabel("部分脚本功能感谢 Yuxinchen")
-
-local PlayerGroup = Tabs["Combat"]:AddLeftGroupbox("Player Enhancements[玩家增强]", "user")
-PlayerGroup:AddToggle("AntiSlow", {
-    Text = "Anti-Slow[无减速]",
-    Default = false,
-    Callback = function(state)
-        Library:Notify({Title="Anti-Slow", Description=state and "Enabled" or "Disabled", Time=1})
-        task.spawn(function()
-            while Toggles.AntiSlow.Value and task.wait() do
-                if localPlayer.Character and localPlayer.Character:FindFirstChild("SpeedMultipliers") then
-                    for _, v in localPlayer.Character.SpeedMultipliers:GetChildren() do
-                        if v.Value < 1 then v.Value = 1 end
-                    end
-                end
-            end
-        end)
-    end
-})
-PlayerGroup:AddToggle("AntiStun", {
-    Text = "Anti-Stun[无眩晕]",
-    Default = false,
-    Callback = function(state)
-        Library:Notify({Title="Anti-Stun", Description=state and "Enabled" or "Disabled", Time=1})
-        task.spawn(function()
-            while Toggles.AntiStun.Value and task.wait() do
-                if localPlayer.Character and localPlayer.Character:FindFirstChild("SpeedMultipliers") then
-                    local stunned = localPlayer.Character.SpeedMultipliers:FindFirstChild("Stunned")
-                    if stunned then stunned.Value = 1 end
-                end
-            end
-        end)
-    end
-})
-PlayerGroup:AddToggle("AlwaysSprint", {
-    Text = "Always Sprint[一直奔跑]",
-    Default = false,
-    Callback = function(state)
-        Library:Notify({Title="Always Sprint", Description=state and "Enabled" or "Disabled", Time=1})
-        _G.alwaysSprint = state
-        task.spawn(function()
-            while _G.alwaysSprint and task.wait() do
-                local sprint = require(game:GetService("ReplicatedStorage").Systems.Character.Game.Sprinting)
-                if not sprint.IsSprinting then
-                    sprint.IsSprinting = true
-                    sprint.__sprintedEvent:Fire(true)
-                end
-            end
-        end)
-    end
-})
-PlayerGroup:AddToggle("AllowJump", {
-    Text = "Enable Jump[启用跳跃]",
-    Default = false,
-    Tooltip = "Repeated jumping may get you banned!",
-    Callback = function(state)
-        Library:Notify({Title="Enable Jump", Description=state and "Enabled" or "Disabled", Time=1})
-        _G.restoringJump = state
-        if state then
-            task.spawn(function()
-                while _G.restoringJump do
-                    local char = localPlayer.Character or localPlayer.CharacterAdded:Wait()
-                    local humanoid = char:FindFirstChildOfClass("Humanoid")
-                    local jumpBtn = localPlayer.PlayerGui:FindFirstChild("TouchGui") and localPlayer.PlayerGui.TouchGui:FindFirstChild("TouchControlFrame") and localPlayer.PlayerGui.TouchGui.TouchControlFrame:FindFirstChild("JumpButton")
-                    if humanoid then humanoid.JumpPower = 50 end
-                    if jumpBtn then jumpBtn.Visible = true end
-                    task.wait(1)
-                end
-            end)
-        else
-            local char = localPlayer.Character
-            local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-            if humanoid then humanoid.JumpPower = 0 end
-            local jumpBtn = localPlayer.PlayerGui:FindFirstChild("TouchGui") and localPlayer.PlayerGui.TouchGui:FindFirstChild("TouchControlFrame") and localPlayer.PlayerGui.TouchGui.TouchControlFrame:FindFirstChild("JumpButton")
-            if jumpBtn then jumpBtn.Visible = false end
-        end
-    end
-})
-PlayerGroup:AddToggle("AlwaysShowChat", {
-    Text = "Always Show Chat[显示聊天框]",
-    Default = false,
-    Callback = function(state)
-        Library:Notify({Title="Always Show Chat", Description=state and "Enabled" or "Disabled", Time=1})
-        _G.showChat = state
-        task.spawn(function()
-            while _G.showChat and task.wait() do
-                game:GetService("TextChatService"):FindFirstChildOfClass("ChatWindowConfiguration").Enabled = true
-            end
-        end)
-        if not state then
-            if playingState ~= "Spectating" then
-                game:GetService("TextChatService"):FindFirstChildOfClass("ChatWindowConfiguration").Enabled = false
-            end
-        end
-    end
-})
-
-local StaminaGroup = Tabs["Combat"]:AddLeftGroupbox("Stamina Settings[体力设置]", "zap")
-local StaminaSettings = { MaxStamina=100, StaminaGain=25, StaminaLoss=10, SprintSpeed=28, InfiniteGain=9999 }
-local SettingToggles = { MaxStamina=true, StaminaGain=true, StaminaLoss=true, SprintSpeed=true }
-local SprintingModule = game:GetService("ReplicatedStorage"):WaitForChild("Systems"):WaitForChild("Character"):WaitForChild("Game"):WaitForChild("Sprinting")
-local GetModule = function() return require(SprintingModule) end
-task.spawn(function() while true do local m = GetModule(); for key, value in pairs(StaminaSettings) do if SettingToggles[key] then m[key] = value end end; task.wait(0.5) end end)
-local infiniteStaminaActive = false
-local staminaConnection = nil
-StaminaGroup:AddToggle('InfiniteStamina', {Text='Infinite Stamina[无限体力]', Default=false, Callback=function(state)
-    Library:Notify({Title="Infinite Stamina", Description=state and "Enabled" or "Disabled", Time=1})
-    infiniteStaminaActive = state
-    local Sprinting = GetModule()
-    if state then
-        Sprinting.StaminaLoss = 0
-        Sprinting.StaminaGain = StaminaSettings.InfiniteGain or 9999
-        if staminaConnection then staminaConnection:Disconnect() end
-        staminaConnection = game:GetService("RunService").Heartbeat:Connect(function() if not infiniteStaminaActive then return end; Sprinting.StaminaLoss = 0; Sprinting.StaminaGain = StaminaSettings.InfiniteGain or 9999 end)
-    else
-        Sprinting.StaminaLoss = StaminaSettings.StaminaLoss or 10
-        Sprinting.StaminaGain = StaminaSettings.StaminaGain or 25
-        if staminaConnection then staminaConnection:Disconnect(); staminaConnection = nil end
-    end
-end})
-StaminaGroup:AddToggle('MaxStaminaToggle', {Text='Enable Max Stamina[启用体力大小调节]', Default=true, Callback=function(v) SettingToggles.MaxStamina=v; Library:Notify({Title="Max Stamina", Description=v and "Enabled" or "Disabled", Time=1}) end})
-StaminaGroup:AddToggle('StaminaGainToggle', {Text='Enable Stamina Gain[启用体力恢复调节]', Default=true, Callback=function(v) SettingToggles.StaminaGain=v; Library:Notify({Title="Stamina Gain", Description=v and "Enabled" or "Disabled", Time=1}) end})
-StaminaGroup:AddToggle('StaminaLossToggle', {Text='Enable Stamina Loss[启用体力消耗调节]', Default=true, Callback=function(v) SettingToggles.StaminaLoss=v; Library:Notify({Title="Stamina Loss", Description=v and "Enabled" or "Disabled", Time=1}) end})
-StaminaGroup:AddToggle('SprintSpeedToggle', {Text='Enable Sprint Speed[启用奔跑速度调节]', Default=true, Callback=function(v) SettingToggles.SprintSpeed=v; Library:Notify({Title="Sprint Speed", Description=v and "Enabled" or "Disabled", Time=1}) end})
-StaminaGroup:AddDivider()
-StaminaGroup:AddSlider('InfStaminaGainSlider', {Text='Infinite Stamina Gain Rate[无限体力恢复速度]', Default=9999, Min=0, Max=50000, Rounding=0, Callback=function(v) StaminaSettings.InfiniteGain=v end})
-StaminaGroup:AddSlider('MaxStaminaSlider', {Text='Max Stamina[体力大小]', Default=100, Min=0, Max=99999, Rounding=0, Callback=function(v) StaminaSettings.MaxStamina=v end})
-StaminaGroup:AddSlider('StaminaGainSlider', {Text='Stamina Gain Rate[体力恢复]', Default=25, Min=0, Max=250, Rounding=0, Callback=function(v) StaminaSettings.StaminaGain=v end})
-StaminaGroup:AddSlider('StaminaLossSlider', {Text='Stamina Loss Rate[体力消耗]', Default=10, Min=0, Max=100, Rounding=0, Callback=function(v) StaminaSettings.StaminaLoss=v end})
-StaminaGroup:AddSlider('SprintSpeedSlider', {Text='Sprint Speed[奔跑速度]', Default=28, Min=0, Max=200, Rounding=0, Callback=function(v) StaminaSettings.SprintSpeed=v end})
-
-local MoveGroup = Tabs["Combat"]:AddRightGroupbox("Movement[移动]", "move")
-local noclipParts = {}
-local noclipState = false
-local function enableNoclip()
-    if localPlayer.Character then
-        for _, part in pairs(localPlayer.Character:GetChildren()) do
-            if part:IsA("BasePart") then noclipParts[part] = part; part.CanCollide = false end
-        end
-    end
-end
-local function disableNoclip()
-    for _, part in pairs(noclipParts) do part.CanCollide = true end
-    noclipParts = {}
-end
-MoveGroup:AddToggle("EnableNoclip", {Text="Noclip[穿墙]", Default=false, Callback=function(s) noclipState=s; if s then task.spawn(function() while noclipState do enableNoclip(); task.wait() end; disableNoclip() end); Library:Notify({Title="Noclip", Description="Enabled", Time=1}) else disableNoclip(); Library:Notify({Title="Noclip", Description="Disabled", Time=1}) end end})
-MoveGroup:AddDivider()
-MoveGroup:AddLabel("Front Flip[前滚翻]")
-local ff_connection = nil; local ff_enabled = false; local ff_cd = false; local jumpHeight = 72; local jumpDistance = 35
-local function Flip()
-    if ff_cd then return end; ff_cd = true
-    local character = localPlayer.Character; if not character then ff_cd = false; return end
-    local hrp = character:FindFirstChild("HumanoidRootPart"); local Humanoid = character:FindFirstChildOfClass("Humanoid")
-    local animator = Humanoid and Humanoid:FindFirstChildOfClass("Animator")
-    if not hrp or not Humanoid then ff_cd = false; return end
-    local savedTracks = {}
-    if animator then for _, track in ipairs(animator:GetPlayingAnimationTracks()) do savedTracks[#savedTracks+1] = { track = track, time = track.TimePosition }; track:Stop(0) end end
-    Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
-    Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false); Humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall, false)
-    Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, false); Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
-    Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
-    local duration = 0.45; local steps = 120
-    local startCFrame = hrp.CFrame; local forwardVector = startCFrame.LookVector; local upVector = Vector3.new(0,1,0)
-    task.spawn(function()
-        local startTime = tick()
-        for i = 1, steps do
-            local t = i / steps; local height = jumpHeight * (t - t^2)
-            local nextPos = startCFrame.Position + forwardVector * (jumpDistance * t) + upVector * height
-            local rotation = startCFrame.Rotation * CFrame.Angles(-math.rad(i*(360/steps)), 0, 0)
-            hrp.CFrame = CFrame.new(nextPos) * rotation
-            local elapsedTime = tick() - startTime; local expectedTime = (duration / steps) * i; local waitTime = expectedTime - elapsedTime
-            if waitTime > 0 then task.wait(waitTime) end
-        end
-        hrp.CFrame = CFrame.new(startCFrame.Position + forwardVector * jumpDistance) * startCFrame.Rotation
-        Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true); Humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
-        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, true); Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
-        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
-        Humanoid:ChangeState(Enum.HumanoidStateType.Running)
-        if animator then for _, data in ipairs(savedTracks) do local track = data.track; track:Play(); track.TimePosition = data.time end end
-        task.wait(0.25); ff_cd = false
-    end)
-end
-local function SetFrontFlip(bool)
-    ff_enabled = bool
-    if ff_enabled then
-        pcall(function()
-            local sausageHolder = game.CoreGui.TopBarApp.TopBarApp.UnibarLeftFrame.UnibarMenu["2"]
-            local originalSize = sausageHolder.Size.X.Offset
-            local ff_button = Instance.new("Frame", sausageHolder)
-            ff_button.Size = UDim2.new(0,48,0,44); ff_button.BackgroundTransparency = 1; ff_button.BorderSizePixel = 0; ff_button.Position = UDim2.new(0, sausageHolder.Size.X.Offset-48, 0, 0)
-            local imageButton = Instance.new("ImageButton", ff_button)
-            imageButton.BackgroundTransparency = 1; imageButton.BorderSizePixel = 0; imageButton.Size = UDim2.new(0,36,0,36); imageButton.AnchorPoint = Vector2.new(0.5,0.5); imageButton.Position = UDim2.new(0.5,0,0.5,0)
-            imageButton.Image = "rbxthumb://type=Asset&id=2714338264&w=150&h=150"
-            ff_connection = imageButton.Activated:Connect(Flip)
-            sausageHolder.Size = UDim2.new(0, originalSize+48, 0, sausageHolder.Size.Y.Offset)
-            task.wait()
-            ff_button.Position = UDim2.new(0, sausageHolder.Size.X.Offset-48, 0, 0)
-            task.spawn(function()
-                pcall(function()
-                    repeat sausageHolder.Size = UDim2.new(0, originalSize+48, 0, sausageHolder.Size.Y.Offset); task.wait(); ff_button.Position = UDim2.new(0, sausageHolder.Size.X.Offset-48, 0, 0) until ff_enabled == false
-                end)
-            end)
-        end)
-    else
-        if ff_connection then ff_connection:Disconnect(); ff_connection = nil end
-    end
-end
-MoveGroup:AddToggle("FrontFlipToggle", {Text="Show Front Flip Button[显示前滚翻按钮]", Default=false, Callback=function(s) SetFrontFlip(s); Library:Notify({Title="Front Flip Button", Description=s and "Shown" or "Hidden", Time=1}) end})
-MoveGroup:AddSlider("JumpHeight", {Text="Jump Height[跳跃高度]", Step=1, Value={Min=20,Max=200,Default=jumpHeight}, Suffix="Unit", Callback=function(v) jumpHeight=v end})
-MoveGroup:AddSlider("JumpDistance", {Text="Jump Distance[跳跃距离]", Step=1, Value={Min=10,Max=100,Default=jumpDistance}, Suffix="Unit", Callback=function(v) jumpDistance=v end})
-
-local BypassGroupLeft = Tabs["Bypass"]:AddLeftGroupbox("Speed Modify[速度修改]", "gauge")
-local BypassGroupRight = Tabs["Bypass"]:AddRightGroupbox("Flight[飞行]", "plane")
-local speedValue = 0
-local speedToggle = false
-local function speedLoop()
-    while speedToggle do
-        local hum = localPlayer.Character and localPlayer.Character:FindFirstChild("Humanoid")
-        if hum and hum.MoveDirection ~= Vector3.zero then
-            localPlayer.Character:TranslateBy(hum.MoveDirection * speedValue * game:GetService("RunService").RenderStepped:Wait())
-        end
-        task.wait()
-    end
-end
-BypassGroupLeft:AddSlider("SpeedBypass", {Text="Speed[速度]", Default=16, Min=1, Max=500, Rounding=0, Callback=function(v) speedValue=v end})
-BypassGroupLeft:AddToggle("SpeedToggle", {Text="Enable Speed[启用速度]", Default=false, Callback=function(s) speedToggle=s; if s then task.spawn(speedLoop); Library:Notify({Title="Speed", Description="Enabled", Time=1}) else Library:Notify({Title="Speed", Description="Disabled", Time=1}) end end})
-local CFSpeed = 50
-local CFLoop = nil
-local function StartCFly()
-    local char = localPlayer.Character; if not char then return end
-    local hum = char:FindFirstChildOfClass('Humanoid'); local head = char:WaitForChild("Head")
-    if not hum or not head then return end
-    hum.PlatformStand = true; head.Anchored = true
-    if CFLoop then CFLoop:Disconnect(); CFLoop = nil end
-    CFLoop = game:GetService("RunService").Heartbeat:Connect(function(dt)
-        if not char or not hum or not head then if CFLoop then CFLoop:Disconnect(); CFLoop = nil end return end
-        local moveDir = hum.MoveDirection * (CFSpeed * dt)
-        local headCF = head.CFrame
-        local cam = workspace.CurrentCamera; local camCF = cam.CFrame
-        local off = headCF:ToObjectSpace(camCF).Position
-        camCF = camCF * CFrame.new(-off.X, -off.Y, -off.Z + 1)
-        local camPos = camCF.Position; local headPos = headCF.Position
-        local objVel = CFrame.new(camPos, Vector3.new(headPos.X, camPos.Y, headPos.Z)):VectorToObjectSpace(moveDir)
-        head.CFrame = CFrame.new(headPos) * (camCF - camPos) * CFrame.new(objVel)
-    end)
-end
-local function StopCFly()
-    if CFLoop then CFLoop:Disconnect(); CFLoop = nil end
-    local char = localPlayer.Character
-    if char then
-        local hum = char:FindFirstChildOfClass('Humanoid'); local head = char:FindFirstChild("Head")
-        if hum then hum.PlatformStand = false end
-        if head then head.Anchored = false end
-    end
-end
-BypassGroupRight:AddToggle("CFlyToggle", {Text="Flight[飞行]", Default=false, Callback=function(v) if v then StartCFly(); Library:Notify({Title="Flight", Description="Enabled", Time=1}) else StopCFly(); Library:Notify({Title="Flight", Description="Disabled", Time=1}) end end})
-BypassGroupRight:AddSlider("CFlySpeed", {Text="Flight Speed[飞行速度]", Default=50, Min=1, Max=200, Rounding=1, Callback=function(v) CFSpeed=v end})
-
+-- 增强版攻击动画 ID（已移除 Noli Nova 相关）
 local AttackAnimIDs = {
     ["126830014841198"] = true, ["126355327951215"] = true, ["121086746534252"] = true,
     ["125403313786645"] = true, ["118298475669935"] = true, ["82113744478546"] = true,
     ["70371667919898"] = true, ["99135633258223"] = true, ["97167027849946"] = true,
-    ["109230267448394"] = true, ["139835501033932"] = true, ["126896426760253"] = true,
+    ["109230267448394"] = true, ["139835501933932"] = true, ["126896426760253"] = true,
     ["109667959938617"] = true, ["126681776859538"] = true, ["129976080405072"] = true,
     ["121293883585738"] = true, ["81639435858902"] = true, ["137314737492715"] = true,
     ["92173139187970"] = true, ["18885909645"] = true, ["98456918873918"] = true,
@@ -444,8 +191,17 @@ local AttackAnimIDs = {
     ["133363345661032"] = true, ["128414736976503"] = true, ["139309647473555"] = true,
     ["88451353906104"] = true, ["91628732643385"] = true, ["115403107018365"] = true,
     ["124619925708292"] = true,
+    ["99050723653468"] = true, ["119181003138006"] = true,
+    ["81255669374177"] = true, ["83446441317389"] = true,
+    ["140125695162370"] = true, ["109845134167647"] = true,
+    ["119062842291223"] = true, ["94735038402665"] = true, ["130958529065375"] = true,
+    ["88970503168421"] = true, ["90620531468240"] = true, ["81299297965542"] = true,
+    ["92567970681901"] = true, ["100767584148154"] = true, ["84449964607732"] = true,
+    ["129717107332668"] = true, ["92243093913547"] = true, ["120976159116654"] = true,
+    ["84069821282466"] = true, ["91359717074965"] = true, ["95414473113522"] = true,
 }
 
+-- 增强版攻击音效 ID（已移除未命中及 Nova 音效）
 local AttackSoundIDs = {
     ["102228729296384"] = true, ["140242176732868"] = true, ["112809109188560"] = true,
     ["136323728355613"] = true, ["115026634746636"] = true, ["84116622032112"] = true,
@@ -459,9 +215,17 @@ local AttackSoundIDs = {
     ["80919153988550"] = true, ["86451559088289"] = true, ["97100466324703"] = true,
     ["74000375845213"] = true, ["111502315377475"] = true, ["84340345572285"] = true,
     ["120394605928086"] = true, ["134973085112081"] = true, ["79554277951408"] = true,
-    ["115476331903507"] = true,
+    ["115476331903507"] = true, ["18885940850"] = true, ["18885937766"] = true,
+    ["74183834601348"] = true, ["88582935528044"] = true, ["110592910502331"] = true,
+    ["107444859834748"] = true, ["95166423060976"] = true, ["76959687420003"] = true,
+    ["128386033701120"] = true, ["131123355704017"] = true, ["111647315359080"] = true,
+    ["89004992452376"] = true, ["118250546180773"] = true, ["85260465177143"] = true,
+    ["121462448682270"] = true, ["91140716185493"] = true, ["113075396845016"] = true,
+    ["121133772410497"] = true, ["92986329658358"] = true, ["140659146085461"] = true,
+    ["81597761297703"] = true, ["84122523631600"] = true, ["107593207834624"] = true,
 }
 
+-- 音效/动画监听及自动格挡逻辑（与原本一致）
 local soundHooks = {}
 local soundBlockedUntil = {}
 local function getSoundIdNumber(sound)
@@ -539,11 +303,10 @@ local function buildAnimIdMapping()
         Stab = "106538427162796",
         VoidRush = "91758760621955",
         VoidRush = "93841120533318",
-        VoidRush = "139835501033932",
+        VoidRush = "139835501933932",
         VoidRush = "126896426760253",
         VoidRush = "114356208094580",
         VoidRush = "135884061951801",
-        NovaThrow = "107339108383093"
     }
     for act, id in pairs(noli) do AnimIdToActionName[id] = act end
     local one = { Slash = "83829782357897" }
@@ -571,7 +334,6 @@ local function watchKillerAnimations(killerModel)
         if killerModel:GetAttribute("IsFakeNoli") == true then return end
         local animId = track.Animation.AnimationId:match("%d+")
         if not animId then return end
-        if animId == "107339108383093" then return end
         if not isMeleeAttack(animId) then return end
         local t = tick()
         if animBlockedUntil[killerModel] and t < animBlockedUntil[killerModel] then return end
@@ -617,6 +379,7 @@ if killersFolder then
     bindExistingKillers()
 end
 
+-- 范围可视化等（与原本一致）
 local inverseRangeVisuals = {}
 local function createInverseVisualForKiller(killerModel)
     if not killerModel or not killerModel:IsA("Model") then return nil end
@@ -775,6 +538,267 @@ game:GetService("RunService").RenderStepped:Connect(function()
     end
 end)
 
+-- 战斗模块：玩家增强
+local PlayerGroup = Tabs["Combat"]:AddLeftGroupbox("Player Enhancements[玩家增强]", "user")
+PlayerGroup:AddToggle("AntiSlow", {
+    Text = "Anti-Slow[无减速]",
+    Default = false,
+    Callback = function(state)
+        Library:Notify({Title="Anti-Slow", Description=state and "Enabled" or "Disabled", Time=1})
+        task.spawn(function()
+            while Toggles.AntiSlow.Value and task.wait() do
+                if localPlayer.Character and localPlayer.Character:FindFirstChild("SpeedMultipliers") then
+                    for _, v in localPlayer.Character.SpeedMultipliers:GetChildren() do
+                        if v.Value < 1 then v.Value = 1 end
+                    end
+                end
+            end
+        end)
+    end
+})
+PlayerGroup:AddToggle("AntiStun", {
+    Text = "Anti-Stun[无眩晕]",
+    Default = false,
+    Callback = function(state)
+        Library:Notify({Title="Anti-Stun", Description=state and "Enabled" or "Disabled", Time=1})
+        task.spawn(function()
+            while Toggles.AntiStun.Value and task.wait() do
+                if localPlayer.Character and localPlayer.Character:FindFirstChild("SpeedMultipliers") then
+                    local stunned = localPlayer.Character.SpeedMultipliers:FindFirstChild("Stunned")
+                    if stunned then stunned.Value = 1 end
+                end
+            end
+        end)
+    end
+})
+PlayerGroup:AddToggle("AlwaysSprint", {
+    Text = "Always Sprint[一直奔跑]",
+    Default = false,
+    Callback = function(state)
+        Library:Notify({Title="Always Sprint", Description=state and "Enabled" or "Disabled", Time=1})
+        _G.alwaysSprint = state
+        task.spawn(function()
+            while _G.alwaysSprint and task.wait() do
+                local sprint = require(game:GetService("ReplicatedStorage").Systems.Character.Game.Sprinting)
+                if not sprint.IsSprinting then
+                    sprint.IsSprinting = true
+                    sprint.__sprintedEvent:Fire(true)
+                end
+            end
+        end)
+    end
+})
+PlayerGroup:AddToggle("AllowJump", {
+    Text = "Enable Jump[启用跳跃]",
+    Default = false,
+    Tooltip = "Repeated jumping may get you banned!",
+    Callback = function(state)
+        Library:Notify({Title="Enable Jump", Description=state and "Enabled" or "Disabled", Time=1})
+        _G.restoringJump = state
+        if state then
+            task.spawn(function()
+                while _G.restoringJump do
+                    local char = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+                    local humanoid = char:FindFirstChildOfClass("Humanoid")
+                    local jumpBtn = localPlayer.PlayerGui:FindFirstChild("TouchGui") and localPlayer.PlayerGui.TouchGui:FindFirstChild("TouchControlFrame") and localPlayer.PlayerGui.TouchGui.TouchControlFrame:FindFirstChild("JumpButton")
+                    if humanoid then humanoid.JumpPower = 50 end
+                    if jumpBtn then jumpBtn.Visible = true end
+                    task.wait(1)
+                end
+            end)
+        else
+            local char = localPlayer.Character
+            local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+            if humanoid then humanoid.JumpPower = 0 end
+            local jumpBtn = localPlayer.PlayerGui:FindFirstChild("TouchGui") and localPlayer.PlayerGui.TouchGui:FindFirstChild("TouchControlFrame") and localPlayer.PlayerGui.TouchGui.TouchControlFrame:FindFirstChild("JumpButton")
+            if jumpBtn then jumpBtn.Visible = false end
+        end
+    end
+})
+PlayerGroup:AddToggle("AlwaysShowChat", {
+    Text = "Always Show Chat[显示聊天框]",
+    Default = false,
+    Callback = function(state)
+        Library:Notify({Title="Always Show Chat", Description=state and "Enabled" or "Disabled", Time=1})
+        _G.showChat = state
+        task.spawn(function()
+            while _G.showChat and task.wait() do
+                game:GetService("TextChatService"):FindFirstChildOfClass("ChatWindowConfiguration").Enabled = true
+            end
+        end)
+        if not state then
+            if playingState ~= "Spectating" then
+                game:GetService("TextChatService"):FindFirstChildOfClass("ChatWindowConfiguration").Enabled = false
+            end
+        end
+    end
+})
+
+-- 体力设置
+local StaminaGroup = Tabs["Combat"]:AddLeftGroupbox("Stamina Settings[体力设置]", "zap")
+local StaminaSettings = { MaxStamina=100, StaminaGain=25, StaminaLoss=10, SprintSpeed=28, InfiniteGain=9999 }
+local SettingToggles = { MaxStamina=true, StaminaGain=true, StaminaLoss=true, SprintSpeed=true }
+local SprintingModule = game:GetService("ReplicatedStorage"):WaitForChild("Systems"):WaitForChild("Character"):WaitForChild("Game"):WaitForChild("Sprinting")
+local GetModule = function() return require(SprintingModule) end
+task.spawn(function() while true do local m = GetModule(); for key, value in pairs(StaminaSettings) do if SettingToggles[key] then m[key] = value end end; task.wait(0.5) end end)
+local infiniteStaminaActive = false
+local staminaConnection = nil
+StaminaGroup:AddToggle('InfiniteStamina', {Text='Infinite Stamina[无限体力]', Default=false, Callback=function(state)
+    Library:Notify({Title="Infinite Stamina", Description=state and "Enabled" or "Disabled", Time=1})
+    infiniteStaminaActive = state
+    local Sprinting = GetModule()
+    if state then
+        Sprinting.StaminaLoss = 0
+        Sprinting.StaminaGain = StaminaSettings.InfiniteGain or 9999
+        if staminaConnection then staminaConnection:Disconnect() end
+        staminaConnection = game:GetService("RunService").Heartbeat:Connect(function() if not infiniteStaminaActive then return end; Sprinting.StaminaLoss = 0; Sprinting.StaminaGain = StaminaSettings.InfiniteGain or 9999 end)
+    else
+        Sprinting.StaminaLoss = StaminaSettings.StaminaLoss or 10
+        Sprinting.StaminaGain = StaminaSettings.StaminaGain or 25
+        if staminaConnection then staminaConnection:Disconnect(); staminaConnection = nil end
+    end
+end})
+StaminaGroup:AddToggle('MaxStaminaToggle', {Text='Enable Max Stamina[启用体力大小调节]', Default=true, Callback=function(v) SettingToggles.MaxStamina=v; Library:Notify({Title="Max Stamina", Description=v and "Enabled" or "Disabled", Time=1}) end})
+StaminaGroup:AddToggle('StaminaGainToggle', {Text='Enable Stamina Gain[启用体力恢复调节]', Default=true, Callback=function(v) SettingToggles.StaminaGain=v; Library:Notify({Title="Stamina Gain", Description=v and "Enabled" or "Disabled", Time=1}) end})
+StaminaGroup:AddToggle('StaminaLossToggle', {Text='Enable Stamina Loss[启用体力消耗调节]', Default=true, Callback=function(v) SettingToggles.StaminaLoss=v; Library:Notify({Title="Stamina Loss", Description=v and "Enabled" or "Disabled", Time=1}) end})
+StaminaGroup:AddToggle('SprintSpeedToggle', {Text='Enable Sprint Speed[启用奔跑速度调节]', Default=true, Callback=function(v) SettingToggles.SprintSpeed=v; Library:Notify({Title="Sprint Speed", Description=v and "Enabled" or "Disabled", Time=1}) end})
+StaminaGroup:AddDivider()
+StaminaGroup:AddSlider('InfStaminaGainSlider', {Text='Infinite Stamina Gain Rate[无限体力恢复速度]', Default=9999, Min=0, Max=50000, Rounding=0, Callback=function(v) StaminaSettings.InfiniteGain=v end})
+StaminaGroup:AddSlider('MaxStaminaSlider', {Text='Max Stamina[体力大小]', Default=100, Min=0, Max=99999, Rounding=0, Callback=function(v) StaminaSettings.MaxStamina=v end})
+StaminaGroup:AddSlider('StaminaGainSlider', {Text='Stamina Gain Rate[体力恢复]', Default=25, Min=0, Max=250, Rounding=0, Callback=function(v) StaminaSettings.StaminaGain=v end})
+StaminaGroup:AddSlider('StaminaLossSlider', {Text='Stamina Loss Rate[体力消耗]', Default=10, Min=0, Max=100, Rounding=0, Callback=function(v) StaminaSettings.StaminaLoss=v end})
+StaminaGroup:AddSlider('SprintSpeedSlider', {Text='Sprint Speed[奔跑速度]', Default=28, Min=0, Max=200, Rounding=0, Callback=function(v) StaminaSettings.SprintSpeed=v end})
+
+-- 移动（穿墙/前滚翻）
+local MoveGroup = Tabs["Combat"]:AddRightGroupbox("Movement[移动]", "move")
+local noclipParts = {}
+local noclipState = false
+local function enableNoclip()
+    if localPlayer.Character then
+        for _, part in pairs(localPlayer.Character:GetChildren()) do
+            if part:IsA("BasePart") then noclipParts[part] = part; part.CanCollide = false end
+        end
+    end
+end
+local function disableNoclip()
+    for _, part in pairs(noclipParts) do part.CanCollide = true end
+    noclipParts = {}
+end
+MoveGroup:AddToggle("EnableNoclip", {Text="Noclip[穿墙]", Default=false, Callback=function(s) noclipState=s; if s then task.spawn(function() while noclipState do enableNoclip(); task.wait() end; disableNoclip() end); Library:Notify({Title="Noclip", Description="Enabled", Time=1}) else disableNoclip(); Library:Notify({Title="Noclip", Description="Disabled", Time=1}) end end})
+MoveGroup:AddDivider()
+MoveGroup:AddLabel("Front Flip[前滚翻]")
+local ff_connection = nil; local ff_enabled = false; local ff_cd = false; local jumpHeight = 72; local jumpDistance = 35
+local function Flip()
+    if ff_cd then return end; ff_cd = true
+    local character = localPlayer.Character; if not character then ff_cd = false; return end
+    local hrp = character:FindFirstChild("HumanoidRootPart"); local Humanoid = character:FindFirstChildOfClass("Humanoid")
+    local animator = Humanoid and Humanoid:FindFirstChildOfClass("Animator")
+    if not hrp or not Humanoid then ff_cd = false; return end
+    local savedTracks = {}
+    if animator then for _, track in ipairs(animator:GetPlayingAnimationTracks()) do savedTracks[#savedTracks+1] = { track = track, time = track.TimePosition }; track:Stop(0) end end
+    Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+    Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false); Humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall, false)
+    Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, false); Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+    Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
+    local duration = 0.45; local steps = 120
+    local startCFrame = hrp.CFrame; local forwardVector = startCFrame.LookVector; local upVector = Vector3.new(0,1,0)
+    task.spawn(function()
+        local startTime = tick()
+        for i = 1, steps do
+            local t = i / steps; local height = jumpHeight * (t - t^2)
+            local nextPos = startCFrame.Position + forwardVector * (jumpDistance * t) + upVector * height
+            local rotation = startCFrame.Rotation * CFrame.Angles(-math.rad(i*(360/steps)), 0, 0)
+            hrp.CFrame = CFrame.new(nextPos) * rotation
+            local elapsedTime = tick() - startTime; local expectedTime = (duration / steps) * i; local waitTime = expectedTime - elapsedTime
+            if waitTime > 0 then task.wait(waitTime) end
+        end
+        hrp.CFrame = CFrame.new(startCFrame.Position + forwardVector * jumpDistance) * startCFrame.Rotation
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true); Humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, true); Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
+        Humanoid:ChangeState(Enum.HumanoidStateType.Running)
+        if animator then for _, data in ipairs(savedTracks) do local track = data.track; track:Play(); track.TimePosition = data.time end end
+        task.wait(0.25); ff_cd = false
+    end)
+end
+local function SetFrontFlip(bool)
+    ff_enabled = bool
+    if ff_enabled then
+        pcall(function()
+            local sausageHolder = game.CoreGui.TopBarApp.TopBarApp.UnibarLeftFrame.UnibarMenu["2"]
+            local originalSize = sausageHolder.Size.X.Offset
+            local ff_button = Instance.new("Frame", sausageHolder)
+            ff_button.Size = UDim2.new(0,48,0,44); ff_button.BackgroundTransparency = 1; ff_button.BorderSizePixel = 0; ff_button.Position = UDim2.new(0, sausageHolder.Size.X.Offset-48, 0, 0)
+            local imageButton = Instance.new("ImageButton", ff_button)
+            imageButton.BackgroundTransparency = 1; imageButton.BorderSizePixel = 0; imageButton.Size = UDim2.new(0,36,0,36); imageButton.AnchorPoint = Vector2.new(0.5,0.5); imageButton.Position = UDim2.new(0.5,0,0.5,0)
+            imageButton.Image = "rbxthumb://type=Asset&id=2714338264&w=150&h=150"
+            ff_connection = imageButton.Activated:Connect(Flip)
+            sausageHolder.Size = UDim2.new(0, originalSize+48, 0, sausageHolder.Size.Y.Offset)
+            task.wait()
+            ff_button.Position = UDim2.new(0, sausageHolder.Size.X.Offset-48, 0, 0)
+            task.spawn(function()
+                pcall(function()
+                    repeat sausageHolder.Size = UDim2.new(0, originalSize+48, 0, sausageHolder.Size.Y.Offset); task.wait(); ff_button.Position = UDim2.new(0, sausageHolder.Size.X.Offset-48, 0, 0) until ff_enabled == false
+                end)
+            end)
+        end)
+    else
+        if ff_connection then ff_connection:Disconnect(); ff_connection = nil end
+    end
+end
+MoveGroup:AddToggle("FrontFlipToggle", {Text="Show Front Flip Button[显示前滚翻按钮]", Default=false, Callback=function(s) SetFrontFlip(s); Library:Notify({Title="Front Flip Button", Description=s and "Shown" or "Hidden", Time=1}) end})
+MoveGroup:AddSlider("JumpHeight", {Text="Jump Height[跳跃高度]", Step=1, Value={Min=20,Max=200,Default=jumpHeight}, Suffix="Unit", Callback=function(v) jumpHeight=v end})
+MoveGroup:AddSlider("JumpDistance", {Text="Jump Distance[跳跃距离]", Step=1, Value={Min=10,Max=100,Default=jumpDistance}, Suffix="Unit", Callback=function(v) jumpDistance=v end})
+
+-- 绕过/暴力：速度修改
+local BypassGroupLeft = Tabs["Bypass"]:AddLeftGroupbox("Speed Modify[速度修改]", "gauge")
+local BypassGroupRight = Tabs["Bypass"]:AddRightGroupbox("Flight[飞行]", "plane")
+local speedValue = 0
+local speedToggle = false
+local function speedLoop()
+    while speedToggle do
+        local hum = localPlayer.Character and localPlayer.Character:FindFirstChild("Humanoid")
+        if hum and hum.MoveDirection ~= Vector3.zero then
+            localPlayer.Character:TranslateBy(hum.MoveDirection * speedValue * game:GetService("RunService").RenderStepped:Wait())
+        end
+        task.wait()
+    end
+end
+BypassGroupLeft:AddSlider("SpeedBypass", {Text="Speed[速度]", Default=16, Min=1, Max=500, Rounding=0, Callback=function(v) speedValue=v end})
+BypassGroupLeft:AddToggle("SpeedToggle", {Text="Enable Speed[启用速度]", Default=false, Callback=function(s) speedToggle=s; if s then task.spawn(speedLoop); Library:Notify({Title="Speed", Description="Enabled", Time=1}) else Library:Notify({Title="Speed", Description="Disabled", Time=1}) end end})
+local CFSpeed = 50
+local CFLoop = nil
+local function StartCFly()
+    local char = localPlayer.Character; if not char then return end
+    local hum = char:FindFirstChildOfClass('Humanoid'); local head = char:WaitForChild("Head")
+    if not hum or not head then return end
+    hum.PlatformStand = true; head.Anchored = true
+    if CFLoop then CFLoop:Disconnect(); CFLoop = nil end
+    CFLoop = game:GetService("RunService").Heartbeat:Connect(function(dt)
+        if not char or not hum or not head then if CFLoop then CFLoop:Disconnect(); CFLoop = nil end return end
+        local moveDir = hum.MoveDirection * (CFSpeed * dt)
+        local headCF = head.CFrame
+        local cam = workspace.CurrentCamera; local camCF = cam.CFrame
+        local off = headCF:ToObjectSpace(camCF).Position
+        camCF = camCF * CFrame.new(-off.X, -off.Y, -off.Z + 1)
+        local camPos = camCF.Position; local headPos = headCF.Position
+        local objVel = CFrame.new(camPos, Vector3.new(headPos.X, camPos.Y, headPos.Z)):VectorToObjectSpace(moveDir)
+        head.CFrame = CFrame.new(headPos) * (camCF - camPos) * CFrame.new(objVel)
+    end)
+end
+local function StopCFly()
+    if CFLoop then CFLoop:Disconnect(); CFLoop = nil end
+    local char = localPlayer.Character
+    if char then
+        local hum = char:FindFirstChildOfClass('Humanoid'); local head = char:FindFirstChild("Head")
+        if hum then hum.PlatformStand = false end
+        if head then head.Anchored = false end
+    end
+end
+BypassGroupRight:AddToggle("CFlyToggle", {Text="Flight[飞行]", Default=false, Callback=function(v) if v then StartCFly(); Library:Notify({Title="Flight", Description="Enabled", Time=1}) else StopCFly(); Library:Notify({Title="Flight", Description="Disabled", Time=1}) end end})
+BypassGroupRight:AddSlider("CFlySpeed", {Text="Flight Speed[飞行速度]", Default=50, Min=1, Max=200, Rounding=1, Callback=function(v) CFSpeed=v end})
+
+-- 自动格挡 UI 模块
 local BlockGroup = Tabs["Combat"]:AddRightGroupbox("Auto Block[自动格挡]", "shield")
 BlockGroup:AddToggle("AutoBlockToggle", {Text="Enable Auto Block[启用自动格挡]", Default=false, Callback=function(s) BlockSettings.Enabled=s; Library:Notify({Title="Auto Block", Description=s and "Enabled" or "Disabled", Time=1}) end})
 BlockGroup:AddSlider("TriggerDistance", {Text="Trigger Distance[触发距离]", Default=20, Min=5, Max=50, Rounding=0, Callback=function(v) BlockSettings.TriggerDistance=v; UpdateRangeVisual() end})
@@ -787,6 +811,7 @@ BlockGroup:AddToggle("InverseMode", {Text="Inverse Mode[反转模式]", Default=
     Library:Notify({Title="Inverse Mode", Description=s and "Range circles attached to killers" or "Normal mode", Time=2})
 end})
 
+-- 自动拳击
 local AutoPunchGroup = Tabs["Combat"]:AddRightGroupbox("Auto Punch[自动拳击]", "punch")
 local autoPunchEnabled = false
 local punchLoop = nil
@@ -821,30 +846,11 @@ AutoPunchGroup:AddToggle("AutoPunch", {Text="Auto Punch[自动拳击]", Default=
     Library:Notify({Title="Auto Punch", Description=state and "Enabled" or "Disabled", Time=1})
 end})
 
+-- 碰撞箱扩展（杂项中，但保留）
 local ExtendGroup = Tabs["Misc"]:AddRightGroupbox("Hitbox Extend[碰撞箱扩展]", "target")
 local extendEnabled = false
 local extendPower = 3
 local extendDuration = 0.15
-local function getNearestSurvivorUnlimited()
-    local myRoot = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return nil end
-    local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
-    if not survivorsFolder then return nil end
-    local nearest, bestDist = nil, math.huge
-    for _, survivor in ipairs(survivorsFolder:GetChildren()) do
-        if survivor ~= localPlayer.Character then
-            local hrp = survivor:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                local dist = (hrp.Position - myRoot.Position).Magnitude
-                if dist < bestDist then
-                    bestDist = dist
-                    nearest = hrp
-                end
-            end
-        end
-    end
-    return nearest
-end
 local function ExtendHitbox(studs, time)
     if getgenv().emergency_stop == nil then getgenv().emergency_stop = false end
     local distance = studs * 6
@@ -865,9 +871,7 @@ local function ExtendHitbox(studs, time)
     until tick() - start > tonumber(time) or getgenv().emergency_stop == true
     if getgenv().emergency_stop == true then getgenv().emergency_stop = false end
 end
-local function StopExtendingHitbox()
-    getgenv().emergency_stop = true
-end
+local function StopExtendingHitbox() getgenv().emergency_stop = true end
 local extendAnimConnection = nil
 local function hookLocalAnimationsForExtend()
     local char = localPlayer.Character
@@ -897,10 +901,7 @@ local function onExtendToggle(state)
             end
         end)
     else
-        if extendAnimConnection then
-            extendAnimConnection:Disconnect()
-            extendAnimConnection = nil
-        end
+        if extendAnimConnection then extendAnimConnection:Disconnect(); extendAnimConnection = nil end
         StopExtendingHitbox()
     end
     Library:Notify({Title="Hitbox Extend", Description=state and "Enabled" or "Disabled", Time=1})
@@ -909,6 +910,7 @@ ExtendGroup:AddToggle("ExtendEnable", {Text="Hitbox Extend[碰撞箱扩展]", De
 ExtendGroup:AddSlider("ExtendPower", {Text="Extend Power[扩展强度]", Default=3, Min=1, Max=100, Rounding=1, Callback=function(v) extendPower=v end})
 ExtendGroup:AddSlider("ExtendDuration", {Text="Duration[持续时间]", Default=0.15, Min=0.05, Max=0.5, Rounding=2, Callback=function(v) extendDuration=v end})
 
+-- Hitbox 追踪独立 UI（杂项）
 local HitboxButtonGroup = Tabs["Misc"]:AddRightGroupbox("Hitbox Track UI[hitbox追踪独立UI]", "target")
 local hitboxUILoaded = false
 local function loadHitboxUI()
@@ -930,9 +932,7 @@ local function loadHitboxUI()
         for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
             local animId = track.Animation.AnimationId:match("%d+")
             for _, id in ipairs(ids) do
-                if animId == tostring(id) then
-                    return true
-                end
+                if animId == tostring(id) then return true end
             end
         end
         return false
@@ -952,11 +952,7 @@ local function loadHitboxUI()
     task.spawn(function()
         while true do
             RunService.RenderStepped:Wait()
-            if HitboxGay then
-                button.Text = "Hitbox: ON"
-            else
-                button.Text = "Hitbox: OFF"
-            end
+            if HitboxGay then button.Text = "Hitbox: ON" else button.Text = "Hitbox: OFF" end
         end
     end)
     local function getRoot(character)
@@ -974,11 +970,8 @@ local function loadHitboxUI()
         local isSurvivor = isDescendantOf(char, Workspace.Players:FindFirstChild("Survivors"))
         local isKiller = isDescendantOf(char, Workspace.Players:FindFirstChild("Killers"))
         local targetGroup = nil
-        if isSurvivor then
-            targetGroup = Workspace.Players:FindFirstChild("Killers")
-        elseif isKiller then
-            targetGroup = Workspace.Players:FindFirstChild("Survivors")
-        end
+        if isSurvivor then targetGroup = Workspace.Players:FindFirstChild("Killers")
+        elseif isKiller then targetGroup = Workspace.Players:FindFirstChild("Survivors") end
         local parts = Workspace:GetPartBoundsInBox(root.CFrame, checkBoxSize)
         local nearest, dist = nil, math.huge
         for _, part in pairs(parts) do
@@ -987,18 +980,11 @@ local function loadHitboxUI()
                 if c ~= speaker.Character and c.Humanoid.Health > 0 then
                     _G.IsNpc = false
                     local valid = false
-                    if targetGroup then
-                        valid = isDescendantOf(c, targetGroup)
-                    else
-                        valid = true
-                    end
+                    if targetGroup then valid = isDescendantOf(c, targetGroup) else valid = true end
                     if valid then
                         local hrp = c.HumanoidRootPart
                         local d = (hrp.Position - root.Position).Magnitude
-                        if d < dist then
-                            dist = d
-                            nearest = hrp
-                        end
+                        if d < dist then dist = d; nearest = hrp end
                     end
                 end
             end
@@ -1011,10 +997,7 @@ local function loadHitboxUI()
                         _G.IsNpc = true
                         local hrp = c.HumanoidRootPart
                         local d = (hrp.Position - root.Position).Magnitude
-                        if d < dist then
-                            dist = d
-                            nearest = hrp
-                        end
+                        if d < dist then dist = d; nearest = hrp end
                     end
                 end
             end
@@ -1068,9 +1051,7 @@ local function loadHitboxUI()
                     end
                 end
                 RunService.RenderStepped:Wait()
-                if character and root then
-                    root.Velocity = vel
-                end
+                if character and root then root.Velocity = vel end
                 RunService.Stepped:Wait()
                 if character and root then
                     root.Velocity = vel + Vector3.new(0, movel, 0)
@@ -1082,9 +1063,7 @@ local function loadHitboxUI()
     end
     button.MouseButton1Click:Connect(function()
         HitboxGay = not HitboxGay
-        if HitboxGay then
-            startHitboxGay()
-        end
+        if HitboxGay then startHitboxGay() end
     end)
 end
 HitboxButtonGroup:AddButton({
@@ -1095,6 +1074,7 @@ HitboxButtonGroup:AddButton({
     end
 })
 
+-- ESP 系统（完整保留）
 local Services = {
     Players = game:GetService("Players"),
     RunService = game:GetService("RunService"),
