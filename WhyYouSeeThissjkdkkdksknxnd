@@ -28,7 +28,6 @@ local Tabs = {
 local localPlayer = game.Players.LocalPlayer
 local playingState = "Playing"
 
--- 玩家信息
 local InfoGroup = Tabs["Player Info"]:AddRightGroupbox("Player Info[玩家信息]", "info")
 InfoGroup:AddLabel("Executor : " .. (identifyexecutor and identifyexecutor() or "Unknown"))
 InfoGroup:AddLabel("Username : " .. localPlayer.Name)
@@ -40,7 +39,6 @@ NewsGroup:AddLabel("Dev: FixFox")
 NewsGroup:AddLabel("🇨🇳[2026.5.11] Fix Anti Bait 🇨🇳")
 NewsGroup:AddLabel("部分脚本功能感谢 Yuxinchen")
 
--- 自动格挡核心 Hook
 local Old__namecall
 local remoteCheck = false
 local remoteTimestamp = 0
@@ -175,7 +173,6 @@ local function isKillerFacingPlayer(killerModel, myRoot)
     if BlockSettings.LooseFacing then return dot > -0.3 else return dot > 0 end
 end
 
--- 增强版攻击动画 ID（已移除 Noli Nova 相关）
 local AttackAnimIDs = {
     ["126830014841198"] = true, ["126355327951215"] = true, ["121086746534252"] = true,
     ["125403313786645"] = true, ["118298475669935"] = true, ["82113744478546"] = true,
@@ -201,7 +198,6 @@ local AttackAnimIDs = {
     ["84069821282466"] = true, ["91359717074965"] = true, ["95414473113522"] = true,
 }
 
--- 增强版攻击音效 ID（已移除未命中及 Nova 音效）
 local AttackSoundIDs = {
     ["102228729296384"] = true, ["140242176732868"] = true, ["112809109188560"] = true,
     ["136323728355613"] = true, ["115026634746636"] = true, ["84116622032112"] = true,
@@ -225,7 +221,6 @@ local AttackSoundIDs = {
     ["81597761297703"] = true, ["84122523631600"] = true, ["107593207834624"] = true,
 }
 
--- 音效/动画监听及自动格挡逻辑（与原本一致）
 local soundHooks = {}
 local soundBlockedUntil = {}
 local function getSoundIdNumber(sound)
@@ -379,7 +374,6 @@ if killersFolder then
     bindExistingKillers()
 end
 
--- 范围可视化等（与原本一致）
 local inverseRangeVisuals = {}
 local function createInverseVisualForKiller(killerModel)
     if not killerModel or not killerModel:IsA("Model") then return nil end
@@ -538,7 +532,6 @@ game:GetService("RunService").RenderStepped:Connect(function()
     end
 end)
 
--- 战斗模块：玩家增强
 local PlayerGroup = Tabs["Combat"]:AddLeftGroupbox("Player Enhancements[玩家增强]", "user")
 PlayerGroup:AddToggle("AntiSlow", {
     Text = "Anti-Slow[无减速]",
@@ -634,7 +627,6 @@ PlayerGroup:AddToggle("AlwaysShowChat", {
     end
 })
 
--- 体力设置
 local StaminaGroup = Tabs["Combat"]:AddLeftGroupbox("Stamina Settings[体力设置]", "zap")
 local StaminaSettings = { MaxStamina=100, StaminaGain=25, StaminaLoss=10, SprintSpeed=28, InfiniteGain=9999 }
 local SettingToggles = { MaxStamina=true, StaminaGain=true, StaminaLoss=true, SprintSpeed=true }
@@ -669,7 +661,6 @@ StaminaGroup:AddSlider('StaminaGainSlider', {Text='Stamina Gain Rate[体力恢�
 StaminaGroup:AddSlider('StaminaLossSlider', {Text='Stamina Loss Rate[体力消耗]', Default=10, Min=0, Max=100, Rounding=0, Callback=function(v) StaminaSettings.StaminaLoss=v end})
 StaminaGroup:AddSlider('SprintSpeedSlider', {Text='Sprint Speed[奔跑速度]', Default=28, Min=0, Max=200, Rounding=0, Callback=function(v) StaminaSettings.SprintSpeed=v end})
 
--- 移动（穿墙/前滚翻）
 local MoveGroup = Tabs["Combat"]:AddRightGroupbox("Movement[移动]", "move")
 local noclipParts = {}
 local noclipState = false
@@ -750,7 +741,6 @@ MoveGroup:AddToggle("FrontFlipToggle", {Text="Show Front Flip Button[显示前�
 MoveGroup:AddSlider("JumpHeight", {Text="Jump Height[跳跃高度]", Step=1, Value={Min=20,Max=200,Default=jumpHeight}, Suffix="Unit", Callback=function(v) jumpHeight=v end})
 MoveGroup:AddSlider("JumpDistance", {Text="Jump Distance[跳跃距离]", Step=1, Value={Min=10,Max=100,Default=jumpDistance}, Suffix="Unit", Callback=function(v) jumpDistance=v end})
 
--- 绕过/暴力：速度修改
 local BypassGroupLeft = Tabs["Bypass"]:AddLeftGroupbox("Speed Modify[速度修改]", "gauge")
 local BypassGroupRight = Tabs["Bypass"]:AddRightGroupbox("Flight[飞行]", "plane")
 local speedValue = 0
@@ -798,7 +788,6 @@ end
 BypassGroupRight:AddToggle("CFlyToggle", {Text="Flight[飞行]", Default=false, Callback=function(v) if v then StartCFly(); Library:Notify({Title="Flight", Description="Enabled", Time=1}) else StopCFly(); Library:Notify({Title="Flight", Description="Disabled", Time=1}) end end})
 BypassGroupRight:AddSlider("CFlySpeed", {Text="Flight Speed[飞行速度]", Default=50, Min=1, Max=200, Rounding=1, Callback=function(v) CFSpeed=v end})
 
--- 自动格挡 UI 模块
 local BlockGroup = Tabs["Combat"]:AddRightGroupbox("Auto Block[自动格挡]", "shield")
 BlockGroup:AddToggle("AutoBlockToggle", {Text="Enable Auto Block[启用自动格挡]", Default=false, Callback=function(s) BlockSettings.Enabled=s; Library:Notify({Title="Auto Block", Description=s and "Enabled" or "Disabled", Time=1}) end})
 BlockGroup:AddSlider("TriggerDistance", {Text="Trigger Distance[触发距离]", Default=20, Min=5, Max=50, Rounding=0, Callback=function(v) BlockSettings.TriggerDistance=v; UpdateRangeVisual() end})
@@ -811,7 +800,6 @@ BlockGroup:AddToggle("InverseMode", {Text="Inverse Mode[反转模式]", Default=
     Library:Notify({Title="Inverse Mode", Description=s and "Range circles attached to killers" or "Normal mode", Time=2})
 end})
 
--- 自动拳击
 local AutoPunchGroup = Tabs["Combat"]:AddRightGroupbox("Auto Punch[自动拳击]", "punch")
 local autoPunchEnabled = false
 local punchLoop = nil
@@ -846,7 +834,105 @@ AutoPunchGroup:AddToggle("AutoPunch", {Text="Auto Punch[自动拳击]", Default=
     Library:Notify({Title="Auto Punch", Description=state and "Enabled" or "Disabled", Time=1})
 end})
 
--- 碰撞箱扩展（杂项中，但保留）
+local punchAimbotEnabled = false
+local punchAimbotMaxDist = 20
+local punchAimbotConnection = nil
+
+local function faceTarget(targetModel)
+    local char = localPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local root = char.HumanoidRootPart
+    local targetRoot = targetModel:FindFirstChild("HumanoidRootPart")
+    if not targetRoot then return end
+    local targetPos = targetRoot.Position
+    root.CFrame = CFrame.new(root.Position, Vector3.new(targetPos.X, root.Position.Y, targetPos.Z))
+end
+
+local function getNearestKillerForPunchAimbot()
+    local killers = getKillersFolder()
+    if not killers then return nil end
+    local char = localPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
+    local myPos = char.HumanoidRootPart.Position
+    local nearest, nearestDist = nil, math.huge
+    for _, killer in ipairs(killers:GetChildren()) do
+        if killer:IsA("Model") and killer:FindFirstChild("HumanoidRootPart") then
+            if killer:GetAttribute("IsFakeNoli") ~= true then
+                local dist = (killer.HumanoidRootPart.Position - myPos).Magnitude
+                if dist <= punchAimbotMaxDist and dist < nearestDist then
+                    nearestDist = dist
+                    nearest = killer
+                end
+            end
+        end
+    end
+    return nearest
+end
+
+local function isPlayingPunchAnim()
+    local char = localPlayer.Character
+    if not char then return false end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return false end
+    local animator = hum:FindFirstChildOfClass("Animator")
+    if not animator then return false end
+    for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+        local animId = track.Animation.AnimationId:match("%d+")
+        if animId == "87259391926321" or animId == "108018357044094" then
+            return true
+        end
+    end
+    return false
+end
+
+local function startPunchAimbotLoop()
+    if punchAimbotConnection then return end
+    punchAimbotConnection = game:GetService("RunService").Heartbeat:Connect(function()
+        if not punchAimbotEnabled then return end
+        local playersFolder = workspace:FindFirstChild("Players")
+        local survivorsFolder = playersFolder and playersFolder:FindFirstChild("Survivors")
+        if not survivorsFolder or not localPlayer.Character or not localPlayer.Character:IsDescendantOf(survivorsFolder) then
+            return
+        end
+        if isPlayingPunchAnim() then
+            local target = getNearestKillerForPunchAimbot()
+            if target then
+                faceTarget(target)
+            end
+        end
+    end)
+end
+
+local function stopPunchAimbotLoop()
+    if punchAimbotConnection then
+        punchAimbotConnection:Disconnect()
+        punchAimbotConnection = nil
+    end
+end
+
+AutoPunchGroup:AddToggle("PunchAimbot", {
+    Text = "Punch Aimbot[拳击自瞄]",
+    Default = false,
+    Callback = function(state)
+        punchAimbotEnabled = state
+        if state then
+            startPunchAimbotLoop()
+            Library:Notify({Title = "Punch Aimbot", Description = "Enabled", Time = 1})
+        else
+            stopPunchAimbotLoop()
+            Library:Notify({Title = "Punch Aimbot", Description = "Disabled", Time = 1})
+        end
+    end
+})
+AutoPunchGroup:AddSlider("PunchAimbotMaxDist", {
+    Text = "Max Distance[最大距离]",
+    Default = 20,
+    Min = 5,
+    Max = 50,
+    Rounding = 0,
+    Callback = function(v) punchAimbotMaxDist = v end
+})
+
 local ExtendGroup = Tabs["Misc"]:AddRightGroupbox("Hitbox Extend[碰撞箱扩展]", "target")
 local extendEnabled = false
 local extendPower = 3
@@ -910,7 +996,6 @@ ExtendGroup:AddToggle("ExtendEnable", {Text="Hitbox Extend[碰撞箱扩展]", De
 ExtendGroup:AddSlider("ExtendPower", {Text="Extend Power[扩展强度]", Default=3, Min=1, Max=100, Rounding=1, Callback=function(v) extendPower=v end})
 ExtendGroup:AddSlider("ExtendDuration", {Text="Duration[持续时间]", Default=0.15, Min=0.05, Max=0.5, Rounding=2, Callback=function(v) extendDuration=v end})
 
--- Hitbox 追踪独立 UI（杂项）
 local HitboxButtonGroup = Tabs["Misc"]:AddRightGroupbox("Hitbox Track UI[hitbox追踪独立UI]", "target")
 local hitboxUILoaded = false
 local function loadHitboxUI()
@@ -1074,7 +1159,6 @@ HitboxButtonGroup:AddButton({
     end
 })
 
--- ESP 系统（完整保留）
 local Services = {
     Players = game:GetService("Players"),
     RunService = game:GetService("RunService"),
@@ -1956,6 +2040,7 @@ ThemeManager:ApplyToTab(Tabs["UI Settings"])
 Library:OnUnload(function()
     if RangeVisual then RangeVisual:Destroy() end
     clearAllInverseVisuals()
+    stopPunchAimbotLoop()
     if extendAnimConnection then extendAnimConnection:Disconnect() end
     local gui = game.CoreGui:FindFirstChild("HitboxGayGui")
     if gui then gui:Destroy() end
