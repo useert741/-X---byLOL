@@ -46,12 +46,12 @@ local remoteBlockedUntil = {}
 
 local KillerMeleeActions = {
     c00lkidd = { melee = { "Attack", "WalkspeedOverrideHit", "WalkspeedOverrideMiss" } },
-    Slasher = { melee = { "Slash", "Behead", "EnragedSlash", "EnragedBehead", "GashingWoundStart" } },
+    Slasher = { melee = { "Slash" } },
     ["John Doe"] = { melee = { "Slash" } },
-    Noli = { melee = { "Stab", "VoidRush" } },
+    Noli = { melee = { "Stab" } },
     ["1x1x1x1"] = { melee = { "Slash" } },
-    ["Guest 666"] = { melee = { "Slash", "Eviscerate", "DemonicPursuitLunge" } },
-    Nosferatu = { melee = { "Slash", "Uppercut", "SpireStart", "AscentBite" } }
+    ["Guest 666"] = { melee = { "Slash" } },
+    Nosferatu = { melee = { "Slash" } }
 }
 
 local BlockSettings = {
@@ -61,7 +61,7 @@ local BlockSettings = {
     FacingCheck = true,
     LooseFacing = true,
     InverseMode = false,
-    RemoteDetectionEnabled = true,
+    RemoteDetectionEnabled = false,
     RemoteActionNames = {},
 }
 for _, actions in pairs(KillerMeleeActions) do
@@ -79,37 +79,6 @@ Old__namecall = hookmetamethod(game, "__namecall", function(Self, ...)
             elseif Args[1] == "leave" then remoteCheck = false end
         elseif tostring(Self) == "RE" then
             remoteTimestamp = os.clock()
-        end
-
-        if BlockSettings.Enabled and BlockSettings.RemoteDetectionEnabled then
-            if (Method == "FireServer" or Method == "InvokeServer") and BlockSettings.RemoteActionNames[Method] then
-                local obj = Self
-                while obj and not (obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart")) do
-                    obj = obj.Parent
-                end
-                if obj and obj:FindFirstChild("HumanoidRootPart") then
-                    local myChar = localPlayer.Character
-                    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
-                    if myRoot then
-                        local killerRoot = obj.HumanoidRootPart
-                        if (killerRoot.Position - myRoot.Position).Magnitude <= BlockSettings.TriggerDistance then
-                            if BlockSettings.FacingCheck and not isKillerFacingPlayer(obj, myRoot) then
-                                return Old__namecall(Self, unpack(Args))
-                            end
-                            local now = tick()
-                            if not remoteBlockedUntil[obj] or now > remoteBlockedUntil[obj] then
-                                remoteBlockedUntil[obj] = now + 0.3
-                                local blockBtn = getBlockButton()
-                                if blockBtn then
-                                    local cd = blockBtn:FindFirstChild("CooldownTime")
-                                    if cd and cd.Text ~= "" then return Old__namecall(Self, unpack(Args)) end
-                                    pressBlock()
-                                end
-                            end
-                        end
-                    end
-                end
-            end
         end
     end
     return Old__namecall(Self, unpack(Args))
@@ -174,111 +143,18 @@ local function isKillerFacingPlayer(killerModel, myRoot)
 end
 
 local AttackAnimIDs = {
-    ["126830014841198"] = true, ["126355327951215"] = true, ["121086746534252"] = true,
-    ["125403313786645"] = true, ["118298475669935"] = true, ["82113744478546"] = true,
-    ["70371667919898"] = true, ["99135633258223"] = true, ["97167027849946"] = true,
-    ["109230267448394"] = true, ["139835501933932"] = true, ["126896426760253"] = true,
-    ["109667959938617"] = true, ["126681776859538"] = true, ["129976080405072"] = true,
-    ["121293883585738"] = true, ["81639435858902"] = true, ["137314737492715"] = true,
-    ["92173139187970"] = true, ["18885909645"] = true, ["98456918873918"] = true,
-    ["18885937766"] = true, ["18885940850"] = true, ["105458270463374"] = true,
-    ["83829782357897"] = true, ["101736016625776"] = true, ["106538427162796"] = true,
-    ["114356208094580"] = true, ["135884061951801"] = true,
-    ["122709416391891"] = true, ["87989533095285"] = true,
-    ["133363345661032"] = true, ["128414736976503"] = true, ["139309647473555"] = true,
-    ["88451353906104"] = true, ["91628732643385"] = true, ["115403107018365"] = true,
-    ["124619925708292"] = true,
-    ["99050723653468"] = true, ["119181003138006"] = true,
-    ["81255669374177"] = true, ["83446441317389"] = true,
-    ["140125695162370"] = true, ["109845134167647"] = true,
-    ["119062842291223"] = true, ["94735038402665"] = true, ["130958529065375"] = true,
-    ["88970503168421"] = true, ["90620531468240"] = true, ["81299297965542"] = true,
-    ["92567970681901"] = true, ["100767584148154"] = true, ["84449964607732"] = true,
-    ["129717107332668"] = true, ["92243093913547"] = true, ["120976159116654"] = true,
-    ["84069821282466"] = true, ["91359717074965"] = true, ["95414473113522"] = true,
+    ["18885909645"] = true, ["18885937766"] = true, ["18885940850"] = true,
+    ["126830014841198"] = true, ["105458270463374"] = true, ["106538427162796"] = true,
+    ["83829782357897"] = true, ["122709416391891"] = true, ["88451353906104"] = true,
+    ["109667959938617"] = true, ["118298475669935"] = true, ["88970503168421"] = true,
+    ["81299297965542"] = true, ["70371667919898"] = true, ["95414473113522"] = true,
+    ["77375846492436"] = true, ["99050723653468"] = true, ["119181003138006"] = true,
+    ["101736016625776"] = true, ["98456918873918"] = true, ["133363345661032"] = true,
+    ["128414736976503"] = true, ["91628732643385"] = true, ["115403107018365"] = true,
+    ["124619925708292"] = true, ["121293883585738"] = true,
 }
 
-local AttackSoundIDs = {
-    ["102228729296384"] = true, ["140242176732868"] = true, ["112809109188560"] = true,
-    ["136323728355613"] = true, ["115026634746636"] = true, ["84116622032112"] = true,
-    ["108907358619313"] = true, ["127793641088496"] = true, ["86174610237192"] = true,
-    ["95079963655241"] = true, ["101199185291628"] = true, ["119942598489800"] = true,
-    ["84307400688050"] = true, ["113037804008732"] = true, ["105200830849301"] = true,
-    ["75330693422988"] = true, ["82221759983649"] = true, ["81702359653578"] = true,
-    ["108610718831698"] = true, ["112395455254818"] = true, ["109431876587852"] = true,
-    ["109348678063422"] = true, ["85853080745515"] = true, ["12222216"] = true,
-    ["80516583309685"] = true, ["111261564982886"] = true, ["75467546215199"] = true,
-    ["80919153988550"] = true, ["86451559088289"] = true, ["97100466324703"] = true,
-    ["74000375845213"] = true, ["111502315377475"] = true, ["84340345572285"] = true,
-    ["120394605928086"] = true, ["134973085112081"] = true, ["79554277951408"] = true,
-    ["115476331903507"] = true, ["18885940850"] = true, ["18885937766"] = true,
-    ["74183834601348"] = true, ["88582935528044"] = true, ["110592910502331"] = true,
-    ["107444859834748"] = true, ["95166423060976"] = true, ["76959687420003"] = true,
-    ["128386033701120"] = true, ["131123355704017"] = true, ["111647315359080"] = true,
-    ["89004992452376"] = true, ["118250546180773"] = true, ["85260465177143"] = true,
-    ["121462448682270"] = true, ["91140716185493"] = true, ["113075396845016"] = true,
-    ["121133772410497"] = true, ["92986329658358"] = true, ["140659146085461"] = true,
-    ["81597761297703"] = true, ["84122523631600"] = true, ["107593207834624"] = true,
-}
-
-local soundHooks = {}
-local soundBlockedUntil = {}
-local function getSoundIdNumber(sound)
-    local sid = tostring(sound.SoundId)
-    return sid:match("%d+")
-end
-local function getKillerRootFromSound(sound)
-    local parent = sound.Parent
-    while parent and not parent:IsA("Model") do parent = parent.Parent end
-    if parent and parent:FindFirstChildOfClass("Humanoid") then return parent end
-    return nil
-end
-local function attemptBlockFromSound(sound)
-    if not BlockSettings.Enabled then return end
-    if not sound or not sound:IsA("Sound") or not sound.IsPlaying then return end
-    local id = getSoundIdNumber(sound)
-    if not id or not AttackSoundIDs[id] then return end
-    local t = tick()
-    if soundBlockedUntil[sound] and t < soundBlockedUntil[sound] then return end
-    local blockBtn = getBlockButton()
-    if blockBtn then
-        local cd = blockBtn:FindFirstChild("CooldownTime")
-        if cd and cd.Text ~= "" then return end
-    end
-    local myChar = localPlayer.Character
-    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return end
-    local killerModel = getKillerRootFromSound(sound)
-    if killerModel then
-        if killerModel:GetAttribute("IsFakeNoli") == true then return end
-        local killerRoot = killerModel:FindFirstChild("HumanoidRootPart")
-        if killerRoot then
-            if (killerRoot.Position - myRoot.Position).Magnitude > BlockSettings.TriggerDistance then return end
-            if not isKillerFacingPlayer(killerModel, myRoot) then return end
-        else return end
-    else return end
-    pressBlock()
-    soundBlockedUntil[sound] = t + 1.2
-end
-local function hookSound(sound)
-    if not sound:IsA("Sound") or soundHooks[sound] then return end
-    local playedConn = sound.Played:Connect(function() pcall(attemptBlockFromSound, sound) end)
-    local propConn = sound:GetPropertyChangedSignal("IsPlaying"):Connect(function()
-        if sound.IsPlaying then pcall(attemptBlockFromSound, sound) end
-    end)
-    local destroyConn = sound.Destroying:Connect(function()
-        playedConn:Disconnect(); propConn:Disconnect(); destroyConn:Disconnect()
-        soundHooks[sound] = nil; soundBlockedUntil[sound] = nil
-    end)
-    soundHooks[sound] = {playedConn, propConn, destroyConn}
-    if sound.IsPlaying then task.spawn(function() pcall(attemptBlockFromSound, sound) end) end
-end
-for _, sound in ipairs(workspace:GetDescendants()) do
-    if sound:IsA("Sound") then pcall(hookSound, sound) end
-end
-workspace.DescendantAdded:Connect(function(obj)
-    if obj:IsA("Sound") then pcall(hookSound, obj) end
-end)
+local AttackSoundIDs = {}
 
 local animConns = {}
 local animBlockedUntil = {}
@@ -286,38 +162,33 @@ local MeleeActionNames = {}
 for killer, actions in pairs(KillerMeleeActions) do
     for _, name in ipairs(actions.melee or {}) do MeleeActionNames[name] = true end
 end
+
 local AnimIdToActionName = {}
 local function buildAnimIdMapping()
-    local c00l = { Attack = "18885909645", WalkspeedOverrideHit = "18885937766", WalkspeedOverrideMiss = "18885940850" }
-    for act, id in pairs(c00l) do AnimIdToActionName[id] = act end
-    local slash = { Slash = "126830014841198", Behead = "126355327951215", EnragedSlash = "126830014841198", EnragedBehead = "126355327951215", GashingWoundStart = "121086746534252" }
-    for act, id in pairs(slash) do AnimIdToActionName[id] = act end
-    local jd = { Slash = "105458270463374" }
-    for act, id in pairs(jd) do AnimIdToActionName[id] = act end
-    local noli = {
-        Stab = "106538427162796",
-        VoidRush = "91758760621955",
-        VoidRush = "93841120533318",
-        VoidRush = "139835501933932",
-        VoidRush = "126896426760253",
-        VoidRush = "114356208094580",
-        VoidRush = "135884061951801",
-    }
-    for act, id in pairs(noli) do AnimIdToActionName[id] = act end
-    local one = { Slash = "83829782357897" }
-    for act, id in pairs(one) do AnimIdToActionName[id] = act end
-    local guest = { Slash = "122709416391891", Eviscerate = "87989533095285", DemonicPursuitLunge = "139309647473555" }
-    for act, id in pairs(guest) do AnimIdToActionName[id] = act end
-    local nos = { Slash = "88451353906104", Uppercut = "79282445348798", SpireStart = "72186169160926", AscentBite = "97279203534534" }
-    for act, id in pairs(nos) do AnimIdToActionName[id] = act end
+    AnimIdToActionName["18885909645"] = "Attack"
+    AnimIdToActionName["18885937766"] = "WalkspeedOverrideHit"
+    AnimIdToActionName["18885940850"] = "WalkspeedOverrideMiss"
+    AnimIdToActionName["126830014841198"] = "Slash"
+    AnimIdToActionName["105458270463374"] = "Slash"
+    AnimIdToActionName["106538427162796"] = "Stab"
+    AnimIdToActionName["83829782357897"] = "Slash"
+    AnimIdToActionName["122709416391891"] = "Slash"
+    AnimIdToActionName["88451353906104"] = "Slash"
+    AnimIdToActionName["109667959938617"] = "Slash"
+    AnimIdToActionName["118298475669935"] = "Slash"
+    AnimIdToActionName["88970503168421"] = "Slash"
+    AnimIdToActionName["81299297965542"] = "Slash"
+    AnimIdToActionName["70371667919898"] = "Attack"
+    AnimIdToActionName["95414473113522"] = "WalkspeedOverrideHit"
+    AnimIdToActionName["77375846492436"] = "Stab"
 end
 buildAnimIdMapping()
+
 local function isMeleeAttack(animId)
-    if AttackAnimIDs[animId] then return true end
     local actionName = AnimIdToActionName[animId]
-    if not actionName then return false end
-    return MeleeActionNames[actionName] == true
+    return actionName ~= nil and MeleeActionNames[actionName] == true
 end
+
 local function watchKillerAnimations(killerModel)
     if animConns[killerModel] then return end
     local hum = killerModel:FindFirstChildOfClass("Humanoid")
@@ -328,8 +199,7 @@ local function watchKillerAnimations(killerModel)
         if not BlockSettings.Enabled then return end
         if killerModel:GetAttribute("IsFakeNoli") == true then return end
         local animId = track.Animation.AnimationId:match("%d+")
-        if not animId then return end
-        if not isMeleeAttack(animId) then return end
+        if not animId or not isMeleeAttack(animId) then return end
         local t = tick()
         if animBlockedUntil[killerModel] and t < animBlockedUntil[killerModel] then return end
         local blockBtn = getBlockButton()
@@ -1754,24 +1624,63 @@ GeneratorRightGroup:AddSlider("QuickRepairInterval", {
 })
 
 local ActionsGroup = Tabs["Actions"]:AddLeftGroupbox("Emotes[表情动作]", "smile")
+local function getRemoteEvent()
+    return game:GetService("ReplicatedStorage"):FindFirstChild("Modules") and 
+           game:GetService("ReplicatedStorage").Modules:FindFirstChild("Network") and
+           game:GetService("ReplicatedStorage").Modules.Network:FindFirstChild("RemoteEvent")
+end
+local function stopAllEmotes()
+    local char = localPlayer.Character
+    if not char then return end
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        local animator = humanoid:FindFirstChildOfClass("Animator")
+        if animator then
+            for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+                pcall(function() track:Stop(); track:Destroy() end)
+            end
+        end
+        humanoid.PlatformStand = false
+        humanoid.JumpPower = 50
+    end
+    local rootPart = char:FindFirstChild("HumanoidRootPart")
+    if rootPart then
+        for _, sound in ipairs(rootPart:GetChildren()) do
+            if sound:IsA("Sound") then pcall(function() sound:Stop(); sound:Destroy() end) end
+        end
+    end
+    for _, child in ipairs(char:GetChildren()) do
+        if child.Name:match("Emote") or child.Name == "PlayerEmoteVFX" then
+            pcall(function() child:Destroy() end)
+        end
+    end
+    local remote = getRemoteEvent()
+    if remote then
+        pcall(function() remote:FireServer("StopEmote") end)
+        pcall(function() remote:FireServer("PlayEmote", "Animations", "Stop") end)
+    end
+end
 local function playEmote(animId, soundId, volume, looped, remoteName, effectAsset)
-    local char = game.Players.LocalPlayer.Character
+    stopAllEmotes()
+    local char = localPlayer.Character
     if not char then return nil end
     local humanoid = char:FindFirstChildOfClass("Humanoid")
     local rootPart = char:FindFirstChild("HumanoidRootPart")
     if not humanoid or not rootPart then return nil end
-    for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do track:Stop() end
-    for _, sound in ipairs(rootPart:GetChildren()) do if sound:IsA("Sound") then sound:Stop(); sound:Destroy() end end
-    for _, child in ipairs(char:GetChildren()) do if child.Name:match("Emote") or child.Name=="PlayerEmoteVFX" then child:Destroy() end end
     humanoid.PlatformStand = true
     humanoid.JumpPower = 0
     local bodyVelocity = Instance.new("BodyVelocity")
-    bodyVelocity.MaxForce = Vector3.new(100000,100000,100000)
+    bodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
     bodyVelocity.Velocity = Vector3.zero
     bodyVelocity.Parent = rootPart
     local animation = Instance.new("Animation")
     animation.AnimationId = animId
-    local track = humanoid:LoadAnimation(animation)
+    local animator = humanoid:FindFirstChildOfClass("Animator")
+    if not animator then
+        animator = Instance.new("Animator")
+        animator.Parent = humanoid
+    end
+    local track = animator:LoadAnimation(animation)
     track:Play()
     local sound = Instance.new("Sound")
     sound.SoundId = soundId
@@ -1779,14 +1688,76 @@ local function playEmote(animId, soundId, volume, looped, remoteName, effectAsse
     sound.Looped = looped or false
     sound.Parent = rootPart
     sound:Play()
-    if effectAsset then pcall(function() local effect = game:GetService("ReplicatedStorage"):FindFirstChild(effectAsset); if effect then local clone = effect:Clone(); clone.Name="PlayerEmoteVFX"; if char.PrimaryPart then clone.CFrame = char.PrimaryPart.CFrame * CFrame.new(0,-1,-0.3) end; local weld = Instance.new("WeldConstraint"); weld.Part0 = char.PrimaryPart; weld.Part1 = clone; weld.Parent = clone; clone.Parent = char; clone.CanCollide = false end end) end
-    if remoteName then pcall(function() local remote = game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent"); remote:FireServer("PlayEmote","Animations",remoteName) end) end
-    local function cleanup() pcall(function() if bodyVelocity and bodyVelocity.Parent then bodyVelocity:Destroy() end; if sound and sound.Parent then sound:Stop(); sound:Destroy() end; if track and track.IsPlaying then track:Stop() end; humanoid.PlatformStand = false; humanoid.JumpPower = 50; for _, child in ipairs(char:GetChildren()) do if child.Name:match("Emote") or child.Name=="PlayerEmoteVFX" then child:Destroy() end end end) end
+    if effectAsset then
+        pcall(function()
+            local effect = game:GetService("ReplicatedStorage"):FindFirstChild(effectAsset)
+            if effect then
+                local clone = effect:Clone()
+                clone.Name = "PlayerEmoteVFX"
+                if char.PrimaryPart then
+                    clone.CFrame = char.PrimaryPart.CFrame * CFrame.new(0, -1, -0.3)
+                end
+                local weld = Instance.new("WeldConstraint")
+                weld.Part0 = char.PrimaryPart
+                weld.Part1 = clone
+                weld.Parent = clone
+                clone.Parent = char
+                clone.CanCollide = false
+            end
+        end)
+    end
+    if remoteName then
+        local remote = getRemoteEvent()
+        if remote then
+            pcall(function() remote:FireServer("PlayEmote", "Animations", remoteName) end)
+        end
+    end
+    local function cleanup()
+        pcall(function()
+            if bodyVelocity and bodyVelocity.Parent then bodyVelocity:Destroy() end
+            if sound and sound.Parent then sound:Stop(); sound:Destroy() end
+            if track and track.IsPlaying then track:Stop(); track:Destroy() end
+            if animation then animation:Destroy() end
+            if humanoid then
+                humanoid.PlatformStand = false
+                humanoid.JumpPower = 50
+            end
+            if char then
+                for _, child in ipairs(char:GetChildren()) do
+                    if child.Name:match("Emote") or child.Name == "PlayerEmoteVFX" then
+                        child:Destroy()
+                    end
+                end
+            end
+            local remote = getRemoteEvent()
+            if remote then
+                pcall(function() remote:FireServer("StopEmote") end)
+            end
+        end)
+    end
     track.Stopped:Connect(cleanup)
-    return {track=track, sound=sound, bodyVelocity=bodyVelocity, cleanup=cleanup}
+    return { cleanup = cleanup }
 end
 local currentEmote = nil
-local function createEmoteToggle(text, animId, soundId, volume, looped, remoteName, effectAsset) return function(state) if state then if currentEmote then currentEmote.cleanup() end; currentEmote = playEmote(animId, soundId, volume, looped, remoteName, effectAsset); Library:Notify({Title=text, Description="Playing", Time=1}) else if currentEmote then currentEmote.cleanup(); currentEmote = nil; Library:Notify({Title=text, Description="Stopped", Time=1}) end end end end
+local function createEmoteToggle(text, animId, soundId, volume, looped, remoteName, effectAsset)
+    return function(state)
+        if state then
+            if currentEmote then
+                currentEmote.cleanup()
+                currentEmote = nil
+            end
+            currentEmote = playEmote(animId, soundId, volume, looped, remoteName, effectAsset)
+            Library:Notify({ Title = text, Description = "Playing", Time = 1 })
+        else
+            if currentEmote then
+                currentEmote.cleanup()
+                currentEmote = nil
+            end
+            stopAllEmotes()
+            Library:Notify({ Title = text, Description = "Stopped", Time = 1 })
+        end
+    end
+end
 ActionsGroup:AddToggle("SillyBilly", {Text="Silly Billy", Default=false, Callback=createEmoteToggle("Silly Billy","rbxassetid://107464355830477","rbxassetid://77601084987544",0.5,false,nil,nil)})
 ActionsGroup:AddToggle("SillyOfIt", {Text="Silly of it", Default=false, Callback=createEmoteToggle("Silly of it","rbxassetid://107464355830477","rbxassetid://120176009143091",0.5,false,nil,nil)})
 ActionsGroup:AddToggle("Subterfuge", {Text="Subterfuge", Default=false, Callback=createEmoteToggle("Subterfuge","rbxassetid://87482480949358","rbxassetid://132297506693854",2,false,"_Subterfuge",nil)})
