@@ -63,6 +63,7 @@ local BlockSettings = {
     InverseMode = false,
     RemoteDetectionEnabled = false,
     RemoteActionNames = {},
+    BlockSkills = false,
 }
 for _, actions in pairs(KillerMeleeActions) do
     for _, name in ipairs(actions.melee or {}) do
@@ -159,6 +160,31 @@ local AttackAnimIDs = {
     ["70371667919898"] = true,
     ["95414473113522"] = true,
     ["77375846492436"] = true,
+}
+
+local SkillAnimIDs = {
+    ["126355327951215"] = true,
+    ["121086746534252"] = true,
+    ["84222579096470"] = true,
+    ["126896426760253"] = true,
+    ["139835501933932"] = true,
+    ["114356208094580"] = true,
+    ["135884061951801"] = true,
+    ["87989533095285"] = true,
+    ["139309647473555"] = true,
+    ["79282445348798"] = true,
+    ["72186169160926"] = true,
+    ["97279203534534"] = true,
+    ["101736016625776"] = true,
+    ["98456918873918"] = true,
+    ["133363345661032"] = true,
+    ["128414736976503"] = true,
+    ["115403107018365"] = true,
+    ["124619925708292"] = true,
+    ["121293883585738"] = true,
+    ["91628732643385"] = true,
+    ["99050723653468"] = true,
+    ["119181003138006"] = true,
 }
 
 local AttackSoundIDs = {
@@ -266,8 +292,9 @@ local AnimIdToActionName = {
 }
 
 local function isMeleeAttack(animId)
-    local actionName = AnimIdToActionName[animId]
-    return actionName ~= nil and MeleeActionNames[actionName] == true
+    if AttackAnimIDs[animId] then return true end
+    if BlockSettings.BlockSkills and SkillAnimIDs[animId] then return true end
+    return false
 end
 
 local soundHooks = {}
@@ -1172,6 +1199,11 @@ BlockGroup:AddToggle("InverseMode", {Text="Inverse Mode[反转模式]", Default=
     BlockSettings.InverseMode = s
     UpdateRangeVisual()
     Library:Notify({Title="Inverse Mode", Description=s and "Range circles attached to killers" or "Normal mode", Time=2})
+end})
+BlockGroup:AddDivider()
+BlockGroup:AddToggle("BlockSkillsToggle", {Text="Block Skills[格挡技能]", Default=false, Callback=function(s)
+    BlockSettings.BlockSkills = s
+    Library:Notify({Title="Block Skills", Description=s and "Enabled" or "Disabled", Time=1})
 end})
 
 local AutoPunchGroup = Tabs["Combat"]:AddRightGroupbox("Auto Punch[自动拳击]", "punch")
