@@ -36,7 +36,7 @@ InfoGroup:AddLabel("Display Name : " .. localPlayer.DisplayName)
 InfoGroup:AddLabel("Account Age : " .. localPlayer.AccountAge .. " days")
 local NewsGroup = Tabs["Player Info"]:AddLeftGroupbox("News[公告]", "rocket")
 NewsGroup:AddLabel("Dev: FixFox")
-NewsGroup:AddLabel("🇨🇳[2026.5.11] Fix Anti Bait 🇨🇳")
+NewsGroup:AddLabel("🇨🇳[2026.5.23]auto backstab🇨🇳")
 NewsGroup:AddLabel("部分脚本功能感谢 Yuxinchen")
 
 local Old__namecall
@@ -340,16 +340,13 @@ local function watchKillerAnimations(killerModel)
         if killerModel:GetAttribute("IsFakeNoli") == true then return end
         local animId = track.Animation.AnimationId:match("%d+")
         if not animId or not isMeleeAttack(animId) then return end
-
         local t = tick()
         if animBlockedUntil[killerModel] and t < animBlockedUntil[killerModel] then return end
-
         local blockBtn = getBlockButton()
         if blockBtn then
             local cd = blockBtn:FindFirstChild("CooldownTime")
             if cd and cd.Text ~= "" then return end
         end
-
         local myChar = localPlayer.Character
         local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
         if not myRoot then return end
@@ -358,7 +355,6 @@ local function watchKillerAnimations(killerModel)
             if (killerRoot.Position - myRoot.Position).Magnitude > BlockSettings.TriggerDistance then return end
             if not isKillerFacingPlayer(killerModel, myRoot) then return end
         end
-
         pressBlock()
         animBlockedUntil[killerModel] = t + 0.1
     end)
@@ -641,6 +637,369 @@ PlayerGroup:AddToggle("AlwaysShowChat", {
         end
     end
 })
+
+local BackstabSettings = {
+    Enabled = false,
+    Distance = 15,
+    ShowRange = true,
+    RangeColor = Color3.fromRGB(255, 100, 100),
+    RangeTransparency = 0.5,
+    TeleportSmoothness = 8,
+    TeleportDuration = 0.15,
+    RangeVisuals = {},
+    Active = false,
+    ActiveKiller = nil,
+    ActiveTrack = nil,
+    LoopConnection = nil,
+    LastBackstab = 0,
+    BackstabCooldown = 1.5,
+    Debug = true,
+}
+
+local BackstabGroup = Tabs["Combat"]:AddLeftGroupbox("Auto Backstab[自动背刺]", "target")
+BackstabGroup:AddToggle("EnableBackstab", {
+    Text = "Enable Auto Backstab[启用自动背刺]",
+    Default = false,
+    Callback = function(state)
+        BackstabSettings.Enabled = state
+        if not state then
+            for killer, part in pairs(BackstabSettings.RangeVisuals) do
+                pcall(function() part:Destroy() end)
+            end
+            BackstabSettings.RangeVisuals = {}
+            if BackstabSettings.Active then
+                stopBackstab()
+            end
+        end
+        Library:Notify({Title="Auto Backstab", Description=state and "Enabled" or "Disabled", Time=1})
+    end
+})
+BackstabGroup:AddSlider("BackstabDistance", {
+    Text = "Backstab Distance[背刺距离]",
+    Default = 15,
+    Min = 5,
+    Max = 30,
+    Rounding = 1,
+    Callback = function(v)
+        BackstabSettings.Distance = v
+        if BackstabSettings.ShowRange then
+            for killer, part in pairs(BackstabSettings.RangeVisuals) do
+                if part and part.Parent then
+                    part.Size = Vector3.new(v * 2, 1, v * 2)
+                end
+            end
+        end
+    end
+})
+BackstabGroup:AddToggle("ShowBackstabRange", {
+    Text = "Show Backstab Range[显示背刺范围]",
+    Default = true,
+    Callback = function(state)
+        BackstabSettings.ShowRange = state
+        if state then
+            local killersFolder = getKillersFolder()
+            if killersFolder then
+                for _, killer in ipairs(killersFolder:GetChildren()) do
+                    if killer:IsA("Model") then
+                        createBackstabRangeVisual(killer)
+                    end
+                end
+            end
+        else
+            for killer, part in pairs(BackstabSettings.RangeVisuals) do
+                pcall(function() part:Destroy() end)
+            end
+            BackstabSettings.RangeVisuals = {}
+        end
+    end
+})
+BackstabGroup:AddLabel("Range Color[范围颜色]"):AddColorPicker("BackstabRangeColor", {
+    Default = BackstabSettings.RangeColor,
+    Title = "Range Color",
+    Callback = function(v)
+        BackstabSettings.RangeColor = v
+        for _, part in pairs(BackstabSettings.RangeVisuals) do
+            if part then part.Color = v end
+        end
+    end
+})
+
+local function debugLog(msg)
+    if BackstabSettings.Debug then
+        print("[Backstab] " .. msg)
+    end
+end
+
+local function createBackstabRangeVisual(killerModel)
+    if not killerModel or not killerModel:IsA("Model") then return nil end
+    if BackstabSettings.RangeVisuals[killerModel] then return end
+    local root = killerModel:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    local part = Instance.new("Part")
+    part.Name = "BackstabRangeVisual"
+    part.Shape = Enum.PartType.Ball
+    part.Size = Vector3.new(BackstabSettings.Distance * 2, 1, BackstabSettings.Distance * 2)
+    part.Color = BackstabSettings.RangeColor
+    part.Material = Enum.Material.ForceField
+    part.Transparency = BackstabSettings.RangeTransparency
+    part.Anchored = false
+    part.CanCollide = false
+    part.CFrame = root.CFrame
+    local weld = Instance.new("WeldConstraint")
+    weld.Part0 = root
+    weld.Part1 = part
+    weld.Parent = part
+    part.Parent = root
+    BackstabSettings.RangeVisuals[killerModel] = part
+    return part
+end
+
+local function updateBackstabRangeVisuals()
+    if not BackstabSettings.ShowRange then return end
+    local killersFolder = getKillersFolder()
+    if not killersFolder then return end
+    for _, killer in ipairs(killersFolder:GetChildren()) do
+        if killer:IsA("Model") then
+            if not BackstabSettings.RangeVisuals[killer] then
+                createBackstabRangeVisual(killer)
+            end
+        end
+    end
+    for killer, part in pairs(BackstabSettings.RangeVisuals) do
+        if not killer or not killer.Parent then
+            pcall(function() part:Destroy() end)
+            BackstabSettings.RangeVisuals[killer] = nil
+        end
+    end
+end
+
+local function stopBackstab()
+    if BackstabSettings.LoopConnection then
+        BackstabSettings.LoopConnection:Disconnect()
+        BackstabSettings.LoopConnection = nil
+    end
+    BackstabSettings.Active = false
+    BackstabSettings.ActiveKiller = nil
+    BackstabSettings.ActiveTrack = nil
+    local char = localPlayer.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.AutoRotate = true
+        end
+    end
+    debugLog("Stopped")
+end
+
+local function startBackstabLoop(killerModel, track)
+    if BackstabSettings.LoopConnection then
+        BackstabSettings.LoopConnection:Disconnect()
+    end
+    local char = localPlayer.Character
+    if not char then
+        stopBackstab()
+        return
+    end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.AutoRotate = false
+    end
+    BackstabSettings.LoopConnection = game:GetService("RunService").RenderStepped:Connect(function()
+        if not BackstabSettings.Active then
+            stopBackstab()
+            return
+        end
+        if not killerModel or not killerModel.Parent then
+            debugLog("Killer lost, stopping")
+            stopBackstab()
+            return
+        end
+        local myChar = localPlayer.Character
+        if not myChar or not myChar.Parent then
+            stopBackstab()
+            return
+        end
+        local root = myChar:FindFirstChild("HumanoidRootPart")
+        local killerRoot = killerModel:FindFirstChild("HumanoidRootPart")
+        if not root or not killerRoot then
+            stopBackstab()
+            return
+        end
+        local behindOffset = -killerRoot.CFrame.LookVector * 2.5
+        local targetPos = killerRoot.Position + behindOffset + Vector3.new(0, 0.5, 0)
+        local targetCF = CFrame.new(targetPos, killerRoot.Position)
+        root.CFrame = targetCF
+    end)
+    if track and track.Parent then
+        local conn
+        conn = track.Stopped:Connect(function()
+            debugLog("Animation stopped, ending")
+            if conn then conn:Disconnect() end
+            stopBackstab()
+        end)
+        local ancConn
+        ancConn = track.AncestryChanged:Connect(function()
+            if not track.Parent then
+                debugLog("Animation destroyed, ending")
+                if ancConn then ancConn:Disconnect() end
+                stopBackstab()
+            end
+        end)
+    else
+        task.delay(BackstabSettings.TeleportDuration + 0.5, function()
+            if BackstabSettings.Active and BackstabSettings.ActiveTrack == track then
+                debugLog("Timeout stop")
+                stopBackstab()
+            end
+        end)
+    end
+end
+
+local function performBackstab(killerModel, track, shouldLock)
+    if not killerModel or not killerModel.Parent then
+        debugLog("Invalid killer")
+        return false
+    end
+    local myChar = localPlayer.Character
+    if not myChar then
+        debugLog("No character")
+        return false
+    end
+    local root = myChar:FindFirstChild("HumanoidRootPart")
+    local killerRoot = killerModel:FindFirstChild("HumanoidRootPart")
+    if not root or not killerRoot then
+        debugLog("Missing root parts")
+        return false
+    end
+    local behindOffset = -killerRoot.CFrame.LookVector * 2.5
+    local targetPos = killerRoot.Position + behindOffset + Vector3.new(0, 0.5, 0)
+    local targetCF = CFrame.new(targetPos, killerRoot.Position)
+    local startCF = root.CFrame
+    local steps = BackstabSettings.TeleportSmoothness
+    local duration = BackstabSettings.TeleportDuration
+    local stepTime = duration / steps
+    for i = 1, steps do
+        local alpha = i / steps
+        local newCF = startCF:Lerp(targetCF, alpha)
+        root.CFrame = newCF
+        task.wait(stepTime)
+    end
+    root.CFrame = targetCF
+    if shouldLock then
+        BackstabSettings.Active = true
+        BackstabSettings.ActiveKiller = killerModel
+        BackstabSettings.ActiveTrack = track
+        startBackstabLoop(killerModel, track)
+        debugLog("Started lock mode on " .. (killerModel.Name or "Unknown"))
+    else
+        debugLog("Movement only (no lock)")
+    end
+    return true
+end
+
+local function getNearestKillerForBackstab()
+    local killers = getKillersFolder()
+    if not killers then return nil end
+    local myChar = localPlayer.Character
+    if not myChar then return nil end
+    local myRoot = myChar:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return nil end
+    local nearest, nearestDist = nil, math.huge
+    for _, killer in ipairs(killers:GetChildren()) do
+        if killer:IsA("Model") and killer:FindFirstChild("HumanoidRootPart") then
+            if killer:GetAttribute("IsFakeNoli") ~= true then
+                local dist = (killer.HumanoidRootPart.Position - myRoot.Position).Magnitude
+                if dist <= BackstabSettings.Distance and dist < nearestDist then
+                    nearestDist = dist
+                    nearest = killer
+                end
+            end
+        end
+    end
+    return nearest
+end
+
+local backstabAnimIds = {
+    moveOnly = { ["100725497418533"] = true },
+    lock = { ["108018357044094"] = true },
+}
+local backstabAnimConn = nil
+local function hookPlayerAnimationsForBackstab()
+    local char = localPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    local animator = hum:FindFirstChildOfClass("Animator")
+    if not animator then return end
+    if backstabAnimConn then backstabAnimConn:Disconnect() end
+    backstabAnimConn = animator.AnimationPlayed:Connect(function(track)
+        if not BackstabSettings.Enabled then return end
+        local playersFolder = workspace:FindFirstChild("Players")
+        if not playersFolder then return end
+        local survivors = playersFolder:FindFirstChild("Survivors")
+        if not survivors then return end
+        if not char:IsDescendantOf(survivors) then
+            debugLog("Not survivor, ignoring")
+            return
+        end
+        local animId = track.Animation.AnimationId:match("%d+")
+        if not animId then return end
+        local shouldLock = false
+        if backstabAnimIds.moveOnly[animId] then
+            shouldLock = false
+        elseif backstabAnimIds.lock[animId] then
+            shouldLock = true
+        else
+            return
+        end
+        debugLog("Triggered by anim " .. animId .. (shouldLock and " (lock)" or " (move only)"))
+        local now = tick()
+        if now - BackstabSettings.LastBackstab < BackstabSettings.BackstabCooldown then
+            debugLog("Cooldown")
+            return
+        end
+        local target = getNearestKillerForBackstab()
+        if target then
+            debugLog("Found target, performing")
+            BackstabSettings.LastBackstab = now
+            performBackstab(target, track, shouldLock)
+        else
+            debugLog("No killer in range")
+        end
+    end)
+end
+
+local function onCharacterAdded()
+    hookPlayerAnimationsForBackstab()
+end
+if localPlayer.Character then
+    hookPlayerAnimationsForBackstab()
+end
+localPlayer.CharacterAdded:Connect(onCharacterAdded)
+
+task.spawn(function()
+    while true do
+        if BackstabSettings.ShowRange then
+            updateBackstabRangeVisuals()
+        elseif not BackstabSettings.ShowRange then
+            for killer, part in pairs(BackstabSettings.RangeVisuals) do
+                pcall(function() part:Destroy() end)
+            end
+            BackstabSettings.RangeVisuals = {}
+        end
+        task.wait(0.5)
+    end
+end)
+
+local oldUnload = Library.OnUnload
+Library.OnUnload = function()
+    if backstabAnimConn then backstabAnimConn:Disconnect() end
+    stopBackstab()
+    for _, part in pairs(BackstabSettings.RangeVisuals) do
+        pcall(function() part:Destroy() end)
+    end
+    if oldUnload then oldUnload() end
+end
 
 local StaminaGroup = Tabs["Combat"]:AddLeftGroupbox("Stamina Settings[体力设置]", "zap")
 local StaminaSettings = { MaxStamina=100, StaminaGain=25, StaminaLoss=10, SprintSpeed=28, InfiniteGain=9999 }
