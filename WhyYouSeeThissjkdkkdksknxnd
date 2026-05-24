@@ -187,83 +187,7 @@ local SkillAnimIDs = {
     ["119181003138006"] = true,
 }
 
-local AttackSoundIDs = {
-    ["18885940850"] = true,
-    ["18885937766"] = true,
-    ["126830014841198"] = true,
-    ["105458270463374"] = true,
-    ["106538427162796"] = true,
-    ["83829782357897"] = true,
-    ["122709416391891"] = true,
-    ["88451353906104"] = true,
-    ["109667959938617"] = true,
-    ["118298475669935"] = true,
-    ["88970503168421"] = true,
-    ["81299297965542"] = true,
-    ["70371667919898"] = true,
-    ["95414473113522"] = true,
-    ["77375846492436"] = true,
-    ["112809109188560"] = true,
-    ["102228729296384"] = true,
-    ["80516583309685"] = true,
-    ["111261564982886"] = true,
-    ["75467546215199"] = true,
-    ["80919153988550"] = true,
-    ["86451559088289"] = true,
-    ["140242176732868"] = true,
-    ["136323728355613"] = true,
-    ["115026634746636"] = true,
-    ["84116622032112"] = true,
-    ["108907358619313"] = true,
-    ["127793641088496"] = true,
-    ["86174610237192"] = true,
-    ["95079963655241"] = true,
-    ["101199185291628"] = true,
-    ["119942598489800"] = true,
-    ["84307400688050"] = true,
-    ["113037804008732"] = true,
-    ["105200830849301"] = true,
-    ["75330693422988"] = true,
-    ["82221759983649"] = true,
-    ["81702359653578"] = true,
-    ["108610718831698"] = true,
-    ["112395455254818"] = true,
-    ["109431876587852"] = true,
-    ["109348678063422"] = true,
-    ["85853080745515"] = true,
-    ["90819435118493"] = true,
-    ["117173212095661"] = true,
-    ["100321250424257"] = true,
-    ["77100821793542"] = true,
-    ["81989261113189"] = true,
-    ["129108619555351"] = true,
-    ["119583605486352"] = true,
-    ["79980897195554"] = true,
-    ["110877859670130"] = true,
-    ["104910828105172"] = true,
-    ["110126546193799"] = true,
-    ["104388455240670"] = true,
-    ["85544168523099"] = true,
-    ["103736328206432"] = true,
-    ["128307808203038"] = true,
-    ["111104117703814"] = true,
-    ["97100466324703"] = true,
-    ["74000375845213"] = true,
-    ["111502315377475"] = true,
-    ["84340345572285"] = true,
-    ["120394605928086"] = true,
-    ["134973085112081"] = true,
-    ["79554277951408"] = true,
-    ["115476331903507"] = true,
-    ["74183834601348"] = true,
-    ["88582935528044"] = true,
-    ["107444859834748"] = true,
-    ["95166423060976"] = true,
-    ["131123355704017"] = true,
-    ["111647315359080"] = true,
-    ["84122523631600"] = true,
-    ["107593207834624"] = true,
-}
+local AttackSoundIDs = {}
 
 local animConns = {}
 local animBlockedUntil = {}
@@ -291,10 +215,23 @@ local AnimIdToActionName = {
     ["77375846492436"] = "Stab",
 }
 
-local function isMeleeAttack(animId)
-    if AttackAnimIDs[animId] then return true end
-    if BlockSettings.BlockSkills and SkillAnimIDs[animId] then return true end
-    return false
+local function isMeleeAttack(animId, killerModel)
+    if AttackAnimIDs[animId] then
+        return true
+    end
+    if not BlockSettings.BlockSkills then
+        return false
+    end
+    if not SkillAnimIDs[animId] then
+        return false
+    end
+    if killerModel then
+        local actorName = killerModel:GetAttribute("ActorDisplayName") or killerModel.Name
+        if actorName == "Nosferatu" then
+            return false
+        end
+    end
+    return true
 end
 
 local soundHooks = {}
@@ -310,51 +247,9 @@ local function getKillerRootFromSound(sound)
     return nil
 end
 local function attemptBlockFromSound(sound)
-    if not BlockSettings.Enabled then return end
-    if not sound or not sound:IsA("Sound") or not sound.IsPlaying then return end
-    local id = getSoundIdNumber(sound)
-    if not id or not AttackSoundIDs[id] then return end
-    local t = tick()
-    if soundBlockedUntil[sound] and t < soundBlockedUntil[sound] then return end
-    local blockBtn = getBlockButton()
-    if blockBtn then
-        local cd = blockBtn:FindFirstChild("CooldownTime")
-        if cd and cd.Text ~= "" then return end
-    end
-    local myChar = localPlayer.Character
-    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return end
-    local killerModel = getKillerRootFromSound(sound)
-    if killerModel then
-        if killerModel:GetAttribute("IsFakeNoli") == true then return end
-        local killerRoot = killerModel:FindFirstChild("HumanoidRootPart")
-        if killerRoot then
-            if (killerRoot.Position - myRoot.Position).Magnitude > BlockSettings.TriggerDistance then return end
-            if not isKillerFacingPlayer(killerModel, myRoot) then return end
-        else return end
-    else return end
-    pressBlock()
-    soundBlockedUntil[sound] = t + 0.5
+    return
 end
-local function hookSound(sound)
-    if not sound:IsA("Sound") or soundHooks[sound] then return end
-    local playedConn = sound.Played:Connect(function() pcall(attemptBlockFromSound, sound) end)
-    local propConn = sound:GetPropertyChangedSignal("IsPlaying"):Connect(function()
-        if sound.IsPlaying then pcall(attemptBlockFromSound, sound) end
-    end)
-    local destroyConn = sound.Destroying:Connect(function()
-        playedConn:Disconnect(); propConn:Disconnect(); destroyConn:Disconnect()
-        soundHooks[sound] = nil; soundBlockedUntil[sound] = nil
-    end)
-    soundHooks[sound] = {playedConn, propConn, destroyConn}
-    if sound.IsPlaying then task.spawn(function() pcall(attemptBlockFromSound, sound) end) end
-end
-for _, sound in ipairs(workspace:GetDescendants()) do
-    if sound:IsA("Sound") then pcall(hookSound, sound) end
-end
-workspace.DescendantAdded:Connect(function(obj)
-    if obj:IsA("Sound") then pcall(hookSound, obj) end
-end)
+local function hookSound(sound) end
 
 local function watchKillerAnimations(killerModel)
     if animConns[killerModel] then return end
@@ -366,7 +261,7 @@ local function watchKillerAnimations(killerModel)
         if not BlockSettings.Enabled then return end
         if killerModel:GetAttribute("IsFakeNoli") == true then return end
         local animId = track.Animation.AnimationId:match("%d+")
-        if not animId or not isMeleeAttack(animId) then return end
+        if not animId or not isMeleeAttack(animId, killerModel) then return end
         local t = tick()
         if animBlockedUntil[killerModel] and t < animBlockedUntil[killerModel] then return end
         local blockBtn = getBlockButton()
