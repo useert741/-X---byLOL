@@ -160,6 +160,76 @@ local AttackAnimIDs = {
     ["70371667919898"] = true,
     ["95414473113522"] = true,
     ["77375846492436"] = true,
+    ["121293883585738"] = true,
+    ["91628732643385"] = true,
+    ["99050723653468"] = true,
+    ["119181003138006"] = true,
+    ["101736016625776"] = true,
+    ["98456918873918"] = true,
+    ["133363345661032"] = true,
+    ["128414736976503"] = true,
+    ["115403107018365"] = true,
+    ["124619925708292"] = true,
+    ["136323728355613"] = true,
+    ["140242176732868"] = true,
+    ["112809109188560"] = true,
+    ["102228729296384"] = true,
+    ["80516583309685"] = true,
+    ["111261564982886"] = true,
+    ["75467546215199"] = true,
+    ["80919153988550"] = true,
+    ["86451559088289"] = true,
+    ["115026634746636"] = true,
+    ["84116622032112"] = true,
+    ["108907358619313"] = true,
+    ["127793641088496"] = true,
+    ["86174610237192"] = true,
+    ["95079963655241"] = true,
+    ["101199185291628"] = true,
+    ["119942598489800"] = true,
+    ["84307400688050"] = true,
+    ["113037804008732"] = true,
+    ["105200830849301"] = true,
+    ["75330693422988"] = true,
+    ["82221759983649"] = true,
+    ["81702359653578"] = true,
+    ["108610718831698"] = true,
+    ["112395455254818"] = true,
+    ["109431876587852"] = true,
+    ["109348678063422"] = true,
+    ["85853080745515"] = true,
+    ["90819435118493"] = true,
+    ["117173212095661"] = true,
+    ["100321250424257"] = true,
+    ["77100821793542"] = true,
+    ["81989261113189"] = true,
+    ["129108619555351"] = true,
+    ["119583605486352"] = true,
+    ["79980897195554"] = true,
+    ["110877859670130"] = true,
+    ["104910828105172"] = true,
+    ["110126546193799"] = true,
+    ["104388455240670"] = true,
+    ["85544168523099"] = true,
+    ["103736328206432"] = true,
+    ["128307808203038"] = true,
+    ["111104117703814"] = true,
+    ["97100466324703"] = true,
+    ["74000375845213"] = true,
+    ["111502315377475"] = true,
+    ["84340345572285"] = true,
+    ["120394605928086"] = true,
+    ["134973085112081"] = true,
+    ["79554277951408"] = true,
+    ["115476331903507"] = true,
+    ["74183834601348"] = true,
+    ["88582935528044"] = true,
+    ["107444859834748"] = true,
+    ["95166423060976"] = true,
+    ["131123355704017"] = true,
+    ["111647315359080"] = true,
+    ["84122523631600"] = true,
+    ["107593207834624"] = true,
 }
 
 local SkillAnimIDs = {
@@ -175,16 +245,6 @@ local SkillAnimIDs = {
     ["79282445348798"] = true,
     ["72186169160926"] = true,
     ["97279203534534"] = true,
-    ["101736016625776"] = true,
-    ["98456918873918"] = true,
-    ["133363345661032"] = true,
-    ["128414736976503"] = true,
-    ["115403107018365"] = true,
-    ["124619925708292"] = true,
-    ["121293883585738"] = true,
-    ["91628732643385"] = true,
-    ["99050723653468"] = true,
-    ["119181003138006"] = true,
 }
 
 local AttackSoundIDs = {}
@@ -215,23 +275,14 @@ local AnimIdToActionName = {
     ["77375846492436"] = "Stab",
 }
 
-local function isMeleeAttack(animId, killerModel)
-    if AttackAnimIDs[animId] then
+local function isMeleeAttack(animId)
+    if AttackAnimIDs[animId] then return true end
+    if not BlockSettings.BlockSkills then return false end
+    if SkillAnimIDs[animId] then
+        if animId == "79282445348798" or animId == "72186169160926" or animId == "97279203534534" then return false end
         return true
     end
-    if not BlockSettings.BlockSkills then
-        return false
-    end
-    if not SkillAnimIDs[animId] then
-        return false
-    end
-    if killerModel then
-        local actorName = killerModel:GetAttribute("ActorDisplayName") or killerModel.Name
-        if actorName == "Nosferatu" then
-            return false
-        end
-    end
-    return true
+    return false
 end
 
 local soundHooks = {}
@@ -246,9 +297,7 @@ local function getKillerRootFromSound(sound)
     if parent and parent:FindFirstChildOfClass("Humanoid") then return parent end
     return nil
 end
-local function attemptBlockFromSound(sound)
-    return
-end
+local function attemptBlockFromSound(sound) return end
 local function hookSound(sound) end
 
 local function watchKillerAnimations(killerModel)
@@ -261,7 +310,7 @@ local function watchKillerAnimations(killerModel)
         if not BlockSettings.Enabled then return end
         if killerModel:GetAttribute("IsFakeNoli") == true then return end
         local animId = track.Animation.AnimationId:match("%d+")
-        if not animId or not isMeleeAttack(animId, killerModel) then return end
+        if not animId or not isMeleeAttack(animId) then return end
         local t = tick()
         if animBlockedUntil[killerModel] and t < animBlockedUntil[killerModel] then return end
         local blockBtn = getBlockButton()
@@ -1459,6 +1508,7 @@ HitboxGroup:AddButton({
     end
 })
 
+-- ========== ESP 系统（完整，已删除技能 ESP） ==========
 local Services = {
     Players = game:GetService("Players"),
     RunService = game:GetService("RunService"),
@@ -1832,52 +1882,6 @@ end
 task.spawn(function() while true do UpdateESP(); updateFakeNolis(); task.wait(0.5) end end)
 Services.RunService.RenderStepped:Connect(UpdateTracers)
 
-local Settings = { Advanced = { Enabled = false, OutlineOnly = true, ShowNametag = false, Color = Color3.fromRGB(0,255,255) } }
-local Highlights = {}
-local Nametags = {}
-local AdvancedNames = {"BuildermanDispenser","BuildermanSentry","HumanoidRootProjectile","Swords","shockwave","Voidstar"}
-local function CreateNametag(adornee, text, color)
-    if Nametags[adornee] then Nametags[adornee]:Destroy() end
-    local billboard = Instance.new("BillboardGui")
-    billboard.Adornee = adornee
-    billboard.Size = UDim2.new(0,200,0,50)
-    billboard.StudsOffset = Vector3.new(0,3,0)
-    billboard.AlwaysOnTop = true
-    billboard.Enabled = true
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Size = UDim2.new(1,0,1,0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.Text = text
-    textLabel.TextColor3 = color
-    textLabel.TextStrokeTransparency = 0
-    textLabel.TextStrokeColor3 = Color3.new(0,0,0)
-    textLabel.Font = Enum.Font.GothamBold
-    textLabel.TextSize = 6
-    textLabel.Parent = billboard
-    billboard.Parent = adornee
-    Nametags[adornee] = textLabel
-end
-local function AddHighlight(Obj, Config)
-    if Highlights[Obj] then Highlights[Obj]:Destroy() end
-    local hl = Instance.new("Highlight")
-    hl.Adornee = Obj
-    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    hl.Enabled = Config.Enabled
-    hl.OutlineColor = Config.Color
-    hl.FillColor = Config.Color
-    hl.OutlineTransparency = 0
-    local alwaysFill = table.find({"BuildermanDispenser","BuildermanSentry","PizzaDeliveryRig","HumanoidRootProjectile","Swords","shockwave","Voidstar","Shadow"}, Obj.Name)
-    hl.FillTransparency = Config.OutlineOnly and 1 or (alwaysFill and 0.65 or 1)
-    hl.Parent = Obj
-    Highlights[Obj] = hl
-    Obj.AncestryChanged:Connect(function(_, parent) if not parent then if Highlights[Obj] then Highlights[Obj]:Destroy(); Highlights[Obj]=nil end if Nametags[Obj] then Nametags[Obj].Parent:Destroy(); Nametags[Obj]=nil end end end)
-end
-local function ApplyToTarget(target, Config) if not target or not target.Parent then return end AddHighlight(target, Config) end
-local function HandleAdvanced(obj) if table.find(AdvancedNames, obj.Name) or (obj.Name=="Shadow" and obj.Parent and obj.Parent.Name=="Shadows") then ApplyToTarget(obj, Settings.Advanced) end end
-local MapFolder = Services.Workspace:FindFirstChild("Map")
-if MapFolder and MapFolder:FindFirstChild("Ingame") then MapFolder = MapFolder.Ingame; for _, v in ipairs(MapFolder:GetDescendants()) do HandleAdvanced(v) end; MapFolder.DescendantAdded:Connect(HandleAdvanced) end
-task.spawn(function() while task.wait(0.3) do for obj, hl in pairs(Highlights) do if not hl or not hl.Parent then continue end local config = Settings.Advanced; hl.Enabled = config.Enabled; hl.OutlineColor = config.Color; hl.FillColor = config.Color; hl.OutlineTransparency = 0; hl.FillTransparency = config.OutlineOnly and 1 or 0.65; if config.ShowNametag then local nameText = obj.Name; if Nametags[obj] then Nametags[obj].Text = nameText; Nametags[obj].TextColor3 = config.Color else CreateNametag(obj, nameText, config.Color) end else if Nametags[obj] then Nametags[obj].Parent:Destroy(); Nametags[obj]=nil end end end end end)
-
 local ESPGroupUI = Tabs["ESP"]:AddLeftGroupbox("Player ESP[玩家ESP]", "users")
 ESPGroupUI:AddCheckbox("KillerESP", {Text="Killer ESP[杀手ESP]", Default=false, Callback=function(v) ESPSettings.killerESP=v; Library:Notify({Title="Killer ESP", Description=v and "Enabled" or "Disabled", Time=1}) end}):AddColorPicker("KillerColor", {Default=ESPSettings.killerColor, Title="Killer Color[杀手颜色]", Callback=function(v) ESPSettings.killerColor=v end})
 ESPGroupUI:AddCheckbox("KillerSkinESP", {Text="Show Killer Skin[显示杀手皮肤]", Default=false, Callback=function(v) ESPSettings.killerSkinESP=v; UpdateAllPlayerESPText(); Library:Notify({Title="Show Killer Skin", Description=v and "Enabled" or "Disabled", Time=1}) end})
@@ -1893,12 +1897,14 @@ local ObjectGroup = Tabs["ESP"]:AddRightGroupbox("Item ESP[物品ESP]", "box")
 ObjectGroup:AddCheckbox("GeneratorESP", {Text="Generator ESP[发电机ESP]", Default=false, Callback=function(v) ESPSettings.generatorESP=v; Library:Notify({Title="Generator ESP", Description=v and "Enabled" or "Disabled", Time=1}) end}):AddColorPicker("GeneratorColor", {Default=ESPSettings.generatorColor, Title="Generator Color[发电机颜色]", Callback=function(v) ESPSettings.generatorColor=v end})
 ObjectGroup:AddCheckbox("ItemESP", {Text="Item ESP[物品ESP]", Default=false, Callback=function(v) ESPSettings.itemESP=v; Library:Notify({Title="Item ESP", Description=v and "Enabled" or "Disabled", Time=1}) end}):AddColorPicker("ItemColor", {Default=ESPSettings.itemColor, Title="Item Color[物品颜色]", Callback=function(v) ESPSettings.itemColor=v end})
 ObjectGroup:AddCheckbox("PizzaESP", {Text="Pizza ESP[披萨ESP]", Default=false, Callback=function(v) ESPSettings.pizzaEsp=v; Library:Notify({Title="Pizza ESP", Description=v and "Enabled" or "Disabled", Time=1}) end}):AddColorPicker("PizzaColor", {Default=ESPSettings.pizzaColor, Title="Pizza Color[披萨颜色]", Callback=function(v) ESPSettings.pizzaColor=v end})
+
 local SpecialGroup = Tabs["ESP"]:AddRightGroupbox("Special ESP[特殊ESP]", "zap")
 SpecialGroup:AddCheckbox("PizzaDeliveryESP", {Text="Pizza Delivery ESP[披萨送货员ESP]", Default=false, Callback=function(v) ESPSettings.pizzaDeliveryEsp=v; Library:Notify({Title="Pizza Delivery ESP", Description=v and "Enabled" or "Disabled", Time=1}) end}):AddColorPicker("PizzaDeliveryColor", {Default=ESPSettings.pizzaDeliveryColor, Title="Pizza Delivery Color[披萨送货员颜色]", Callback=function(v) ESPSettings.pizzaDeliveryColor=v end})
 SpecialGroup:AddCheckbox("ZombieESP", {Text="Zombie ESP[僵尸ESP]", Default=false, Callback=function(v) ESPSettings.zombieEsp=v; Library:Notify({Title="Zombie ESP", Description=v and "Enabled" or "Disabled", Time=1}) end}):AddColorPicker("ZombieColor", {Default=ESPSettings.zombieColor, Title="Zombie Color[僵尸颜色]", Callback=function(v) ESPSettings.zombieColor=v end})
 SpecialGroup:AddCheckbox("TripwireESP", {Text="Tripwire ESP[绊线ESP]", Default=false, Callback=function(v) ESPSettings.taphTripwireEsp=v; Library:Notify({Title="Tripwire ESP", Description=v and "Enabled" or "Disabled", Time=1}) end}):AddColorPicker("TripwireColor", {Default=ESPSettings.tripwireColor, Title="Tripwire Color[绊线颜色]", Callback=function(v) ESPSettings.tripwireColor=v end})
 SpecialGroup:AddCheckbox("SubspaceBoxESP", {Text="Subspace Box ESP[空间炸弹ESP]", Default=false, Callback=function(v) ESPSettings.subspaceBoxEsp=v; Library:Notify({Title="Subspace Box ESP", Description=v and "Enabled" or "Disabled", Time=1}) end}):AddColorPicker("SubspaceBoxColor", {Default=ESPSettings.subspaceBoxColor, Title="Subspace Box Color[空间炸弹颜色]", Callback=function(v) ESPSettings.subspaceBoxColor=v end})
 SpecialGroup:AddCheckbox("RespawnESP", {Text="Two Time Respawn ESP[二重复活点ESP]", Default=false, Callback=function(v) ESPSettings.twoTimeRespawnEsp=v; Library:Notify({Title="Two Time Respawn ESP", Description=v and "Enabled" or "Disabled", Time=1}) end}):AddColorPicker("RespawnColor", {Default=ESPSettings.respawnColor, Title="Respawn Color[复活点颜色]", Callback=function(v) ESPSettings.respawnColor=v end})
+
 local TracerGroup = Tabs["ESP"]:AddRightGroupbox("Tracers[追踪线]", "spline")
 TracerGroup:AddCheckbox("KillerTracers", {Text="Killer Tracers[杀手追踪线]", Default=false, Callback=function(v) ESPSettings.killerTracers=v; Library:Notify({Title="Killer Tracers", Description=v and "Enabled" or "Disabled", Time=1}) end})
 TracerGroup:AddCheckbox("SurvivorTracers", {Text="Survivor Tracers[幸存者追踪线]", Default=false, Callback=function(v) ESPSettings.survivorTracers=v; Library:Notify({Title="Survivor Tracers", Description=v and "Enabled" or "Disabled", Time=1}) end})
@@ -1907,11 +1913,6 @@ TracerGroup:AddCheckbox("ItemTracers", {Text="Item Tracers[物品追踪线]", De
 TracerGroup:AddCheckbox("PizzaTracers", {Text="Pizza Tracers[披萨追踪线]", Default=false, Callback=function(v) ESPSettings.pizzaTracers=v; Library:Notify({Title="Pizza Tracers", Description=v and "Enabled" or "Disabled", Time=1}) end})
 TracerGroup:AddCheckbox("PizzaDeliveryTracers", {Text="Pizza Delivery Tracers[披萨送货员追踪线]", Default=false, Callback=function(v) ESPSettings.pizzaDeliveryTracers=v; Library:Notify({Title="Pizza Delivery Tracers", Description=v and "Enabled" or "Disabled", Time=1}) end})
 TracerGroup:AddCheckbox("ZombieTracers", {Text="Zombie Tracers[僵尸追踪线]", Default=false, Callback=function(v) ESPSettings.zombieTracers=v; Library:Notify({Title="Zombie Tracers", Description=v and "Enabled" or "Disabled", Time=1}) end})
-local AdvancedGroup = Tabs["ESP"]:AddRightGroupbox("Skills ESP[技能ESP]", "boxes")
-AdvancedGroup:AddCheckbox("AdvancedESP", {Text="Skills ESP[技能ESP]", Default=false, Callback=function(v) Settings.Advanced.Enabled=v; Library:Notify({Title="Skills ESP", Description=v and "Enabled" or "Disabled", Time=1}) end})
-AdvancedGroup:AddCheckbox("AdvancedOutline", {Text="Outline[轮廓]", Default=true, Callback=function(v) Settings.Advanced.OutlineOnly=v; Library:Notify({Title="Skills Outline", Description=v and "Enabled" or "Disabled", Time=1}) end})
-AdvancedGroup:AddCheckbox("AdvancedNametag", {Text="Name Tag[名称标签]", Default=false, Callback=function(v) Settings.Advanced.ShowNametag=v; Library:Notify({Title="Skills Name Tag", Description=v and "Enabled" or "Disabled", Time=1}) end})
-AdvancedGroup:AddLabel("Color[颜色]"):AddColorPicker("AdvancedColor", {Default=Color3.fromRGB(0,255,255), Title="Skills Color[技能颜色]", Callback=function(v) Settings.Advanced.Color=v end})
 
 local GeneratorLeftGroup = Tabs["Generator"]:AddLeftGroupbox("Main Control[主控]", "zap")
 local GeneratorRightGroup = Tabs["Generator"]:AddRightGroupbox("Settings[设置]", "settings")
