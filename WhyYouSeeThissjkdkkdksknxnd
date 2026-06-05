@@ -59,20 +59,15 @@ local BlockSettings = {
     RemoteActionNames = {},
 }
 for _, actions in pairs(KillerMeleeActions) do
-    for _, name in ipairs(actions.melee or {}) do
-        BlockSettings.RemoteActionNames[name] = true
-    end
+    for _, name in ipairs(actions.melee or {}) do BlockSettings.RemoteActionNames[name] = true end
 end
 Old__namecall = hookmetamethod(game, "__namecall", function(Self, ...)
     local Args = { ... }
     local Method = getnamecallmethod()
     if not checkcaller() and typeof(Self) == "Instance" then
         if tostring(Self) == "RF" then
-            if Args[1] == "enter" then remoteCheck = true
-            elseif Args[1] == "leave" then remoteCheck = false end
-        elseif tostring(Self) == "RE" then
-            remoteTimestamp = os.clock()
-        end
+            if Args[1] == "enter" then remoteCheck = true elseif Args[1] == "leave" then remoteCheck = false end
+        elseif tostring(Self) == "RE" then remoteTimestamp = os.clock() end
     end
     return Old__namecall(Self, unpack(Args))
 end)
@@ -81,39 +76,27 @@ local function getKillersFolder()
     return players and players:FindFirstChild("Killers")
 end
 local function getBlockButton()
-    local pg = localPlayer:FindFirstChild("PlayerGui")
-    if not pg then return nil end
-    local main = pg:FindFirstChild("MainUI")
-    if not main then return nil end
-    local container = main:FindFirstChild("AbilityContainer")
-    if not container then return nil end
+    local pg = localPlayer:FindFirstChild("PlayerGui"); if not pg then return nil end
+    local main = pg:FindFirstChild("MainUI"); if not main then return nil end
+    local container = main:FindFirstChild("AbilityContainer"); if not container then return nil end
     return container:FindFirstChild("Block") or container:FindFirstChild("Guard")
 end
 local function getPunchButton()
-    local pg = localPlayer:FindFirstChild("PlayerGui")
-    if not pg then return nil end
-    local main = pg:FindFirstChild("MainUI")
-    if not main then return nil end
-    local container = main:FindFirstChild("AbilityContainer")
-    if not container then return nil end
+    local pg = localPlayer:FindFirstChild("PlayerGui"); if not pg then return nil end
+    local main = pg:FindFirstChild("MainUI"); if not main then return nil end
+    local container = main:FindFirstChild("AbilityContainer"); if not container then return nil end
     return container:FindFirstChild("Punch")
 end
 local function pressBlock()
-    local btn = getBlockButton()
-    if not btn then return false end
+    local btn = getBlockButton(); if not btn then return false end
     pcall(function() btn:Activate() end)
-    for _, conn in ipairs(getconnections(btn.MouseButton1Click) or {}) do
-        pcall(function() conn:Fire() end)
-    end
+    for _, conn in ipairs(getconnections(btn.MouseButton1Click) or {}) do pcall(function() conn:Fire() end) end
     return true
 end
 local function pressPunch()
-    local btn = getPunchButton()
-    if not btn then return false end
+    local btn = getPunchButton(); if not btn then return false end
     pcall(function() btn:Activate() end)
-    for _, conn in ipairs(getconnections(btn.MouseButton1Click) or {}) do
-        pcall(function() conn:Fire() end)
-    end
+    for _, conn in ipairs(getconnections(btn.MouseButton1Click) or {}) do pcall(function() conn:Fire() end) end
     return true
 end
 local function isKillerFacingPlayer(killerModel, myRoot)
@@ -122,10 +105,8 @@ local function isKillerFacingPlayer(killerModel, myRoot)
     local killerHead = killerModel:FindFirstChild("Head")
     local killerCF = killerHead and killerHead.CFrame or (killerModel:FindFirstChild("HumanoidRootPart") and killerModel.HumanoidRootPart.CFrame)
     if not killerCF then return true end
-    local killerPos = killerCF.Position
-    local killerForward = killerCF.LookVector
-    local toPlayer = (myRoot.Position - killerPos).Unit
-    local dot = killerForward:Dot(toPlayer)
+    local killerPos = killerCF.Position; local killerForward = killerCF.LookVector
+    local toPlayer = (myRoot.Position - killerPos).Unit; local dot = killerForward:Dot(toPlayer)
     if BlockSettings.StrictFacing then return dot > 0 end
     if BlockSettings.LooseFacing then return dot > -0.3 else return dot > 0 end
 end
@@ -165,6 +146,7 @@ local AttackAnimIDs = {
     ["126681776859538"] = true, ["129976080405072"] = true, ["81639435858902"] = true,
     ["137314737492715"] = true, ["92173139187970"] = true, ["122709416391"] = true,
     ["879895330952"] = true,
+    ["124269076578545"] = true,
 }
 local AttackSoundIDs = {
     ["102228729296384"] = true, ["140242176732868"] = true, ["112809109188560"] = true,
@@ -190,15 +172,11 @@ local function getSoundIdNumber(sound) local sid = tostring(sound.SoundId) retur
 local function getKillerRootFromSound(sound) local parent = sound.Parent; while parent and not parent:IsA("Model") do parent = parent.Parent end; if parent and parent:FindFirstChildOfClass("Humanoid") then return parent end; return nil end
 local function attemptBlockFromSound(sound)
     if not BlockSettings.Enabled then return end
-    local killerModel = getKillerRootFromSound(sound)
-    if not killerModel then return end
+    local killerModel = getKillerRootFromSound(sound); if not killerModel then return end
     if killerModel:GetAttribute("IsFakeNoli") == true then return end
-    local sid = getSoundIdNumber(sound)
-    if not sid or not AttackSoundIDs[sid] then return end
-    local t = tick()
-    if soundBlockedUntil[killerModel] and t < soundBlockedUntil[killerModel] then return end
-    local blockBtn = getBlockButton()
-    if blockBtn then local cd = blockBtn:FindFirstChild("CooldownTime"); if cd and cd.Text ~= "" then return end end
+    local sid = getSoundIdNumber(sound); if not sid or not AttackSoundIDs[sid] then return end
+    local t = tick(); if soundBlockedUntil[killerModel] and t < soundBlockedUntil[killerModel] then return end
+    local blockBtn = getBlockButton(); if blockBtn then local cd = blockBtn:FindFirstChild("CooldownTime"); if cd and cd.Text ~= "" then return end end
     local myChar = localPlayer.Character; local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart"); if not myRoot then return end
     local killerRoot = killerModel:FindFirstChild("HumanoidRootPart")
     if killerRoot then if (killerRoot.Position - myRoot.Position).Magnitude > BlockSettings.TriggerDistance then return end; if not isKillerFacingPlayer(killerModel, myRoot) then return end end
@@ -247,8 +225,7 @@ local function createInverseVisualForKiller(killerModel)
     if not killerModel or not killerModel:IsA("Model") then return nil end
     if inverseRangeVisuals[killerModel] then return end
     local root = killerModel:FindFirstChild("HumanoidRootPart"); if not root then return nil end
-    local part = Instance.new("Part")
-    part.Name = "InverseRangeVisual"; part.Shape = Enum.PartType.Ball
+    local part = Instance.new("Part"); part.Name = "InverseRangeVisual"; part.Shape = Enum.PartType.Ball
     part.Size = Vector3.new(BlockSettings.TriggerDistance * 2, 1, BlockSettings.TriggerDistance * 2)
     part.Color = Color3.fromRGB(255, 50, 50); part.Material = Enum.Material.ForceField
     part.Transparency = 0.7; part.Anchored = false; part.CanCollide = false; part.CFrame = root.CFrame
@@ -261,10 +238,8 @@ local function updateInverseVisualsColor()
     for killerModel, part in pairs(inverseRangeVisuals) do
         if part and part.Parent then
             local killerRoot = killerModel:FindFirstChild("HumanoidRootPart")
-            if killerRoot then
-                local dist = (killerRoot.Position - myRoot.Position).Magnitude
-                if dist <= BlockSettings.TriggerDistance then part.Color = Color3.fromRGB(0, 255, 0) else part.Color = Color3.fromRGB(255, 50, 50) end
-            else part.Color = Color3.fromRGB(255, 50, 50) end
+            if killerRoot then local dist = (killerRoot.Position - myRoot.Position).Magnitude; part.Color = dist <= BlockSettings.TriggerDistance and Color3.fromRGB(0,255,0) or Color3.fromRGB(255,50,50)
+            else part.Color = Color3.fromRGB(255,50,50) end
         end
     end
 end
@@ -307,147 +282,62 @@ local function updateNormalRangeVisualColor()
     local myChar = localPlayer.Character; local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart"); if not myRoot then RangeVisual.Color = Color3.fromRGB(255, 50, 50); return end
     local killers = getKillersFolder(); if not killers then RangeVisual.Color = Color3.fromRGB(255, 50, 50); return end
     local anyInRange = false
-    for _, killer in ipairs(killers:GetChildren()) do local killerRoot = killer:FindFirstChild("HumanoidRootPart"); if killerRoot then if (killerRoot.Position - myRoot.Position).Magnitude <= BlockSettings.TriggerDistance then anyInRange = true; break end end end
-    if anyInRange then RangeVisual.Color = Color3.fromRGB(0, 255, 0) else RangeVisual.Color = Color3.fromRGB(255, 50, 50) end
+    for _, killer in ipairs(killers:GetChildren()) do local killerRoot = killer:FindFirstChild("HumanoidRootPart"); if killerRoot and (killerRoot.Position - myRoot.Position).Magnitude <= BlockSettings.TriggerDistance then anyInRange = true; break end end
+    RangeVisual.Color = anyInRange and Color3.fromRGB(0,255,0) or Color3.fromRGB(255,50,50)
 end
 game:GetService("RunService").RenderStepped:Connect(function()
-    if BlockSettings.ShowRangeVisual then
-        if BlockSettings.InverseMode then updateInverseVisualsColor() elseif RangeVisual and RangeVisual.Parent then
-            local root = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if root then RangeVisual.CFrame = root.CFrame; updateNormalRangeVisualColor() end
-        end
+    if not BlockSettings.ShowRangeVisual then return end
+    if BlockSettings.InverseMode then updateInverseVisualsColor() elseif RangeVisual and RangeVisual.Parent then
+        local root = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if root then RangeVisual.CFrame = root.CFrame; updateNormalRangeVisualColor() end
     end
 end)
 local PlayerGroup = Tabs["Combat"]:AddLeftGroupbox("Player Enhancements[玩家增强]", "user")
-PlayerGroup:AddToggle("AntiSlow", {
-    Text = "Anti-Slow[无减速]", Default = false,
-    Callback = function(state)
-        Library:Notify({Title="Anti-Slow", Description=state and "Enabled" or "Disabled", Time=1})
-        task.spawn(function() while Toggles.AntiSlow.Value and task.wait() do if localPlayer.Character and localPlayer.Character:FindFirstChild("SpeedMultipliers") then for _, v in localPlayer.Character.SpeedMultipliers:GetChildren() do if v.Value < 1 then v.Value = 1 end end end end end)
-    end
-})
-PlayerGroup:AddToggle("AntiStun", {
-    Text = "Anti-Stun[无眩晕]", Default = false,
-    Callback = function(state)
-        Library:Notify({Title="Anti-Stun", Description=state and "Enabled" or "Disabled", Time=1})
-        task.spawn(function() while Toggles.AntiStun.Value and task.wait() do if localPlayer.Character and localPlayer.Character:FindFirstChild("SpeedMultipliers") then local stunned = localPlayer.Character.SpeedMultipliers:FindFirstChild("Stunned"); if stunned then stunned.Value = 1 end end end end)
-    end
-})
-PlayerGroup:AddToggle("AlwaysSprint", {
-    Text = "Always Sprint[一直奔跑]", Default = false,
-    Callback = function(state)
-        Library:Notify({Title="Always Sprint", Description=state and "Enabled" or "Disabled", Time=1})
-        _G.alwaysSprint = state
-        task.spawn(function() while _G.alwaysSprint and task.wait() do local sprint = require(game:GetService("ReplicatedStorage").Systems.Character.Game.Sprinting); if not sprint.IsSprinting then sprint.IsSprinting = true; sprint.__sprintedEvent:Fire(true) end end end)
-    end
-})
-PlayerGroup:AddToggle("AllowJump", {
-    Text = "Enable Jump[启用跳跃]", Default = false, Tooltip = "Repeated jumping may get you banned!",
-    Callback = function(state)
-        Library:Notify({Title="Enable Jump", Description=state and "Enabled" or "Disabled", Time=1})
-        _G.restoringJump = state
-        if state then task.spawn(function() while _G.restoringJump do local char = localPlayer.Character or localPlayer.CharacterAdded:Wait(); local humanoid = char:FindFirstChildOfClass("Humanoid"); local jumpBtn = localPlayer.PlayerGui:FindFirstChild("TouchGui") and localPlayer.PlayerGui.TouchGui:FindFirstChild("TouchControlFrame") and localPlayer.PlayerGui.TouchGui.TouchControlFrame:FindFirstChild("JumpButton"); if humanoid then humanoid.JumpPower = 50 end; if jumpBtn then jumpBtn.Visible = true end; task.wait(1) end end)
-        else local char = localPlayer.Character; local humanoid = char and char:FindFirstChildOfClass("Humanoid"); if humanoid then humanoid.JumpPower = 0 end; local jumpBtn = localPlayer.PlayerGui:FindFirstChild("TouchGui") and localPlayer.PlayerGui.TouchGui:FindFirstChild("TouchControlFrame") and localPlayer.PlayerGui.TouchGui.TouchControlFrame:FindFirstChild("JumpButton"); if jumpBtn then jumpBtn.Visible = false end end
-    end
-})
-PlayerGroup:AddToggle("AlwaysShowChat", {
-    Text = "Always Show Chat[显示聊天框]", Default = false,
-    Callback = function(state)
-        Library:Notify({Title="Always Show Chat", Description=state and "Enabled" or "Disabled", Time=1})
-        _G.showChat = state
-        task.spawn(function() while _G.showChat and task.wait() do game:GetService("TextChatService"):FindFirstChildOfClass("ChatWindowConfiguration").Enabled = true end end)
-        if not state then if playingState ~= "Spectating" then game:GetService("TextChatService"):FindFirstChildOfClass("ChatWindowConfiguration").Enabled = false end end
-    end
-})
+PlayerGroup:AddToggle("AntiSlow", {Text = "Anti-Slow[无减速]", Default = false, Callback = function(state) Library:Notify({Title="Anti-Slow", Description=state and "Enabled" or "Disabled", Time=1}) task.spawn(function() while Toggles.AntiSlow.Value and task.wait() do if localPlayer.Character and localPlayer.Character:FindFirstChild("SpeedMultipliers") then for _, v in localPlayer.Character.SpeedMultipliers:GetChildren() do if v.Value < 1 then v.Value = 1 end end end end end) end})
+PlayerGroup:AddToggle("AntiStun", {Text = "Anti-Stun[无眩晕]", Default = false, Callback = function(state) Library:Notify({Title="Anti-Stun", Description=state and "Enabled" or "Disabled", Time=1}) task.spawn(function() while Toggles.AntiStun.Value and task.wait() do if localPlayer.Character and localPlayer.Character:FindFirstChild("SpeedMultipliers") then local stunned = localPlayer.Character.SpeedMultipliers:FindFirstChild("Stunned"); if stunned then stunned.Value = 1 end end end end) end})
+PlayerGroup:AddToggle("AlwaysSprint", {Text = "Always Sprint[一直奔跑]", Default = false, Callback = function(state) Library:Notify({Title="Always Sprint", Description=state and "Enabled" or "Disabled", Time=1}) _G.alwaysSprint = state task.spawn(function() while _G.alwaysSprint and task.wait() do local sprint = require(game:GetService("ReplicatedStorage").Systems.Character.Game.Sprinting); if not sprint.IsSprinting then sprint.IsSprinting = true; sprint.__sprintedEvent:Fire(true) end end end) end})
+PlayerGroup:AddToggle("AllowJump", {Text = "Enable Jump[启用跳跃]", Default = false, Tooltip = "Repeated jumping may get you banned!", Callback = function(state) Library:Notify({Title="Enable Jump", Description=state and "Enabled" or "Disabled", Time=1}) _G.restoringJump = state if state then task.spawn(function() while _G.restoringJump do local char = localPlayer.Character or localPlayer.CharacterAdded:Wait(); local humanoid = char:FindFirstChildOfClass("Humanoid"); local jumpBtn = localPlayer.PlayerGui:FindFirstChild("TouchGui") and localPlayer.PlayerGui.TouchGui:FindFirstChild("TouchControlFrame") and localPlayer.PlayerGui.TouchGui.TouchControlFrame:FindFirstChild("JumpButton"); if humanoid then humanoid.JumpPower = 50 end; if jumpBtn then jumpBtn.Visible = true end; task.wait(1) end end) else local char = localPlayer.Character; local humanoid = char and char:FindFirstChildOfClass("Humanoid"); if humanoid then humanoid.JumpPower = 0 end; local jumpBtn = localPlayer.PlayerGui:FindFirstChild("TouchGui") and localPlayer.PlayerGui.TouchGui:FindFirstChild("TouchControlFrame") and localPlayer.PlayerGui.TouchGui.TouchControlFrame:FindFirstChild("JumpButton"); if jumpBtn then jumpBtn.Visible = false end end end})
+PlayerGroup:AddToggle("AlwaysShowChat", {Text = "Always Show Chat[显示聊天框]", Default = false, Callback = function(state) Library:Notify({Title="Always Show Chat", Description=state and "Enabled" or "Disabled", Time=1}) _G.showChat = state task.spawn(function() while _G.showChat and task.wait() do game:GetService("TextChatService"):FindFirstChildOfClass("ChatWindowConfiguration").Enabled = true end end) if not state and playingState ~= "Spectating" then game:GetService("TextChatService"):FindFirstChildOfClass("ChatWindowConfiguration").Enabled = false end end})
 local BackstabSettings = {
-    Enabled = false,
-    Mode = "Blatant",
-    Distance = 15,
-    Offset = 2.0,
-    ShowRange = true,
-    RangeColor = Color3.fromRGB(255, 100, 100),
-    RangeTransparency = 0.5,
-    TeleportSmoothness = 8,
-    TeleportDuration = 0.15,
-    RangeVisuals = {},
-    Active = false,
-    ActiveKiller = nil,
-    ActiveTrack = nil,
-    LoopConnection = nil,
-    LastBackstab = 0,
-    BackstabCooldown = 1.5,
-    Debug = true,
+    Enabled = false, Mode = "Blatant", Distance = 15, Offset = 2.0, ShowRange = true,
+    RangeColor = Color3.fromRGB(255, 100, 100), RangeTransparency = 0.5, TeleportSmoothness = 8, TeleportDuration = 0.15,
+    RangeVisuals = {}, Active = false, ActiveKiller = nil, ActiveTrack = nil, LoopConnection = nil, LastBackstab = 0, BackstabCooldown = 1.5, Debug = false,
 }
 local BackstabGroup = Tabs["Combat"]:AddLeftGroupbox("Auto Backstab[自动背刺]", "target")
-BackstabGroup:AddToggle("EnableBackstab", {
-    Text = "Enable Backstab[启用背刺辅助]",
-    Default = false,
-    Callback = function(state)
-        BackstabSettings.Enabled = state
-        if not state then
-            for killer, part in pairs(BackstabSettings.RangeVisuals) do pcall(function() part:Destroy() end) end
-            BackstabSettings.RangeVisuals = {}
-            if BackstabSettings.Active then stopBackstab() end
-        end
-        Library:Notify({Title="Backstab Assist", Description=state and "Enabled" or "Disabled", Time=1})
-    end
-})
-BackstabGroup:AddDropdown("BackstabMode", {
-    Text = "Backstab Mode[背刺模式]",
-    Values = {"Blatant", "Teleport"},
-    Default = "Blatant",
-    Callback = function(selected) BackstabSettings.Mode = selected end
-})
-BackstabGroup:AddSlider("BackstabDistance", {
-    Text = "Backstab Distance[背刺距离]",
-    Default = 15, Min = 5, Max = 30, Rounding = 1,
-    Callback = function(v)
-        BackstabSettings.Distance = v
-        if BackstabSettings.ShowRange then for killer, part in pairs(BackstabSettings.RangeVisuals) do if part and part.Parent then part.Size = Vector3.new(v * 2, 1, v * 2) end end end
-    end
-})
-BackstabGroup:AddSlider("BackstabOffset", {
-    Text = "Backstab Offset[背刺偏移]",
-    Default = 2.0, Min = 1, Max = 5, Rounding = 1,
-    Callback = function(v) BackstabSettings.Offset = v end
-})
-BackstabGroup:AddToggle("ShowBackstabRange", {
-    Text = "Show Backstab Range[显示背刺范围]",
-    Default = true,
-    Callback = function(state)
-        BackstabSettings.ShowRange = state
-        if state then local killersFolder = getKillersFolder(); if killersFolder then for _, killer in ipairs(killersFolder:GetChildren()) do if killer:IsA("Model") then createBackstabRangeVisual(killer) end end end
-        else for killer, part in pairs(BackstabSettings.RangeVisuals) do pcall(function() part:Destroy() end) end; BackstabSettings.RangeVisuals = {} end
-    end
-})
-BackstabGroup:AddLabel("Range Color[范围颜色]"):AddColorPicker("BackstabRangeColor", {
-    Default = BackstabSettings.RangeColor,
-    Title = "Range Color",
-    Callback = function(v) BackstabSettings.RangeColor = v; for _, part in pairs(BackstabSettings.RangeVisuals) do if part then part.Color = v end end end
-})
-local function debugLog(msg) if BackstabSettings.Debug then print("[Backstab] " .. msg) end end
+BackstabGroup:AddToggle("EnableBackstab", {Text = "Enable Backstab[启用背刺辅助]", Default = false, Callback = function(state)
+    BackstabSettings.Enabled = state if not state then for k,v in pairs(BackstabSettings.RangeVisuals) do pcall(function() v:Destroy() end) end BackstabSettings.RangeVisuals = {} if BackstabSettings.Active then stopBackstab() end end
+    Library:Notify({Title="Backstab Assist", Description=state and "Enabled" or "Disabled", Time=1})
+end})
+BackstabGroup:AddDropdown("BackstabMode", {Text = "Backstab Mode[背刺模式]", Values = {"Blatant", "Teleport"}, Default = "Blatant", Callback = function(sel) BackstabSettings.Mode = sel end})
+BackstabGroup:AddSlider("BackstabDistance", {Text = "Backstab Distance[背刺距离]", Default = 15, Min = 5, Max = 30, Rounding = 1, Callback = function(v) BackstabSettings.Distance = v if BackstabSettings.ShowRange then for k,part in pairs(BackstabSettings.RangeVisuals) do if part and part.Parent then part.Size = Vector3.new(v * 2, 1, v * 2) end end end end})
+BackstabGroup:AddSlider("BackstabOffset", {Text = "Backstab Offset[背刺偏移]", Default = 2.0, Min = 1, Max = 5, Rounding = 1, Callback = function(v) BackstabSettings.Offset = v end})
+BackstabGroup:AddToggle("ShowBackstabRange", {Text = "Show Backstab Range[显示背刺范围]", Default = true, Callback = function(state)
+    BackstabSettings.ShowRange = state if state then local kf = getKillersFolder(); if kf then for _,k in ipairs(kf:GetChildren()) do if k:IsA("Model") then createBackstabRangeVisual(k) end end end
+    else for _,part in pairs(BackstabSettings.RangeVisuals) do pcall(function() part:Destroy() end) end BackstabSettings.RangeVisuals = {} end
+end})
+BackstabGroup:AddLabel("Range Color[范围颜色]"):AddColorPicker("BackstabRangeColor", {Default = BackstabSettings.RangeColor, Title = "Range Color", Callback = function(v) BackstabSettings.RangeColor = v; for _,part in pairs(BackstabSettings.RangeVisuals) do if part then part.Color = v end end end})
+local function debugLog(msg) if BackstabSettings.Debug then print("[Backstab] "..msg) end end
 local function createBackstabRangeVisual(killerModel)
     if not killerModel or not killerModel:IsA("Model") then return nil end
     if BackstabSettings.RangeVisuals[killerModel] then return end
     local root = killerModel:FindFirstChild("HumanoidRootPart"); if not root then return nil end
     local part = Instance.new("Part"); part.Name = "BackstabRangeVisual"; part.Shape = Enum.PartType.Ball
     part.Size = Vector3.new(BackstabSettings.Distance * 2, 1, BackstabSettings.Distance * 2)
-    part.Color = BackstabSettings.RangeColor; part.Material = Enum.Material.ForceField
-    part.Transparency = BackstabSettings.RangeTransparency; part.Anchored = false; part.CanCollide = false; part.CFrame = root.CFrame
-    local weld = Instance.new("WeldConstraint"); weld.Part0 = root; weld.Part1 = part; weld.Parent = part
-    part.Parent = root; BackstabSettings.RangeVisuals[killerModel] = part; return part
+    part.Color = BackstabSettings.RangeColor; part.Material = Enum.Material.ForceField; part.Transparency = BackstabSettings.RangeTransparency
+    part.Anchored = false; part.CanCollide = false; part.CFrame = root.CFrame
+    local weld = Instance.new("WeldConstraint"); weld.Part0 = root; weld.Part1 = part; weld.Parent = part; part.Parent = root
+    BackstabSettings.RangeVisuals[killerModel] = part; return part
 end
 local function updateBackstabRangeVisuals()
     if not BackstabSettings.ShowRange then return end
     local killersFolder = getKillersFolder(); if not killersFolder then return end
-    for _, killer in ipairs(killersFolder:GetChildren()) do if killer:IsA("Model") then if not BackstabSettings.RangeVisuals[killer] then createBackstabRangeVisual(killer) end end end
+    for _, killer in ipairs(killersFolder:GetChildren()) do if killer:IsA("Model") and not BackstabSettings.RangeVisuals[killer] then createBackstabRangeVisual(killer) end end
     for killer, part in pairs(BackstabSettings.RangeVisuals) do if not killer or not killer.Parent then pcall(function() part:Destroy() end); BackstabSettings.RangeVisuals[killer] = nil end end
 end
 local function stopBackstab()
     if BackstabSettings.LoopConnection then BackstabSettings.LoopConnection:Disconnect(); BackstabSettings.LoopConnection = nil end
     BackstabSettings.Active = false; BackstabSettings.ActiveKiller = nil; BackstabSettings.ActiveTrack = nil
     local char = localPlayer.Character; if char then local hum = char:FindFirstChildOfClass("Humanoid"); if hum then hum.AutoRotate = true end end
-    debugLog("Stopped")
 end
 local function startBackstabLoop(killerModel, track)
     if BackstabSettings.LoopConnection then BackstabSettings.LoopConnection:Disconnect() end
@@ -455,41 +345,34 @@ local function startBackstabLoop(killerModel, track)
     local hum = char:FindFirstChildOfClass("Humanoid"); if hum then hum.AutoRotate = false end
     BackstabSettings.LoopConnection = game:GetService("RunService").RenderStepped:Connect(function()
         if not BackstabSettings.Active then stopBackstab(); return end
-        if not killerModel or not killerModel.Parent then debugLog("Killer lost, stopping"); stopBackstab(); return end
+        if not killerModel or not killerModel.Parent then stopBackstab(); return end
         local myChar = localPlayer.Character; if not myChar or not myChar.Parent then stopBackstab(); return end
         local root = myChar:FindFirstChild("HumanoidRootPart"); local killerRoot = killerModel:FindFirstChild("HumanoidRootPart")
         if not root or not killerRoot then stopBackstab(); return end
         local behindOffset = -killerRoot.CFrame.LookVector * BackstabSettings.Offset
-        local targetPos = killerRoot.Position + behindOffset + Vector3.new(0, 0.5, 0)
-        local targetCF = CFrame.new(targetPos, killerRoot.Position)
-        root.CFrame = targetCF
+        local targetPos = killerRoot.Position + behindOffset + Vector3.new(0,0.5,0)
+        root.CFrame = CFrame.new(targetPos, killerRoot.Position)
     end)
     if track and track.Parent then
-        local conn; conn = track.Stopped:Connect(function() debugLog("Animation stopped, ending"); conn:Disconnect(); stopBackstab() end)
-        local ancConn; ancConn = track.AncestryChanged:Connect(function() if not track.Parent then debugLog("Animation destroyed, ending"); ancConn:Disconnect(); stopBackstab() end end)
-    else task.delay(BackstabSettings.TeleportDuration + 0.5, function() if BackstabSettings.Active and BackstabSettings.ActiveTrack == track then debugLog("Timeout stop"); stopBackstab() end end) end
+        local conn; conn = track.Stopped:Connect(function() conn:Disconnect(); stopBackstab() end)
+        local ancConn; ancConn = track.AncestryChanged:Connect(function() if not track.Parent then ancConn:Disconnect(); stopBackstab() end end)
+    else task.delay(BackstabSettings.TeleportDuration + 0.5, function() if BackstabSettings.Active and BackstabSettings.ActiveTrack == track then stopBackstab() end end) end
 end
 local function performBackstab(killerModel, track, shouldLock)
-    if not killerModel or not killerModel.Parent then debugLog("Invalid killer"); return false end
-    local myChar = localPlayer.Character; if not myChar then debugLog("No character"); return false end
+    if not killerModel or not killerModel.Parent then return false end
+    local myChar = localPlayer.Character; if not myChar then return false end
     local root = myChar:FindFirstChild("HumanoidRootPart"); local killerRoot = killerModel:FindFirstChild("HumanoidRootPart")
-    if not root or not killerRoot then debugLog("Missing root parts"); return false end
+    if not root or not killerRoot then return false end
     local mode = BackstabSettings.Mode
     local behindOffset = -killerRoot.CFrame.LookVector * BackstabSettings.Offset
-    local targetPos = killerRoot.Position + behindOffset + Vector3.new(0, 0.5, 0)
+    local targetPos = killerRoot.Position + behindOffset + Vector3.new(0,0.5,0)
     local targetCF = CFrame.new(targetPos, killerRoot.Position)
     local startCF = root.CFrame
-    local steps = BackstabSettings.TeleportSmoothness; local duration = BackstabSettings.TeleportDuration; local stepTime = duration / steps
-    for i = 1, steps do local alpha = i / steps; local newCF = startCF:Lerp(targetCF, alpha); root.CFrame = newCF; task.wait(stepTime) end
+    local steps = BackstabSettings.TeleportSmoothness; local stepTime = BackstabSettings.TeleportDuration / steps
+    for i=1, steps do root.CFrame = startCF:Lerp(targetCF, i/steps); task.wait(stepTime) end
     root.CFrame = targetCF
     if mode == "Blatant" then
-        if shouldLock then
-            BackstabSettings.Active = true; BackstabSettings.ActiveKiller = killerModel; BackstabSettings.ActiveTrack = track
-            startBackstabLoop(killerModel, track)
-            debugLog("Started lock mode on " .. (killerModel.Name or "Unknown"))
-        else debugLog("Movement only (no lock)") end
-    else
-        debugLog("Teleport mode: teleported and backstab")
+        if shouldLock then BackstabSettings.Active = true; BackstabSettings.ActiveKiller = killerModel; BackstabSettings.ActiveTrack = track; startBackstabLoop(killerModel, track) end
     end
     return true
 end
@@ -498,7 +381,7 @@ local function getNearestKillerForBackstab()
     local myChar = localPlayer.Character; if not myChar then return nil end
     local myRoot = myChar:FindFirstChild("HumanoidRootPart"); if not myRoot then return nil end
     local nearest, nearestDist = nil, math.huge
-    for _, killer in ipairs(killers:GetChildren()) do if killer:IsA("Model") and killer:FindFirstChild("HumanoidRootPart") then if killer:GetAttribute("IsFakeNoli") ~= true then local dist = (killer.HumanoidRootPart.Position - myRoot.Position).Magnitude; if dist <= BackstabSettings.Distance and dist < nearestDist then nearestDist = dist; nearest = killer end end end end
+    for _, killer in ipairs(killers:GetChildren()) do if killer:IsA("Model") and killer:FindFirstChild("HumanoidRootPart") and killer:GetAttribute("IsFakeNoli") ~= true then local dist = (killer.HumanoidRootPart.Position - myRoot.Position).Magnitude; if dist <= BackstabSettings.Distance and dist < nearestDist then nearestDist = dist; nearest = killer end end end
     return nearest
 end
 local backstabAnimIds = { moveOnly = { ["100725497418533"] = true }, lock = { ["108018357044094"] = true } }
@@ -512,27 +395,24 @@ local function hookPlayerAnimationsForBackstab()
         if not BackstabSettings.Enabled then return end
         local playersFolder = workspace:FindFirstChild("Players"); if not playersFolder then return end
         local survivors = playersFolder:FindFirstChild("Survivors"); if not survivors then return end
-        if not char:IsDescendantOf(survivors) then debugLog("Not survivor, ignoring"); return end
+        if not char:IsDescendantOf(survivors) then return end
         local animId = track.Animation.AnimationId:match("%d+"); if not animId then return end
         local shouldLock = false; if backstabAnimIds.moveOnly[animId] then shouldLock = false elseif backstabAnimIds.lock[animId] then shouldLock = true else return end
-        debugLog("Triggered by anim " .. animId .. (shouldLock and " (lock)" or " (move only)"))
-        local now = tick(); if now - BackstabSettings.LastBackstab < BackstabSettings.BackstabCooldown then debugLog("Cooldown"); return end
+        local now = tick(); if now - BackstabSettings.LastBackstab < BackstabSettings.BackstabCooldown then return end
         local target = getNearestKillerForBackstab()
-        if target then debugLog("Found target, performing"); BackstabSettings.LastBackstab = now; performBackstab(target, track, shouldLock) else debugLog("No killer in range") end
+        if target then BackstabSettings.LastBackstab = now; performBackstab(target, track, shouldLock) end
     end)
 end
-local function onCharacterAdded() hookPlayerAnimationsForBackstab() end
 if localPlayer.Character then hookPlayerAnimationsForBackstab() end
-localPlayer.CharacterAdded:Connect(onCharacterAdded)
-task.spawn(function() while true do if BackstabSettings.ShowRange then updateBackstabRangeVisuals() else for killer, part in pairs(BackstabSettings.RangeVisuals) do pcall(function() part:Destroy() end) end; BackstabSettings.RangeVisuals = {} end; task.wait(0.5) end end)
-local oldUnload = Library.OnUnload
-Library.OnUnload = function() if backstabAnimConn then backstabAnimConn:Disconnect() end; stopBackstab(); for _, part in pairs(BackstabSettings.RangeVisuals) do pcall(function() part:Destroy() end) end; if oldUnload then oldUnload() end end
+localPlayer.CharacterAdded:Connect(function() task.wait(0.5); hookPlayerAnimationsForBackstab() end)
+task.spawn(function() while task.wait(1) do if BackstabSettings.ShowRange then updateBackstabRangeVisuals() else for _,part in pairs(BackstabSettings.RangeVisuals) do pcall(function() part:Destroy() end) end BackstabSettings.RangeVisuals = {} end end end)
+local oldUnload = Library.OnUnload; Library.OnUnload = function() if backstabAnimConn then backstabAnimConn:Disconnect() end; stopBackstab(); for _,part in pairs(BackstabSettings.RangeVisuals) do pcall(function() part:Destroy() end) end; if oldUnload then oldUnload() end end
 local StaminaGroup = Tabs["Combat"]:AddLeftGroupbox("Stamina Settings[体力设置]", "zap")
 local StaminaSettings = { MaxStamina=100, StaminaGain=25, StaminaLoss=10, SprintSpeed=28, InfiniteGain=9999 }
-local SettingToggles = { MaxStamina=true, StaminaGain=true, StaminaLoss=true, SprintSpeed=true }
+local SettingToggles = { MaxStamina=false, StaminaGain=false, StaminaLoss=false, SprintSpeed=false }
 local SprintingModule = game:GetService("ReplicatedStorage"):WaitForChild("Systems"):WaitForChild("Character"):WaitForChild("Game"):WaitForChild("Sprinting")
 local GetModule = function() return require(SprintingModule) end
-task.spawn(function() while true do local m = GetModule(); for key, value in pairs(StaminaSettings) do if SettingToggles[key] then m[key] = value end end; task.wait(0.5) end end)
+task.spawn(function() while task.wait(1) do local m = GetModule(); for key, value in pairs(StaminaSettings) do if SettingToggles[key] then m[key] = value end end end end)
 local infiniteStaminaActive = false; local staminaConnection = nil
 StaminaGroup:AddToggle('InfiniteStamina', {Text='Infinite Stamina[无限体力]', Default=false, Callback=function(state)
     Library:Notify({Title="Infinite Stamina", Description=state and "Enabled" or "Disabled", Time=1})
@@ -540,10 +420,10 @@ StaminaGroup:AddToggle('InfiniteStamina', {Text='Infinite Stamina[无限体力]'
     if state then Sprinting.StaminaLoss = 0; Sprinting.StaminaGain = StaminaSettings.InfiniteGain or 9999; if staminaConnection then staminaConnection:Disconnect() end; staminaConnection = game:GetService("RunService").Heartbeat:Connect(function() if not infiniteStaminaActive then return end; Sprinting.StaminaLoss = 0; Sprinting.StaminaGain = StaminaSettings.InfiniteGain or 9999 end)
     else Sprinting.StaminaLoss = StaminaSettings.StaminaLoss or 10; Sprinting.StaminaGain = StaminaSettings.StaminaGain or 25; if staminaConnection then staminaConnection:Disconnect(); staminaConnection = nil end end
 end})
-StaminaGroup:AddToggle('MaxStaminaToggle', {Text='Enable Max Stamina[启用体力大小调节]', Default=true, Callback=function(v) SettingToggles.MaxStamina=v end})
-StaminaGroup:AddToggle('StaminaGainToggle', {Text='Enable Stamina Gain[启用体力恢复调节]', Default=true, Callback=function(v) SettingToggles.StaminaGain=v end})
-StaminaGroup:AddToggle('StaminaLossToggle', {Text='Enable Stamina Loss[启用体力消耗调节]', Default=true, Callback=function(v) SettingToggles.StaminaLoss=v end})
-StaminaGroup:AddToggle('SprintSpeedToggle', {Text='Enable Sprint Speed[启用奔跑速度调节]', Default=true, Callback=function(v) SettingToggles.SprintSpeed=v end})
+StaminaGroup:AddToggle('MaxStaminaToggle', {Text='Enable Max Stamina[启用体力大小调节]', Default=false, Callback=function(v) SettingToggles.MaxStamina=v end})
+StaminaGroup:AddToggle('StaminaGainToggle', {Text='Enable Stamina Gain[启用体力恢复调节]', Default=false, Callback=function(v) SettingToggles.StaminaGain=v end})
+StaminaGroup:AddToggle('StaminaLossToggle', {Text='Enable Stamina Loss[启用体力消耗调节]', Default=false, Callback=function(v) SettingToggles.StaminaLoss=v end})
+StaminaGroup:AddToggle('SprintSpeedToggle', {Text='Enable Sprint Speed[启用奔跑速度调节]', Default=false, Callback=function(v) SettingToggles.SprintSpeed=v end})
 StaminaGroup:AddDivider()
 StaminaGroup:AddSlider('InfStaminaGainSlider', {Text='Infinite Stamina Gain Rate[无限体力恢复速度]', Default=9999, Min=0, Max=50000, Rounding=0, Callback=function(v) StaminaSettings.InfiniteGain=v end})
 StaminaGroup:AddSlider('MaxStaminaSlider', {Text='Max Stamina[体力大小]', Default=100, Min=0, Max=99999, Rounding=0, Callback=function(v) StaminaSettings.MaxStamina=v end})
@@ -603,17 +483,14 @@ local function SetFrontFlip(bool)
             imageButton.Image = "rbxthumb://type=Asset&id=2714338264&w=150&h=150"
             ff_connection = imageButton.Activated:Connect(Flip)
             sausageHolder.Size = UDim2.new(0, originalSize+48, 0, sausageHolder.Size.Y.Offset)
-            task.wait()
-            ff_button.Position = UDim2.new(0, sausageHolder.Size.X.Offset-48, 0, 0)
+            task.wait(); ff_button.Position = UDim2.new(0, sausageHolder.Size.X.Offset-48, 0, 0)
             task.spawn(function()
                 pcall(function()
                     repeat sausageHolder.Size = UDim2.new(0, originalSize+48, 0, sausageHolder.Size.Y.Offset); task.wait(); ff_button.Position = UDim2.new(0, sausageHolder.Size.X.Offset-48, 0, 0) until ff_enabled == false
                 end)
             end)
         end)
-    else
-        if ff_connection then ff_connection:Disconnect(); ff_connection = nil end
-    end
+    else if ff_connection then ff_connection:Disconnect(); ff_connection = nil end end
 end
 MoveGroup:AddToggle("FrontFlipToggle", {Text="Show Front Flip Button[显示前滚翻按钮]", Default=false, Callback=function(s) SetFrontFlip(s); Library:Notify({Title="Front Flip Button", Description=s and "Shown" or "Hidden", Time=1}) end})
 MoveGroup:AddSlider("JumpHeight", {Text="Jump Height[跳跃高度]", Step=1, Value={Min=20,Max=200,Default=jumpHeight}, Suffix="Unit", Callback=function(v) jumpHeight=v end})
@@ -635,8 +512,7 @@ local function StartCFly()
         if not char or not hum or not head then if CFLoop then CFLoop:Disconnect(); CFLoop = nil end return end
         local moveDir = hum.MoveDirection * (CFSpeed * dt)
         local headCF = head.CFrame; local cam = workspace.CurrentCamera; local camCF = cam.CFrame
-        local off = headCF:ToObjectSpace(camCF).Position
-        camCF = camCF * CFrame.new(-off.X, -off.Y, -off.Z + 1)
+        local off = headCF:ToObjectSpace(camCF).Position; camCF = camCF * CFrame.new(-off.X, -off.Y, -off.Z + 1)
         local camPos = camCF.Position; local headPos = headCF.Position
         local objVel = CFrame.new(camPos, Vector3.new(headPos.X, camPos.Y, headPos.Z)):VectorToObjectSpace(moveDir)
         head.CFrame = CFrame.new(headPos) * (camCF - camPos) * CFrame.new(objVel)
@@ -644,8 +520,7 @@ local function StartCFly()
 end
 local function StopCFly()
     if CFLoop then CFLoop:Disconnect(); CFLoop = nil end
-    local char = localPlayer.Character
-    if char then local hum = char:FindFirstChildOfClass('Humanoid'); local head = char:FindFirstChild("Head"); if hum then hum.PlatformStand = false end; if head then head.Anchored = false end end
+    local char = localPlayer.Character; if char then local hum = char:FindFirstChildOfClass('Humanoid'); local head = char:FindFirstChild("Head"); if hum then hum.PlatformStand = false end; if head then head.Anchored = false end end
 end
 BypassGroupRight:AddToggle("CFlyToggle", {Text="Flight[飞行]", Default=false, Callback=function(v) if v then StartCFly(); Library:Notify({Title="Flight", Description="Enabled", Time=1}) else StopCFly(); Library:Notify({Title="Flight", Description="Disabled", Time=1}) end end})
 BypassGroupRight:AddSlider("CFlySpeed", {Text="Flight Speed[飞行速度]", Default=50, Min=1, Max=200, Rounding=1, Callback=function(v) CFSpeed=v end})
@@ -685,8 +560,7 @@ local punchAnimIds = {
     "129843313690921", "129843313690921", "108807732150251", "138040001965654",
     "86096387000557", "86096387000557",
 }
-local punchAnimCheck = {}
-for _, id in ipairs(punchAnimIds) do punchAnimCheck[id] = true end
+local punchAnimCheck = {}; for _, id in ipairs(punchAnimIds) do punchAnimCheck[id] = true end
 local function isPlayingPunchAnim()
     local char = localPlayer.Character; if not char then return false end
     local hum = char:FindFirstChildOfClass("Humanoid"); if not hum then return false end
@@ -697,35 +571,26 @@ end
 local function faceTarget(targetModel)
     local char = localPlayer.Character; if not char or not char:FindFirstChild("HumanoidRootPart") then return end
     local root = char.HumanoidRootPart; local targetRoot = targetModel:FindFirstChild("HumanoidRootPart"); if not targetRoot then return end
-    local targetPos = targetRoot.Position
-    root.CFrame = CFrame.new(root.Position, Vector3.new(targetPos.X, root.Position.Y, targetPos.Z))
+    root.CFrame = CFrame.new(root.Position, Vector3.new(targetRoot.Position.X, root.Position.Y, targetRoot.Position.Z))
 end
 local function getNearestKillerForPunchAimbot()
     local killers = getKillersFolder(); if not killers then return nil end
     local char = localPlayer.Character; if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
-    local myPos = char.HumanoidRootPart.Position
-    local nearest, nearestDist = nil, math.huge
-    for _, killer in ipairs(killers:GetChildren()) do if killer:IsA("Model") and killer:FindFirstChild("HumanoidRootPart") then if killer:GetAttribute("IsFakeNoli") ~= true then local dist = (killer.HumanoidRootPart.Position - myPos).Magnitude; if dist <= punchAimbotMaxDist and dist < nearestDist then nearestDist = dist; nearest = killer end end end end
+    local myPos = char.HumanoidRootPart.Position; local nearest, nearestDist = nil, math.huge
+    for _, killer in ipairs(killers:GetChildren()) do if killer:IsA("Model") and killer:FindFirstChild("HumanoidRootPart") and killer:GetAttribute("IsFakeNoli") ~= true then local dist = (killer.HumanoidRootPart.Position - myPos).Magnitude; if dist <= punchAimbotMaxDist and dist < nearestDist then nearestDist = dist; nearest = killer end end end
     return nearest
 end
 local function startPunchAimbotLoop()
     if punchAimbotConnection then return end
     punchAimbotConnection = game:GetService("RunService").Heartbeat:Connect(function()
         if not punchAimbotEnabled then return end
-        local playersFolder = workspace:FindFirstChild("Players"); local survivorsFolder = playersFolder and playersFolder:FindFirstChild("Survivors")
+        local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
         if not survivorsFolder or not localPlayer.Character or not localPlayer.Character:IsDescendantOf(survivorsFolder) then return end
         if isPlayingPunchAnim() then local target = getNearestKillerForPunchAimbot(); if target then faceTarget(target) end end
     end)
 end
 local function stopPunchAimbotLoop() if punchAimbotConnection then punchAimbotConnection:Disconnect(); punchAimbotConnection = nil end end
-AutoPunchGroup:AddToggle("PunchAimbot", {
-    Text = "Punch Aimbot[拳击自瞄]", Default = false,
-    Callback = function(state)
-        punchAimbotEnabled = state
-        if state then startPunchAimbotLoop(); Library:Notify({Title = "Punch Aimbot", Description = "Enabled", Time = 1})
-        else stopPunchAimbotLoop(); Library:Notify({Title = "Punch Aimbot", Description = "Disabled", Time = 1}) end
-    end
-})
+AutoPunchGroup:AddToggle("PunchAimbot", {Text = "Punch Aimbot[拳击自瞄]", Default = false, Callback = function(state) punchAimbotEnabled = state; if state then startPunchAimbotLoop(); Library:Notify({Title = "Punch Aimbot", Description = "Enabled", Time = 1}) else stopPunchAimbotLoop(); Library:Notify({Title = "Punch Aimbot", Description = "Disabled", Time = 1}) end end})
 AutoPunchGroup:AddSlider("PunchAimbotMaxDist", {Text = "Max Distance[最大距离]", Default = 20, Min = 5, Max = 50, Rounding = 0, Callback = function(v) punchAimbotMaxDist = v end})
 local HitboxGroup = Tabs["Bypass"]:AddRightGroupbox("Hitbox[碰撞箱]", "target")
 local extendEnabled = false; local extendPower = 3; local extendDuration = 0.15
@@ -752,8 +617,7 @@ local function hookLocalAnimationsForExtend()
     local animator = hum:FindFirstChildOfClass("Animator"); if not animator then return nil end
     local conn = animator.AnimationPlayed:Connect(function(track)
         if not extendEnabled then return end
-        local animId = track.Animation.AnimationId:match("%d+")
-        if animId and AttackAnimIDs[animId] then ExtendHitbox(extendPower, extendDuration) end
+        local animId = track.Animation.AnimationId:match("%d+"); if animId and AttackAnimIDs[animId] then ExtendHitbox(extendPower, extendDuration) end
     end)
     return conn
 end
@@ -763,10 +627,7 @@ local function onExtendToggle(state)
         if extendAnimConnection then extendAnimConnection:Disconnect() end
         extendAnimConnection = hookLocalAnimationsForExtend()
         localPlayer.CharacterAdded:Connect(function() if extendEnabled then if extendAnimConnection then extendAnimConnection:Disconnect() end; extendAnimConnection = hookLocalAnimationsForExtend() end end)
-    else
-        if extendAnimConnection then extendAnimConnection:Disconnect(); extendAnimConnection = nil end
-        StopExtendingHitbox()
-    end
+    else if extendAnimConnection then extendAnimConnection:Disconnect(); extendAnimConnection = nil end; StopExtendingHitbox() end
     Library:Notify({Title="Hitbox Extend", Description=state and "Enabled" or "Disabled", Time=1})
 end
 HitboxGroup:AddToggle("ExtendEnable", {Text="Hitbox Extend[碰撞箱扩展]", Default=false, Callback=function(s) onExtendToggle(s) end})
@@ -774,8 +635,7 @@ HitboxGroup:AddSlider("ExtendPower", {Text="Extend Power[扩展强度]", Default
 HitboxGroup:AddSlider("ExtendDuration", {Text="Duration[持续时间]", Default=0.15, Min=0.05, Max=0.5, Rounding=2, Callback=function(v) extendDuration=v end})
 local hitboxUILoaded = false
 local function loadHitboxUI()
-    if hitboxUILoaded then return end
-    hitboxUILoaded = true
+    if hitboxUILoaded then return end; hitboxUILoaded = true
     local Players = game:GetService("Players"); local RunService = game:GetService("RunService"); local CoreGui = game:GetService("CoreGui"); local Workspace = game:GetService("Workspace")
     local speaker = Players.LocalPlayer; local HitboxGay = false; local loopRunning = false; local player = Players.LocalPlayer
     local function isAnimationPlaying(ids)
@@ -787,7 +647,8 @@ local function loadHitboxUI()
     end
     local gui = Instance.new("ScreenGui"); gui.Name = "HitboxGayGui"; gui.Parent = CoreGui
     local button = Instance.new("TextButton"); button.Size = UDim2.new(0, 150, 0, 50); button.Position = UDim2.new(0.4, 0, 0.2, 0); button.Text = "Hitbox: OFF"; button.BackgroundColor3 = Color3.fromRGB(40, 40, 40); button.TextColor3 = Color3.fromRGB(255, 255, 255); button.Active = true; button.Draggable = true; button.Parent = gui
-    task.spawn(function() while true do RunService.RenderStepped:Wait(); if HitboxGay then button.Text = "Hitbox: ON" else button.Text = "Hitbox: OFF" end end end)
+    local lastText = "Hitbox: OFF"
+    task.spawn(function() while true do RunService.RenderStepped:Wait(); local txt = HitboxGay and "Hitbox: ON" or "Hitbox: OFF"; if txt ~= lastText then button.Text = txt; lastText = txt end end end)
     local function getRoot(character) return character and character:FindFirstChild("HumanoidRootPart") end
     local checkBoxSize = Vector3.new(100, 50, 100)
     local function isDescendantOf(obj, parent) return obj and parent and obj:IsDescendantOf(parent) end
@@ -804,25 +665,16 @@ local function loadHitboxUI()
             local c = part:FindFirstAncestorOfClass("Model")
             if c and c:FindFirstChild("Humanoid") and c:FindFirstChild("HumanoidRootPart") then
                 if c ~= speaker.Character and c.Humanoid.Health > 0 then
-                    _G.IsNpc = false; local valid = false
-                    if targetGroup then valid = isDescendantOf(c, targetGroup) else valid = true end
+                    _G.IsNpc = false; local valid = targetGroup and isDescendantOf(c, targetGroup) or true
                     if valid then local hrp = c.HumanoidRootPart; local d = (hrp.Position - root.Position).Magnitude; if d < dist then dist = d; nearest = hrp end end
                 end
             end
         end
-        if not nearest then
-            for _, part in pairs(parts) do
-                local c = part:FindFirstAncestorOfClass("Model")
-                if c and c:FindFirstChild("Humanoid") and c:FindFirstChild("HumanoidRootPart") then
-                    if c ~= speaker.Character and c.Humanoid.Health > 0 then _G.IsNpc = true; local hrp = c.HumanoidRootPart; local d = (hrp.Position - root.Position).Magnitude; if d < dist then dist = d; nearest = hrp end end
-                end
-            end
-        end
+        if not nearest then for _, part in pairs(parts) do local c = part:FindFirstAncestorOfClass("Model"); if c and c:FindFirstChild("Humanoid") and c:FindFirstChild("HumanoidRootPart") and c ~= speaker.Character and c.Humanoid.Health > 0 then _G.IsNpc = true; local hrp = c.HumanoidRootPart; local d = (hrp.Position - root.Position).Magnitude; if d < dist then dist = d; nearest = hrp end end end end
         return nearest
     end
     local function startHitboxGay()
-        if loopRunning then return end
-        loopRunning = true
+        if loopRunning then return end; loopRunning = true
         task.spawn(function()
             while HitboxGay do
                 RunService.Heartbeat:Wait()
@@ -862,9 +714,7 @@ local function loadHitboxUI()
     button.MouseButton1Click:Connect(function() HitboxGay = not HitboxGay; if HitboxGay then startHitboxGay() end end)
 end
 HitboxGroup:AddButton({Text = "Load Hitbox Track[加载hitbox追踪]", Func = function() loadHitboxUI(); Library:Notify({Title="Hitbox Track", Description="Load successful", Time=2}) end})
-local Services = {
-    Players = game:GetService("Players"), RunService = game:GetService("RunService"), Workspace = game:GetService("Workspace"),
-}
+local Services = { Players = game:GetService("Players"), RunService = game:GetService("RunService"), Workspace = game:GetService("Workspace") }
 local LocalPlayer = Services.Players.LocalPlayer
 local Camera = Services.Workspace.CurrentCamera
 local ESPSettings = {
@@ -1022,7 +872,7 @@ local function UpdateESP()
     for _, mine in ipairs(ingame:GetChildren()) do if mine.Name == "SubspaceTripmine" and mine:IsA("Model") then if ESPSettings.subspaceBoxEsp and not mine:FindFirstChild("TAOWARE_Highlight") then CreateESP(mine, ESPSettings.subspaceBoxColor, false, false, false, false, false, false, true, false) elseif not ESPSettings.subspaceBoxEsp then RemoveESP(mine) end end end
     for _, respawn in ipairs(ingame:GetChildren()) do if respawn.Name == "TwoTimeRespawn" and respawn:IsA("BasePart") then if ESPSettings.twoTimeRespawnEsp and not respawn:FindFirstChild("TAOWARE_Highlight") then CreateESP(respawn, ESPSettings.respawnColor, false, false, false, false, false, false, false, true) elseif not ESPSettings.twoTimeRespawnEsp then RemoveESP(respawn) end end end
 end
-task.spawn(function() while true do UpdateESP(); updateFakeNolis(); task.wait(0.5) end end)
+task.spawn(function() while task.wait(1) do UpdateESP(); updateFakeNolis() end end)
 Services.RunService.RenderStepped:Connect(UpdateTracers)
 local ESPGroupUI = Tabs["ESP"]:AddLeftGroupbox("Player ESP[玩家ESP]", "users")
 ESPGroupUI:AddCheckbox("KillerESP", {Text="Killer ESP[杀手ESP]", Default=false, Callback=function(v) ESPSettings.killerESP=v; Library:Notify({Title="Killer ESP", Description=v and "Enabled" or "Disabled", Time=1}) end}):AddColorPicker("KillerColor", {Default=ESPSettings.killerColor, Title="Killer Color[杀手颜色]", Callback=function(v) ESPSettings.killerColor=v end})
@@ -1144,7 +994,7 @@ local function getHumanoidAndAnimator() local char = localPlayer.Character; if n
 local function stopCustomAnimations() if customAnimData.connection then customAnimData.connection:Disconnect(); customAnimData.connection = nil end; for animType, track in pairs(customAnimData.tracks) do if track then track:Stop(); track:Destroy(); customAnimData.tracks[animType] = nil end end; customAnimData.active = false end
 local function updateAnimation()
     local hum, animator = getHumanoidAndAnimator(); if not hum or not animator or not customAnimData.preset then return end
-    local speed = hum.MoveDirection.Magnitude; local targetAnim = "Idle"; if speed > 0.5 then targetAnim = hum.WalkSpeed > 20 and "Run" or "Walk" end
+    local speed = hum.MoveDirection.Magnitude; local targetAnim = speed > 0.5 and (hum.WalkSpeed > 20 and "Run" or "Walk") or "Idle"
     local targetTrack = customAnimData.tracks[targetAnim]
     if targetTrack and not targetTrack.IsPlaying then for animType, track in pairs(customAnimData.tracks) do if track and track ~= targetTrack then track:Stop() end end; targetTrack:Play()
     elseif not targetTrack then stopCustomAnimations(); customAnimData.active = true; customAnimData.preset = _G.LastSelectedPreset; local preset = AnimPresets[_G.LastSelectedPreset]; if not preset then return end
@@ -1155,7 +1005,7 @@ end
 local function applyPreset(presetName)
     local preset = AnimPresets[presetName]; if not preset then return end; local hum, animator = getHumanoidAndAnimator(); if not hum or not animator then return end; stopCustomAnimations(); customAnimData.active = true; customAnimData.preset = presetName
     for _, animType in ipairs({"Idle", "Walk", "Run"}) do local animId = preset[animType]; if animId and animId ~= "" then local animation = Instance.new("Animation"); animation.AnimationId = "rbxassetid://" .. animId; local track = animator:LoadAnimation(animation); track.Priority = Enum.AnimationPriority.Movement; customAnimData.tracks[animType] = track end end
-    local speed = hum.MoveDirection.Magnitude; local targetAnim = "Idle"; if speed > 0.5 then targetAnim = hum.WalkSpeed > 20 and "Run" or "Walk" end; local targetTrack = customAnimData.tracks[targetAnim]; if targetTrack then targetTrack:Play() end; customAnimData.connection = game:GetService("RunService").RenderStepped:Connect(updateAnimation)
+    local speed = hum.MoveDirection.Magnitude; local targetTrack = customAnimData.tracks[speed > 0.5 and (hum.WalkSpeed > 20 and "Run" or "Walk") or "Idle"]; if targetTrack then targetTrack:Play() end; customAnimData.connection = game:GetService("RunService").RenderStepped:Connect(updateAnimation)
     Library:Notify({ Title = "Animation", Description = "Applied " .. presetName .. " animations", Time = 2 })
 end
 local function resetAnimations() stopCustomAnimations(); _G.LastSelectedPreset = nil; Library:Notify({ Title = "Animation Reset", Description = "Restored to default animations", Time = 2 }) end
@@ -1189,8 +1039,7 @@ local noFogEnabled = false; local originalFogStart, originalFogEnd
 local function applyNoFog(state) noFogEnabled = state; if state then if not originalFogStart then originalFogStart = game.Lighting.FogStart end; if not originalFogEnd then originalFogEnd = game.Lighting.FogEnd end; game.Lighting.FogStart = 0; game.Lighting.FogEnd = 100000 else if originalFogStart then game.Lighting.FogStart = originalFogStart end; if originalFogEnd then game.Lighting.FogEnd = originalFogEnd end end end
 MiscGroup:AddToggle("NoFogToggle", {Text="No Fog[无雾]", Default=false, Callback=function(state) applyNoFog(state); Library:Notify({Title="No Fog", Description=state and "Enabled" or "Disabled", Time=1}) end})
 MiscGroup:AddDivider()
-local networkPingEnabled = true
-MiscGroup:AddToggle("NetworkPingToggle", {Text="Network Ping Compensation[网络延迟补偿]", Default=true, Callback=function(state) networkPingEnabled=state; Library:Notify({Title="Network Ping Compensation", Description=state and "Enabled" or "Disabled", Time=1}) end})
+MiscGroup:AddToggle("NetworkPingToggle", {Text="Network Ping Compensation[网络延迟补偿]", Default=true, Callback=function(state) Library:Notify({Title="Network Ping Compensation", Description=state and "Enabled" or "Disabled", Time=1}) end})
 local MenuGroup = Tabs["UI Settings"]:AddLeftGroupbox("Menu", "wrench")
 MenuGroup:AddToggle("KeybindMenuOpen", {Default=Library.KeybindFrame.Visible, Text="Open Keybind Menu", Callback=function(v) Library.KeybindFrame.Visible=v; Library:Notify({Title="Keybind Menu", Description=v and "Opened" or "Closed", Time=1}) end})
 MenuGroup:AddToggle("ShowCustomCursor", {Text="Custom Cursor", Default=true, Callback=function(v) Library.ShowCustomCursor=v; Library:Notify({Title="Custom Cursor", Description=v and "Enabled" or "Disabled", Time=1}) end})
@@ -1202,11 +1051,8 @@ MenuGroup:AddButton("Unload", function() Library:Unload() end)
 Library.ToggleKeybind = Options.MenuKeybind
 ThemeManager:SetLibrary(Library)
 ThemeManager:SetDefaultTheme({
-    BackgroundColor = Color3.fromRGB(26,26,46),
-    AccentColor = Color3.fromRGB(137,180,250),
-    OutlineColor = Color3.fromRGB(49,50,68),
-    FontColor = Color3.fromRGB(205,214,244),
-    FontFace = Enum.Font.Gotham,
+    BackgroundColor = Color3.fromRGB(26,26,46), AccentColor = Color3.fromRGB(137,180,250),
+    OutlineColor = Color3.fromRGB(49,50,68), FontColor = Color3.fromRGB(205,214,244), FontFace = Enum.Font.Gotham,
 })
 ThemeManager:ApplyToTab(Tabs["UI Settings"])
 Library:OnUnload(function()
