@@ -24,6 +24,9 @@ local Tabs = {
 }
 local localPlayer = game.Players.LocalPlayer
 local playingState = "Playing"
+local svc = { WS = workspace, RS = game:GetService("ReplicatedStorage"), Run = game:GetService("RunService"), Input = game:GetService("UserInputService") }
+local lp = localPlayer
+local cfg = { _data = {}, get = function(self, key, default) return self._data[key] ~= nil and self._data[key] or default end, set = function(self, key, value) self._data[key] = value end }
 local InfoGroup = Tabs["Player Info"]:AddRightGroupbox("Player Info[玩家信息]", "info")
 InfoGroup:AddLabel("Executor : " .. (identifyexecutor and identifyexecutor() or "Unknown"))
 InfoGroup:AddLabel("Username : " .. localPlayer.Name)
@@ -58,9 +61,7 @@ local BlockSettings = {
     RemoteDetectionEnabled = false,
     RemoteActionNames = {},
 }
-for _, actions in pairs(KillerMeleeActions) do
-    for _, name in ipairs(actions.melee or {}) do BlockSettings.RemoteActionNames[name] = true end
-end
+for _, actions in pairs(KillerMeleeActions) do for _, name in ipairs(actions.melee or {}) do BlockSettings.RemoteActionNames[name] = true end end
 Old__namecall = hookmetamethod(game, "__namecall", function(Self, ...)
     local Args = { ... }
     local Method = getnamecallmethod()
@@ -71,10 +72,7 @@ Old__namecall = hookmetamethod(game, "__namecall", function(Self, ...)
     end
     return Old__namecall(Self, unpack(Args))
 end)
-local function getKillersFolder()
-    local players = workspace:FindFirstChild("Players")
-    return players and players:FindFirstChild("Killers")
-end
+local function getKillersFolder() local players = workspace:FindFirstChild("Players") return players and players:FindFirstChild("Killers") end
 local function getBlockButton()
     local pg = localPlayer:FindFirstChild("PlayerGui"); if not pg then return nil end
     local main = pg:FindFirstChild("MainUI"); if not main then return nil end
@@ -304,17 +302,11 @@ local BackstabSettings = {
     RangeVisuals = {}, Active = false, ActiveKiller = nil, ActiveTrack = nil, LoopConnection = nil, LastBackstab = 0, BackstabCooldown = 1.5, Debug = false,
 }
 local BackstabGroup = Tabs["Combat"]:AddLeftGroupbox("Auto Backstab[自动背刺]", "target")
-BackstabGroup:AddToggle("EnableBackstab", {Text = "Enable Backstab[启用背刺辅助]", Default = false, Callback = function(state)
-    BackstabSettings.Enabled = state if not state then for k,v in pairs(BackstabSettings.RangeVisuals) do pcall(function() v:Destroy() end) end BackstabSettings.RangeVisuals = {} if BackstabSettings.Active then stopBackstab() end end
-    Library:Notify({Title="Backstab Assist", Description=state and "Enabled" or "Disabled", Time=1})
-end})
+BackstabGroup:AddToggle("EnableBackstab", {Text = "Enable Backstab[启用背刺辅助]", Default = false, Callback = function(state) BackstabSettings.Enabled = state if not state then for k,v in pairs(BackstabSettings.RangeVisuals) do pcall(function() v:Destroy() end) end BackstabSettings.RangeVisuals = {} if BackstabSettings.Active then stopBackstab() end end Library:Notify({Title="Backstab Assist", Description=state and "Enabled" or "Disabled", Time=1}) end})
 BackstabGroup:AddDropdown("BackstabMode", {Text = "Backstab Mode[背刺模式]", Values = {"Blatant", "Teleport"}, Default = "Blatant", Callback = function(sel) BackstabSettings.Mode = sel end})
 BackstabGroup:AddSlider("BackstabDistance", {Text = "Backstab Distance[背刺距离]", Default = 15, Min = 5, Max = 30, Rounding = 1, Callback = function(v) BackstabSettings.Distance = v if BackstabSettings.ShowRange then for k,part in pairs(BackstabSettings.RangeVisuals) do if part and part.Parent then part.Size = Vector3.new(v * 2, 1, v * 2) end end end end})
 BackstabGroup:AddSlider("BackstabOffset", {Text = "Backstab Offset[背刺偏移]", Default = 2.0, Min = 1, Max = 5, Rounding = 1, Callback = function(v) BackstabSettings.Offset = v end})
-BackstabGroup:AddToggle("ShowBackstabRange", {Text = "Show Backstab Range[显示背刺范围]", Default = true, Callback = function(state)
-    BackstabSettings.ShowRange = state if state then local kf = getKillersFolder(); if kf then for _,k in ipairs(kf:GetChildren()) do if k:IsA("Model") then createBackstabRangeVisual(k) end end end
-    else for _,part in pairs(BackstabSettings.RangeVisuals) do pcall(function() part:Destroy() end) end BackstabSettings.RangeVisuals = {} end
-end})
+BackstabGroup:AddToggle("ShowBackstabRange", {Text = "Show Backstab Range[显示背刺范围]", Default = true, Callback = function(state) BackstabSettings.ShowRange = state if state then local kf = getKillersFolder(); if kf then for _,k in ipairs(kf:GetChildren()) do if k:IsA("Model") then createBackstabRangeVisual(k) end end end else for _,part in pairs(BackstabSettings.RangeVisuals) do pcall(function() part:Destroy() end) end BackstabSettings.RangeVisuals = {} end end})
 BackstabGroup:AddLabel("Range Color[范围颜色]"):AddColorPicker("BackstabRangeColor", {Default = BackstabSettings.RangeColor, Title = "Range Color", Callback = function(v) BackstabSettings.RangeColor = v; for _,part in pairs(BackstabSettings.RangeVisuals) do if part then part.Color = v end end end})
 local function debugLog(msg) if BackstabSettings.Debug then print("[Backstab] "..msg) end end
 local function createBackstabRangeVisual(killerModel)
@@ -414,12 +406,7 @@ local SprintingModule = game:GetService("ReplicatedStorage"):WaitForChild("Syste
 local GetModule = function() return require(SprintingModule) end
 task.spawn(function() while task.wait(1) do local m = GetModule(); for key, value in pairs(StaminaSettings) do if SettingToggles[key] then m[key] = value end end end end)
 local infiniteStaminaActive = false; local staminaConnection = nil
-StaminaGroup:AddToggle('InfiniteStamina', {Text='Infinite Stamina[无限体力]', Default=false, Callback=function(state)
-    Library:Notify({Title="Infinite Stamina", Description=state and "Enabled" or "Disabled", Time=1})
-    infiniteStaminaActive = state; local Sprinting = GetModule()
-    if state then Sprinting.StaminaLoss = 0; Sprinting.StaminaGain = StaminaSettings.InfiniteGain or 9999; if staminaConnection then staminaConnection:Disconnect() end; staminaConnection = game:GetService("RunService").Heartbeat:Connect(function() if not infiniteStaminaActive then return end; Sprinting.StaminaLoss = 0; Sprinting.StaminaGain = StaminaSettings.InfiniteGain or 9999 end)
-    else Sprinting.StaminaLoss = StaminaSettings.StaminaLoss or 10; Sprinting.StaminaGain = StaminaSettings.StaminaGain or 25; if staminaConnection then staminaConnection:Disconnect(); staminaConnection = nil end end
-end})
+StaminaGroup:AddToggle('InfiniteStamina', {Text='Infinite Stamina[无限体力]', Default=false, Callback=function(state) Library:Notify({Title="Infinite Stamina", Description=state and "Enabled" or "Disabled", Time=1}) infiniteStaminaActive = state; local Sprinting = GetModule() if state then Sprinting.StaminaLoss = 0; Sprinting.StaminaGain = StaminaSettings.InfiniteGain or 9999; if staminaConnection then staminaConnection:Disconnect() end; staminaConnection = game:GetService("RunService").Heartbeat:Connect(function() if not infiniteStaminaActive then return end; Sprinting.StaminaLoss = 0; Sprinting.StaminaGain = StaminaSettings.InfiniteGain or 9999 end) else Sprinting.StaminaLoss = StaminaSettings.StaminaLoss or 10; Sprinting.StaminaGain = StaminaSettings.StaminaGain or 25; if staminaConnection then staminaConnection:Disconnect(); staminaConnection = nil end end end})
 StaminaGroup:AddToggle('MaxStaminaToggle', {Text='Enable Max Stamina[启用体力大小调节]', Default=false, Callback=function(v) SettingToggles.MaxStamina=v end})
 StaminaGroup:AddToggle('StaminaGainToggle', {Text='Enable Stamina Gain[启用体力恢复调节]', Default=false, Callback=function(v) SettingToggles.StaminaGain=v end})
 StaminaGroup:AddToggle('StaminaLossToggle', {Text='Enable Stamina Loss[启用体力消耗调节]', Default=false, Callback=function(v) SettingToggles.StaminaLoss=v end})
@@ -484,11 +471,7 @@ local function SetFrontFlip(bool)
             ff_connection = imageButton.Activated:Connect(Flip)
             sausageHolder.Size = UDim2.new(0, originalSize+48, 0, sausageHolder.Size.Y.Offset)
             task.wait(); ff_button.Position = UDim2.new(0, sausageHolder.Size.X.Offset-48, 0, 0)
-            task.spawn(function()
-                pcall(function()
-                    repeat sausageHolder.Size = UDim2.new(0, originalSize+48, 0, sausageHolder.Size.Y.Offset); task.wait(); ff_button.Position = UDim2.new(0, sausageHolder.Size.X.Offset-48, 0, 0) until ff_enabled == false
-                end)
-            end)
+            task.spawn(function() pcall(function() repeat sausageHolder.Size = UDim2.new(0, originalSize+48, 0, sausageHolder.Size.Y.Offset); task.wait(); ff_button.Position = UDim2.new(0, sausageHolder.Size.X.Offset-48, 0, 0) until ff_enabled == false end) end)
         end)
     else if ff_connection then ff_connection:Disconnect(); ff_connection = nil end end
 end
@@ -592,6 +575,193 @@ end
 local function stopPunchAimbotLoop() if punchAimbotConnection then punchAimbotConnection:Disconnect(); punchAimbotConnection = nil end end
 AutoPunchGroup:AddToggle("PunchAimbot", {Text = "Punch Aimbot[拳击自瞄]", Default = false, Callback = function(state) punchAimbotEnabled = state; if state then startPunchAimbotLoop(); Library:Notify({Title = "Punch Aimbot", Description = "Enabled", Time = 1}) else stopPunchAimbotLoop(); Library:Notify({Title = "Punch Aimbot", Description = "Disabled", Time = 1}) end end})
 AutoPunchGroup:AddSlider("PunchAimbotMaxDist", {Text = "Max Distance[最大距离]", Default = 20, Min = 5, Max = 50, Rounding = 0, Callback = function(v) punchAimbotMaxDist = v end})
+local VeerAutoTrickGroup = Tabs["Combat"]:AddRightGroupbox("Veeronica Auto Trick[Veeronica自动特技]", "zap")
+do
+    local atEnabled = false
+    local atActiveMonitors = {}
+    local atDescendantAddedConn = nil
+    local function atGetBehaviorFolder()
+        return svc.RS:WaitForChild("Assets"):WaitForChild("Survivors"):WaitForChild("Veeronica"):WaitForChild("Behavior")
+    end
+    local function atGetSprintingButton()
+        return lp.PlayerGui:WaitForChild("MainUI"):WaitForChild("SprintingButton")
+    end
+    local atBehaviorFolder = nil
+    task.spawn(function()
+        local ok, f = pcall(atGetBehaviorFolder)
+        if ok and f then atBehaviorFolder = f end
+    end)
+    local function atSafeConnectPropertyChanged(instance, prop, fn)
+        local ok, signal = pcall(function() return instance:GetPropertyChangedSignal(prop) end)
+        if ok and signal then return signal:Connect(fn) end
+        return nil
+    end
+    local function atMonitorHighlight(h)
+        if not h or atActiveMonitors[h] then return end
+        local connections = {}
+        local prevState = false
+        local function cleanup()
+            for _, conn in ipairs(connections) do if conn and conn.Connected then conn:Disconnect() end end
+            atActiveMonitors[h] = nil
+        end
+        local function adorneeIsPlayer(hh)
+            if not hh then return false end
+            local adornee = hh.Adornee
+            local char = lp.Character
+            if not adornee or not char then return false end
+            return adornee == char or adornee:IsDescendantOf(char)
+        end
+        local function onChanged()
+            if not atEnabled then return end
+            if not h or not h.Parent then cleanup(); return end
+            local currState = adorneeIsPlayer(h)
+            if prevState ~= currState then
+                if currState then
+                    local ok2, btn = pcall(atGetSprintingButton)
+                    if ok2 and btn then
+                        for _, v in pairs(getconnections(btn.MouseButton1Down)) do
+                            pcall(function() v:Fire() end)
+                            pcall(function() if v.Function then v:Function() end end)
+                        end
+                    end
+                end
+            end
+            prevState = currState
+        end
+        local c = atSafeConnectPropertyChanged(h, "Adornee", onChanged)
+        if c then table.insert(connections, c) end
+        table.insert(connections, h.AncestryChanged:Connect(function(_, parent) if not parent then cleanup() else onChanged() end end))
+        table.insert(connections, lp.CharacterAdded:Connect(onChanged))
+        table.insert(connections, lp.CharacterRemoving:Connect(onChanged))
+        atActiveMonitors[h] = cleanup
+        task.spawn(onChanged)
+    end
+    local function atStartManager()
+        if atDescendantAddedConn or not atBehaviorFolder then return end
+        for _, desc in ipairs(atBehaviorFolder:GetDescendants()) do if desc:IsA("Highlight") then atMonitorHighlight(desc) end end
+        atDescendantAddedConn = atBehaviorFolder.DescendantAdded:Connect(function(child) if child:IsA("Highlight") then atMonitorHighlight(child) end end)
+    end
+    local function atStopManager()
+        if atDescendantAddedConn and atDescendantAddedConn.Connected then atDescendantAddedConn:Disconnect() end
+        atDescendantAddedConn = nil
+        local cleans = {}
+        for _, cleanup in pairs(atActiveMonitors) do if type(cleanup) == "function" then table.insert(cleans, cleanup) end end
+        for _, fn in ipairs(cleans) do pcall(fn) end
+        atActiveMonitors = {}
+    end
+    VeerAutoTrickGroup:AddToggle("VeerAutoTrick", {Text = "Auto Trick[自动特技]", Default = false, Callback = function(on)
+        atEnabled = on
+        if on then
+            if not atBehaviorFolder then local ok, f = pcall(atGetBehaviorFolder); if ok and f then atBehaviorFolder = f end end
+            atStartManager()
+        else atStopManager() end
+    end})
+end
+local VeerSK8Group = Tabs["Combat"]:AddRightGroupbox("Veeronica SK8 Control[Veeronica滑板控制]", "zap")
+do
+    local sk8_camera = workspace.CurrentCamera
+    local sk8_shiftlockEnabled = false
+    local sk8_shiftConn = nil
+    local function sk8_setShiftlock(state)
+        sk8_shiftlockEnabled = state
+        if sk8_shiftConn then sk8_shiftConn:Disconnect(); sk8_shiftConn = nil end
+        if sk8_shiftlockEnabled then
+            svc.Input.MouseBehavior = Enum.MouseBehavior.LockCenter
+            sk8_shiftConn = svc.Run.RenderStepped:Connect(function()
+                local character = lp.Character
+                local root = character and character:FindFirstChild("HumanoidRootPart")
+                if root then
+                    local camCF = sk8_camera.CFrame
+                    root.CFrame = CFrame.new(root.Position, Vector3.new(camCF.LookVector.X+root.Position.X, root.Position.Y, camCF.LookVector.Z+root.Position.Z))
+                end
+            end)
+        else svc.Input.MouseBehavior = Enum.MouseBehavior.Default end
+    end
+    local sk8_chargeAnimIds = { "117058860640843" }
+    local sk8_DASH_SPEED = 60
+    local sk8_controlEnabled = cfg:get("sk8ControlEnabled", true)
+    local sk8_controlActive = false
+    local sk8_overrideConn = nil
+    local sk8_savedHumState = {}
+    local function sk8_getHumanoid()
+        if not lp or not lp.Character then return nil end
+        return lp.Character:FindFirstChildOfClass("Humanoid")
+    end
+    local function sk8_saveHumState(hum)
+        if not hum or sk8_savedHumState[hum] then return end
+        local s = {}
+        pcall(function()
+            s.WalkSpeed = hum.WalkSpeed
+            local ok, _ = pcall(function() s.JumpPower = hum.JumpPower end)
+            if not ok then pcall(function() s.JumpPower = hum.JumpHeight end) end
+            local ok2, ar = pcall(function() return hum.AutoRotate end)
+            if ok2 then s.AutoRotate = ar end
+            s.PlatformStand = hum.PlatformStand
+        end)
+        sk8_savedHumState[hum] = s
+    end
+    local function sk8_restoreHumState(hum)
+        if not hum then return end
+        local s = sk8_savedHumState[hum]; if not s then return end
+        pcall(function()
+            if s.WalkSpeed ~= nil then hum.WalkSpeed = s.WalkSpeed end
+            if s.JumpPower ~= nil then
+                local ok, _ = pcall(function() hum.JumpPower = s.JumpPower end)
+                if not ok then pcall(function() hum.JumpHeight = s.JumpPower end) end
+            end
+            if s.AutoRotate ~= nil then pcall(function() hum.AutoRotate = s.AutoRotate end) end
+            if s.PlatformStand ~= nil then hum.PlatformStand = s.PlatformStand end
+        end)
+        sk8_savedHumState[hum] = nil
+    end
+    local function sk8_startOverride()
+        if sk8_controlActive then return end
+        local hum = sk8_getHumanoid(); if not hum then return end
+        sk8_controlActive = true; sk8_saveHumState(hum)
+        pcall(function() hum.WalkSpeed = sk8_DASH_SPEED; hum.AutoRotate = false end)
+        sk8_setShiftlock(true)
+        sk8_overrideConn = svc.Run.RenderStepped:Connect(function()
+            local humanoid = sk8_getHumanoid()
+            local rootPart = humanoid and humanoid.Parent and humanoid.Parent:FindFirstChild("HumanoidRootPart")
+            if not humanoid or not rootPart then return end
+            pcall(function() humanoid.WalkSpeed = sk8_DASH_SPEED; humanoid.AutoRotate = false end)
+            local direction = rootPart.CFrame.LookVector
+            local horizontal = Vector3.new(direction.X, 0, direction.Z)
+            if horizontal.Magnitude > 0 then humanoid:Move(horizontal.Unit) else humanoid:Move(Vector3.new(0,0,0)) end
+        end)
+    end
+    local function sk8_stopOverride()
+        if not sk8_controlActive then return end
+        sk8_controlActive = false
+        if sk8_overrideConn then pcall(function() sk8_overrideConn:Disconnect() end); sk8_overrideConn = nil end
+        sk8_setShiftlock(false)
+        local hum = sk8_getHumanoid()
+        if hum then pcall(function() sk8_restoreHumState(hum); hum:Move(Vector3.new(0,0,0)) end) end
+    end
+    local function sk8_detectChargeAnim()
+        local hum = sk8_getHumanoid(); if not hum then return false end
+        for _, track in ipairs(hum:GetPlayingAnimationTracks()) do
+            local ok, animId = pcall(function() return tostring(track.Animation and track.Animation.AnimationId or ""):match("%d+") end)
+            if ok and animId and animId ~= "" then if table.find(sk8_chargeAnimIds, animId) then return true end end
+        end
+        return false
+    end
+    svc.Run.RenderStepped:Connect(function()
+        if not sk8_controlEnabled then if sk8_controlActive then sk8_stopOverride() end; return end
+        local hum = sk8_getHumanoid()
+        if not hum then if sk8_controlActive then sk8_stopOverride() end; return end
+        if sk8_detectChargeAnim() then if not sk8_controlActive then sk8_startOverride() end
+        else if sk8_controlActive then sk8_stopOverride() end end
+    end)
+    lp.CharacterAdded:Connect(function()
+        if sk8_shiftConn then sk8_shiftConn:Disconnect(); sk8_shiftConn = nil end
+        sk8_savedHumState = {}
+    end)
+    VeerSK8Group:AddToggle("VeerSK8Toggle", {Text = "Enable SK8 Control[启用滑板控制]", Default = sk8_controlEnabled, Callback = function(on)
+        sk8_controlEnabled = on; cfg:set("sk8ControlEnabled", on)
+        if not on and sk8_controlActive then sk8_stopOverride() end
+    end})
+end
 local HitboxGroup = Tabs["Bypass"]:AddRightGroupbox("Hitbox[碰撞箱]", "target")
 local extendEnabled = false; local extendPower = 3; local extendDuration = 0.15
 local function ExtendHitbox(studs, time)
