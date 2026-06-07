@@ -297,7 +297,7 @@ PlayerGroup:AddToggle("AlwaysSprint", {Text = "Always Sprint[一直奔跑]", Def
 PlayerGroup:AddToggle("AllowJump", {Text = "Enable Jump[启用跳跃]", Default = false, Tooltip = "Repeated jumping may get you banned!", Callback = function(state) Library:Notify({Title="Enable Jump", Description=state and "Enabled" or "Disabled", Time=1}) _G.restoringJump = state if state then task.spawn(function() while _G.restoringJump do local char = localPlayer.Character or localPlayer.CharacterAdded:Wait(); local humanoid = char:FindFirstChildOfClass("Humanoid"); local jumpBtn = localPlayer.PlayerGui:FindFirstChild("TouchGui") and localPlayer.PlayerGui.TouchGui:FindFirstChild("TouchControlFrame") and localPlayer.PlayerGui.TouchGui.TouchControlFrame:FindFirstChild("JumpButton"); if humanoid then humanoid.JumpPower = 50 end; if jumpBtn then jumpBtn.Visible = true end; task.wait(1) end end) else local char = localPlayer.Character; local humanoid = char and char:FindFirstChildOfClass("Humanoid"); if humanoid then humanoid.JumpPower = 0 end; local jumpBtn = localPlayer.PlayerGui:FindFirstChild("TouchGui") and localPlayer.PlayerGui.TouchGui:FindFirstChild("TouchControlFrame") and localPlayer.PlayerGui.TouchGui.TouchControlFrame:FindFirstChild("JumpButton"); if jumpBtn then jumpBtn.Visible = false end end end})
 PlayerGroup:AddToggle("AlwaysShowChat", {Text = "Always Show Chat[显示聊天框]", Default = false, Callback = function(state) Library:Notify({Title="Always Show Chat", Description=state and "Enabled" or "Disabled", Time=1}) _G.showChat = state task.spawn(function() while _G.showChat and task.wait() do game:GetService("TextChatService"):FindFirstChildOfClass("ChatWindowConfiguration").Enabled = true end end) if not state and playingState ~= "Spectating" then game:GetService("TextChatService"):FindFirstChildOfClass("ChatWindowConfiguration").Enabled = false end end})
 local BackstabSettings = {
-    Enabled = false, Mode = "Blatant", Distance = 15, Offset = 2.0, ShowRange = true,
+    Enabled = false, Mode = "Blatant", Distance = 15, Offset = 2.0, ShowRange = false,
     RangeColor = Color3.fromRGB(255, 100, 100), RangeTransparency = 0.5, TeleportSmoothness = 8, TeleportDuration = 0.15,
     RangeVisuals = {}, Active = false, ActiveKiller = nil, ActiveTrack = nil, LoopConnection = nil, LastBackstab = 0, BackstabCooldown = 1.5, Debug = false,
 }
@@ -306,7 +306,7 @@ BackstabGroup:AddToggle("EnableBackstab", {Text = "Enable Backstab[启用背刺�
 BackstabGroup:AddDropdown("BackstabMode", {Text = "Backstab Mode[背刺模式]", Values = {"Blatant", "Teleport"}, Default = "Blatant", Callback = function(sel) BackstabSettings.Mode = sel end})
 BackstabGroup:AddSlider("BackstabDistance", {Text = "Backstab Distance[背刺距离]", Default = 15, Min = 5, Max = 30, Rounding = 1, Callback = function(v) BackstabSettings.Distance = v if BackstabSettings.ShowRange then for k,part in pairs(BackstabSettings.RangeVisuals) do if part and part.Parent then part.Size = Vector3.new(v * 2, 1, v * 2) end end end end})
 BackstabGroup:AddSlider("BackstabOffset", {Text = "Backstab Offset[背刺偏移]", Default = 2.0, Min = 1, Max = 5, Rounding = 1, Callback = function(v) BackstabSettings.Offset = v end})
-BackstabGroup:AddToggle("ShowBackstabRange", {Text = "Show Backstab Range[显示背刺范围]", Default = true, Callback = function(state) BackstabSettings.ShowRange = state if state then local kf = getKillersFolder(); if kf then for _,k in ipairs(kf:GetChildren()) do if k:IsA("Model") then createBackstabRangeVisual(k) end end end else for _,part in pairs(BackstabSettings.RangeVisuals) do pcall(function() part:Destroy() end) end BackstabSettings.RangeVisuals = {} end end})
+BackstabGroup:AddToggle("ShowBackstabRange", {Text = "Show Backstab Range[显示背刺范围]", Default = false, Callback = function(state) BackstabSettings.ShowRange = state if state then local kf = getKillersFolder(); if kf then for _,k in ipairs(kf:GetChildren()) do if k:IsA("Model") then createBackstabRangeVisual(k) end end end else for _,part in pairs(BackstabSettings.RangeVisuals) do pcall(function() part:Destroy() end) end BackstabSettings.RangeVisuals = {} end end})
 BackstabGroup:AddLabel("Range Color[范围颜色]"):AddColorPicker("BackstabRangeColor", {Default = BackstabSettings.RangeColor, Title = "Range Color", Callback = function(v) BackstabSettings.RangeColor = v; for _,part in pairs(BackstabSettings.RangeVisuals) do if part then part.Color = v end end end})
 local function debugLog(msg) if BackstabSettings.Debug then print("[Backstab] "..msg) end end
 local function createBackstabRangeVisual(killerModel)
@@ -761,6 +761,172 @@ do
         sk8_controlEnabled = on; cfg:set("sk8ControlEnabled", on)
         if not on and sk8_controlActive then sk8_stopOverride() end
     end})
+end
+local ChanceAimGroup = Tabs["Combat"]:AddRightGroupbox("Chance Aimbot[Chance自瞄]", "target")
+do
+    local aimEnabled = false
+    local predMode = "Velocity"
+    local predValue = 0.5
+    local aimBehavior = "Normal"
+    local spinDuration = 0.5
+    local antiBait = true
+    local smoothSpeed = 14
+    local heightAim = false
+    local killerSpeeds = {
+        Slasher = { walk = 9, run = 28 },
+        c00lkidd = { walk = 7.75, run = 28 },
+        JohnDoe = { walk = 9, run = 27.25 },
+        ["1x1x1x1"] = { walk = 8.5, run = 27 },
+        Noli = { walk = 7.5, run = 27.5 },
+        Guest666 = { walk = 9, run = 27 },
+        Nosferatu = { walk = 7.25, run = 27.5 },
+        Doombringer = { walk = 8, run = 27 },
+        JaneDoe = { walk = 9, run = 27 },
+        Builderman = { walk = 8.5, run = 27.5 },
+        Dusekkar = { walk = 8, run = 27.5 },
+    }
+    local Humanoid, HRP
+    local function setChar(char)
+        Humanoid = char:WaitForChild("Humanoid")
+        HRP = char:WaitForChild("HumanoidRootPart")
+    end
+    if localPlayer.Character then setChar(localPlayer.Character) end
+    localPlayer.CharacterAdded:Connect(setChar)
+    local function getNearest()
+        if not HRP then return end
+        local playersFolder = workspace:FindFirstChild("Players")
+        local killersFolder = playersFolder and playersFolder:FindFirstChild("Killers")
+        local survivorsFolder = playersFolder and playersFolder:FindFirstChild("Survivors")
+        if not killersFolder then return end
+        local closest, dist = nil, math.huge
+        for _, m in ipairs(killersFolder:GetChildren()) do
+            if survivorsFolder and m:IsDescendantOf(survivorsFolder) then continue end
+            if m == lp.Character then continue end
+            local r = m:FindFirstChild("HumanoidRootPart")
+            local h = m:FindFirstChildOfClass("Humanoid")
+            if r and h and h.Health > 0 then
+                local d = (r.Position - HRP.Position).Magnitude
+                if d < dist then dist = d; closest = r end
+            end
+        end
+        return closest
+    end
+    local motionData = {}
+    local function getMotion(hrp)
+        local now = tick()
+        local pos = hrp.Position
+        local data = motionData[hrp]
+        if not data then
+            motionData[hrp] = { lastPos = pos, lastTime = now, velocity = Vector3.zero, accel = Vector3.zero }
+            return Vector3.zero, Vector3.zero
+        end
+        local dt = now - data.lastTime
+        if dt <= 0 then return data.velocity, data.accel end
+        local vel = (pos - data.lastPos) / dt
+        local accel = (vel - data.velocity) / dt
+        data.lastPos = pos
+        data.lastTime = now
+        data.accel = accel
+        data.velocity = vel
+        return vel, accel
+    end
+    local pingSamples = {}
+    local function getPing()
+        local ok, stat = pcall(function() return game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue() end)
+        local raw = (ok and stat or 100) / 1000
+        table.insert(pingSamples, raw)
+        if #pingSamples > 5 then table.remove(pingSamples, 1) end
+        local sum = 0
+        for _, v in ipairs(pingSamples) do sum = sum + v end
+        return sum / #pingSamples
+    end
+    local function predict(hrp)
+        local vel, accel = getMotion(hrp)
+        local pos = hrp.Position
+        local speed = vel.Magnitude
+        if antiBait then
+            local model = hrp.Parent
+            if model and killerSpeeds[model.Name] then
+                local maxSpeed = killerSpeeds[model.Name].run + 2
+                if speed > maxSpeed then vel = vel.Unit * maxSpeed; speed = maxSpeed end
+            end
+        end
+        local ping = getPing()
+        local dist = HRP and (hrp.Position - HRP.Position).Magnitude or 0
+        local distScale = dist * 0.003
+        local lead
+        if predMode == "Velocity" then
+            lead = predValue + distScale
+        elseif predMode == "Ping" then
+            lead = ping * predValue + distScale
+        elseif predMode == "Look" then
+            return pos + hrp.CFrame.LookVector * (speed * predValue)
+        elseif predMode == "LookPing" then
+            return pos + hrp.CFrame.LookVector * (speed * ping)
+        else
+            lead = predValue
+        end
+        if HRP and speed > 1 then
+            local toKiller = (hrp.Position - HRP.Position).Unit
+            local strafe = math.abs(vel.Unit:Dot(Vector3.new(-toKiller.Z, 0, toKiller.X)))
+            if strafe > 0.5 then lead = lead + strafe * 0.06 end
+        end
+        if speed < 0.5 then return pos end
+        local accelContrib = accel * lead * lead * 0.5
+        local accelMag = accelContrib.Magnitude
+        if accelMag > speed * 0.4 then accelContrib = accelContrib.Unit * (speed * 0.4) end
+        return pos + vel * lead + accelContrib
+    end
+    local aiming = false
+    local startTime = 0
+    local duration = 1.7
+    local triggers = {
+        ["133607163653602"] = true,
+        ["133491532453922"] = true,
+        ["131189930305001"] = true,
+        ["111384272984267"] = true,
+        ["103601716322988"] = true,
+        ["76649505662612"] = true,
+    }
+    local function hookAnimator(char)
+        local hum = char:WaitForChild("Humanoid")
+        local animator = hum:WaitForChild("Animator")
+        animator.AnimationPlayed:Connect(function(track)
+            if not aimEnabled then return end
+            local id = track.Animation.AnimationId:match("%d+")
+            if id and triggers[id] then
+                aiming = true
+                startTime = tick()
+            end
+        end)
+    end
+    if localPlayer.Character then hookAnimator(localPlayer.Character) end
+    localPlayer.CharacterAdded:Connect(hookAnimator)
+    game:GetService("RunService").RenderStepped:Connect(function(dt)
+        if not aimEnabled or not HRP then return end
+        if not aiming then return end
+        if tick() - startTime > duration then aiming = false; return end
+        local target = getNearest()
+        if not target then return end
+        local pos = predict(target)
+        if not pos then return end
+        local aimPos = heightAim and pos or Vector3.new(pos.X, HRP.Position.Y, pos.Z)
+        if aimBehavior == "360" then
+            local prog = (tick() - startTime) / spinDuration
+            if prog < 1 then HRP.CFrame = CFrame.new(HRP.Position) * CFrame.Angles(0, math.rad(360 * prog), 0); return end
+        end
+        local goalCF = CFrame.lookAt(HRP.Position, aimPos)
+        local isMoving = HRP.AssemblyLinearVelocity.Magnitude > 0.5
+        local speed = isMoving and math.max(smoothSpeed, 20) or smoothSpeed
+        local alpha = 1 - math.exp(-speed * dt)
+        HRP.CFrame = HRP.CFrame:Lerp(goalCF, alpha)
+    end)
+    ChanceAimGroup:AddToggle("ChanceAimEnable", {Text = "Enable Aimbot[启用自瞄]", Default = false, Callback = function(v) aimEnabled = v end})
+    ChanceAimGroup:AddSlider("ChancePredValue", {Text = "Prediction Value[预测值]", Default = 0.5, Min = 0.1, Max = 2, Rounding = 2, Callback = function(v) predValue = v end})
+    ChanceAimGroup:AddSlider("ChanceSmoothSpeed", {Text = "Smooth Speed[平滑速度]", Default = 14, Min = 1, Max = 30, Rounding = 0, Callback = function(v) smoothSpeed = v end})
+    ChanceAimGroup:AddToggle("ChanceHeightAim", {Text = "High Sensitivity[高灵敏度]", Default = false, Callback = function(v) heightAim = v end})
+    ChanceAimGroup:AddDropdown("ChanceAimBehavior", {Text = "Aim Behavior[自瞄行为]", Values = {"Normal", "360"}, Default = "Normal", Callback = function(v) aimBehavior = v end})
+    ChanceAimGroup:AddSlider("ChanceSpinDuration", {Text = "Spin Duration[旋转持续时间]", Default = 0.5, Min = 0.1, Max = 2, Rounding = 2, Callback = function(v) spinDuration = v end})
 end
 local HitboxGroup = Tabs["Bypass"]:AddRightGroupbox("Hitbox[碰撞箱]", "target")
 local extendEnabled = false; local extendPower = 3; local extendDuration = 0.15
