@@ -13,14 +13,14 @@ local Window = Library:CreateWindow({
     ShowCustomCursor = true,
 })
 local Tabs = {
-    ["Player Info"] = Window:AddTab("Player Info[玩家信息]", "user"),
-    ["Combat"] = Window:AddTab("Combat[战斗]", "swords"),
-    ["ESP"] = Window:AddTab("ESP[绘制]", "eye"),
-    ["Generator"] = Window:AddTab("Generator[发电机]", "zap"),
-    ["Actions"] = Window:AddTab("Actions[动作]", "activity"),
-    ["Bypass"] = Window:AddTab("Bypass/Violence[绕过/暴力]", "skull"),
-    ["Misc"] = Window:AddTab("Misc[杂项]", "settings"),
-    ["UI Settings"] = Window:AddTab("UI Settings[界面设置]", "settings"),
+    ["Player Info"] = Window:AddTab("Player Info[玩家信息]", "user", "View your player information"),
+    ["Combat"] = Window:AddTab("Combat[战斗]", "swords", "Combat enhancements and aimbot"),
+    ["ESP"] = Window:AddTab("ESP[绘制]", "eye", "Visual overlays for players and items"),
+    ["Generator"] = Window:AddTab("Generator[发电机]", "zap", "Generator repair and puzzle solvers"),
+    ["Actions"] = Window:AddTab("Actions[动作]", "activity", "Emotes, custom animations, and fake block"),
+    ["Bypass"] = Window:AddTab("Bypass/Violence[绕过/暴力]", "skull", "Speed, flight, hitbox modifications"),
+    ["Misc"] = Window:AddTab("Misc[杂项]", "settings", "Utility, UI hider, camera, lighting"),
+    ["UI Settings"] = Window:AddTab("UI Settings[界面设置]", "settings", "Customize the script interface"),
 }
 local localPlayer = game.Players.LocalPlayer
 local playingState = "Playing"
@@ -928,6 +928,7 @@ do
     ChanceAimGroup:AddDropdown("ChanceAimBehavior", {Text = "Aim Behavior[自瞄行为]", Values = {"Normal", "360"}, Default = "Normal", Callback = function(v) aimBehavior = v end})
     ChanceAimGroup:AddSlider("ChanceSpinDuration", {Text = "Spin Duration[旋转持续时间]", Default = 0.5, Min = 0.1, Max = 2, Rounding = 2, Callback = function(v) spinDuration = v end})
 end
+
 local HitboxGroup = Tabs["Bypass"]:AddRightGroupbox("Hitbox[碰撞箱]", "target")
 local extendEnabled = false; local extendPower = 3; local extendDuration = 0.15
 local function ExtendHitbox(studs, time)
