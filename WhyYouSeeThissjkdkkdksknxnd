@@ -1240,7 +1240,7 @@ TracerGroup:AddCheckbox("PizzaDeliveryTracers", {Text="Pizza Delivery Tracers[�
 TracerGroup:AddCheckbox("ZombieTracers", {Text="Zombie Tracers[僵尸追踪线]", Default=false, Callback=function(v) ESPSettings.zombieTracers=v; Library:Notify({Title="Zombie Tracers", Description=v and "Enabled" or "Disabled", Time=1}) end})
 local GeneratorLeftGroup = Tabs["Generator"]:AddLeftGroupbox("Main Control[主控]", "zap")
 local GeneratorRightGroup = Tabs["Generator"]:AddRightGroupbox("Settings[设置]", "settings")
-local repairMode = "Custom Mode[自调模式]"; local repairInterval = 1; local autoRepairEnabled = false; local repairThread = nil; local quickAutoRepairEnabled = false; local quickRepairInterval = 1.25; local quickRepairThread = nil
+local repairMode = "Custom Mode[自调模式]"; local repairInterval = 1; local autoRepairEnabled = false; local repairThread = nil
 local function getNearestGenerator()
     local char = localPlayer.Character; if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
     local rootPos = char.HumanoidRootPart.Position; local mapFolder = workspace:FindFirstChild("Map"); if not mapFolder then return nil end
@@ -1252,9 +1252,7 @@ local function getNearestGenerator()
 end
 local function fireRepairRemote(gen) if gen then pcall(function() gen.Remotes.RE:FireServer() end) end end
 local function autoRepairLoop() while autoRepairEnabled do if localPlayer.PlayerGui:FindFirstChild("PuzzleUI") then local delay = repairInterval; if repairMode == "Danger Mode[危险模式]" then delay = 1 elseif repairMode == "Safe Mode[安全模式]" then delay = 3 end; local gen = getNearestGenerator(); if gen then fireRepairRemote(gen) end; task.wait(delay) else task.wait(0.1) end end end
-local function quickAutoRepairLoop() while quickAutoRepairEnabled do local gen = getNearestGenerator(); if gen then fireRepairRemote(gen) end; task.wait(quickRepairInterval) end end
 GeneratorLeftGroup:AddToggle("AutoRepairToggle", {Text="Auto Repair[自动修机]", Default=false, Callback=function(state) autoRepairEnabled=state; if repairThread then task.cancel(repairThread); repairThread=nil end; if state then repairThread=task.spawn(autoRepairLoop) end; Library:Notify({Title="Auto Repair", Description=state and "Enabled" or "Disabled", Time=1}) end})
-GeneratorLeftGroup:AddToggle("QuickAutoRepairToggle", {Text="Quick Auto Repair[快速自动修机]", Default=false, Callback=function(state) quickAutoRepairEnabled=state; if quickRepairThread then task.cancel(quickRepairThread); quickRepairThread=nil end; if state then quickRepairThread=task.spawn(quickAutoRepairLoop) end; Library:Notify({Title="Quick Auto Repair", Description=state and "Enabled" or "Disabled", Time=1}) end})
 GeneratorLeftGroup:AddButton({Text="Teleport to Generator[传送至发电机]", Func=function()
     local char = localPlayer.Character; if not char or not char:FindFirstChild("HumanoidRootPart") then return end
     local generators = {}; local mapFolder = workspace:FindFirstChild("Map"); if mapFolder and mapFolder:FindFirstChild("Ingame") and mapFolder.Ingame:FindFirstChild("Map") then for _, gen in ipairs(mapFolder.Ingame.Map:GetChildren()) do if gen:IsA("Model") and gen.Name == "Generator" and gen:FindFirstChild("Progress") then table.insert(generators, gen) end end end
@@ -1264,7 +1262,86 @@ GeneratorLeftGroup:AddButton({Text="Teleport to Generator[传送至发电机]", 
 end})
 GeneratorRightGroup:AddDropdown("RepairMode", {Text="Repair Mode[修机模式]", Values={"Danger Mode[危险模式]","Safe Mode[安全模式]","Custom Mode[自调模式]"}, Default=3, Multi=false, Callback=function(selected) repairMode=selected end})
 GeneratorRightGroup:AddSlider("RepairInterval", {Text="Repair Interval[修理间隔(秒)]", Default=1, Min=0, Max=10, Rounding=1, Compact=false, Callback=function(v) repairInterval=v; if autoRepairEnabled and repairMode=="Custom Mode[自调模式]" then if repairThread then task.cancel(repairThread) end; repairThread=task.spawn(autoRepairLoop) end end})
-GeneratorRightGroup:AddSlider("QuickRepairInterval", {Text="Quick Interval[快速间隔(秒)]", Default=1.25, Min=0, Max=10, Rounding=2, Compact=false, Callback=function(v) quickRepairInterval=v; if quickAutoRepairEnabled then if quickRepairThread then task.cancel(quickRepairThread) end; quickRepairThread=task.spawn(quickAutoRepairLoop) end end})
+local GenV2Group = Tabs["Generator"]:AddLeftGroupbox("V2", "zap")
+local flow = { on = false, speed = 0.04 }
+local function flowKey(n) return n.row.."-"..n.col end
+local function flowNeighbour(r1,c1,r2,c2)
+    if r2==r1-1 and c2==c1 then return"up" end; if r2==r1+1 and c2==c1 then return"down" end
+    if r2==r1 and c2==c1-1 then return"left" end; if r2==r1 and c2==c1+1 then return"right" end; return false
+end
+local function flowOrder(path, endpoints)
+    if not path or #path == 0 then return path end
+    local lookup = {}
+    for _, n in ipairs(path) do lookup[flowKey(n)] = n end
+    local start
+    for _, ep in ipairs(endpoints or {}) do
+        for _, n in ipairs(path) do
+            if n.row == ep.row and n.col == ep.col then start = { row = ep.row, col = ep.col }; break end
+        end
+        if start then break end
+    end
+    if not start then
+        for _, n in ipairs(path) do
+            local nb = 0
+            for _, d in ipairs({{-1,0},{1,0},{0,-1},{0,1}}) do
+                if lookup[(n.row+d[1]).."-"..(n.col+d[2])] then nb += 1 end
+            end
+            if nb == 1 then start = { row = n.row, col = n.col }; break end
+        end
+    end
+    if not start then start = { row = path[1].row, col = path[1].col } end
+    local pool, ordered = {}, {}
+    for _, n in ipairs(path) do pool[flowKey(n)] = { row = n.row, col = n.col } end
+    local cur = start
+    table.insert(ordered, { row = cur.row, col = cur.col }); pool[flowKey(cur)] = nil
+    while next(pool) do
+        local moved = false
+        for k, node in pairs(pool) do
+            if flowNeighbour(cur.row, cur.col, node.row, node.col) then
+                table.insert(ordered, { row = node.row, col = node.col })
+                pool[k] = nil; cur = node; moved = true; break
+            end
+        end
+        if not moved then break end
+    end
+    return ordered
+end
+local function flowSolve(puzzle)
+    if not puzzle or not puzzle.Solution then return end
+    local indices = {}
+    for i = 1, #puzzle.Solution do indices[i] = i end
+    for i = #indices, 2, -1 do local j = math.random(1, i); indices[i], indices[j] = indices[j], indices[i] end
+    for _, ci in ipairs(indices) do
+        local solution = puzzle.Solution[ci]; if not solution then continue end
+        local ordered = flowOrder(solution, puzzle.targetPairs[ci])
+        if not ordered or #ordered == 0 then continue end
+        puzzle.paths[ci] = {}
+        for _, node in ipairs(ordered) do
+            table.insert(puzzle.paths[ci], { row = node.row, col = node.col })
+            puzzle:updateGui(); task.wait(flow.speed)
+        end
+        task.wait(flow.speed); puzzle:checkForWin()
+    end
+end
+do
+    local modFolder  = svc.RS:FindFirstChild("Modules")
+    local miniFolder = modFolder and modFolder:FindFirstChild("Minigames")
+    local fgFolder   = miniFolder and miniFolder:FindFirstChild("FlowGameManager")
+    local fgModule   = fgFolder and fgFolder:FindFirstChild("FlowGame")
+    if fgModule then
+        local ok, FG = pcall(require, fgModule)
+        if ok and FG and FG.new then
+            local orig = FG.new
+            FG.new = function(...)
+                local p = orig(...)
+                if flow.on then task.spawn(function() task.wait(0.3); flowSolve(p) end) end
+                return p
+            end
+        end
+    end
+end
+GenV2Group:AddToggle("FlowAutoSolve", {Text = "Auto Repair[自动修机]", Default = false, Callback = function(on) flow.on = on end})
+GenV2Group:AddSlider("FlowSpeed", {Text = "Speed[速度]", Default = 0.04, Min = 0.01, Max = 0.50, Rounding = 2, Callback = function(v) flow.speed = v end})
 local ActionsGroup = Tabs["Actions"]:AddLeftGroupbox("Emotes[表情动作]", "smile")
 local function getRemoteEvent() return game:GetService("ReplicatedStorage"):FindFirstChild("Modules") and game:GetService("ReplicatedStorage").Modules:FindFirstChild("Network") and game:GetService("ReplicatedStorage").Modules.Network:FindFirstChild("RemoteEvent") end
 local function stopAllEmotes()
@@ -1367,15 +1444,144 @@ end
 local function removeFakeBlockButton() if fakeBlockConnection then fakeBlockConnection:Disconnect(); fakeBlockConnection = nil end; if fakeBlockButtonFrame then fakeBlockButtonFrame:Destroy(); fakeBlockButtonFrame = nil end end
 FakeBlockGroup:AddToggle("EnableFakeBlock", { Text = "Enable Fake Block[启用伪格挡]", Default = false, Callback = function(state) fakeBlockEnabled = state; if state then task.wait(0.5); createFakeBlockButton() else removeFakeBlockButton() end; Library:Notify({Title="Fake Block", Description=state and "Enabled" or "Disabled", Time=1}) end })
 localPlayer.CharacterAdded:Connect(function() if fakeBlockEnabled then task.wait(0.5); createFakeBlockButton() end end)
-local MiscGroup = Tabs["Misc"]:AddLeftGroupbox("Utilities[实用工具]", "wrench")
-local fullbrightEnabled = false; local function applyFullbright(state) fullbrightEnabled = state; if state then game.Lighting.Brightness = 2; game.Lighting.GlobalShadows = false; game.Lighting.OutdoorAmbient = Color3.new(1,1,1); game.Lighting.Ambient = Color3.new(1,1,1) else game.Lighting.Brightness = 0; game.Lighting.GlobalShadows = true; game.Lighting.OutdoorAmbient = Color3.fromRGB(55,55,55); game.Lighting.Ambient = Color3.fromRGB(55,55,55) end end
-MiscGroup:AddToggle("FullbrightToggle", {Text="Fullbright[全亮]", Default=false, Callback=function(state) applyFullbright(state); Library:Notify({Title="Fullbright", Description=state and "Enabled" or "Disabled", Time=1}) end})
-MiscGroup:AddDivider()
-local noFogEnabled = false; local originalFogStart, originalFogEnd
-local function applyNoFog(state) noFogEnabled = state; if state then if not originalFogStart then originalFogStart = game.Lighting.FogStart end; if not originalFogEnd then originalFogEnd = game.Lighting.FogEnd end; game.Lighting.FogStart = 0; game.Lighting.FogEnd = 100000 else if originalFogStart then game.Lighting.FogStart = originalFogStart end; if originalFogEnd then game.Lighting.FogEnd = originalFogEnd end end end
-MiscGroup:AddToggle("NoFogToggle", {Text="No Fog[无雾]", Default=false, Callback=function(state) applyNoFog(state); Library:Notify({Title="No Fog", Description=state and "Enabled" or "Disabled", Time=1}) end})
-MiscGroup:AddDivider()
-MiscGroup:AddToggle("NetworkPingToggle", {Text="Network Ping Compensation[网络延迟补偿]", Default=true, Callback=function(state) Library:Notify({Title="Network Ping Compensation", Description=state and "Enabled" or "Disabled", Time=1}) end})
+local MiscGroupLeft = Tabs["Misc"]:AddLeftGroupbox("Utilities[实用工具]", "wrench")
+MiscGroupLeft:AddToggle("NetworkPingToggle", {
+    Text = "Network Ping Compensation[网络延迟补偿]",
+    Default = true,
+    Callback = function(state)
+        Library:Notify({Title="Network Ping Compensation", Description=state and "Enabled" or "Disabled", Time=1})
+    end
+})
+local MiscTabbox = Tabs["Misc"]:AddRightTabbox()
+local UIHiderTab = MiscTabbox:AddTab("UI Hider[界面隐藏]", "eye-off")
+local CameraTab = MiscTabbox:AddTab("Camera[相机]", "camera")
+local LightingTab = MiscTabbox:AddTab("Lighting[亮度]", "sun")
+local hideBarConnection = nil
+UIHiderTab:AddToggle('HiddenPlayerList', {
+    Text = "Hide Player List[隐藏玩家列表]",
+    Default = false,
+    Tooltip = "Hide the survivor icons bar (for recording videos)",
+    Callback = function(state)
+        local player = game:GetService("Players").LocalPlayer
+        local playergui = player:WaitForChild("PlayerGui")
+        local playerinfo = playergui:WaitForChild("TemporaryUI"):WaitForChild("PlayerInfo")
+        if state then
+            if not hideBarConnection then
+                hideBarConnection = game:GetService("RunService").RenderStepped:Connect(function()
+                    local survivors = playerinfo:FindFirstChild("CurrentSurvivors")
+                    if survivors and survivors.Visible then
+                        survivors.Visible = false
+                    end
+                end)
+            end
+        else
+            if hideBarConnection then
+                hideBarConnection:Disconnect()
+                hideBarConnection = nil
+            end
+            local survivors = playerinfo:FindFirstChild("CurrentSurvivors")
+            if survivors then
+                survivors.Visible = true
+            end
+        end
+    end
+})
+CameraTab:AddToggle('FreeZoom', {
+    Text = "Free Zoom[自由缩放]",
+    Callback = function(state)
+        localPlayer.CameraMaxZoomDistance = state and math.huge or 12
+    end
+})
+CameraTab:AddToggle('CameraNoclip', {
+    Text = "Camera Noclip[相机穿墙]",
+    Callback = function(state)
+        localPlayer.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode[state and "Invisicam" or "Zoom"]
+    end
+})
+CameraTab:AddDivider()
+CameraTab:AddLabel("<b><font color=\"rgb(0, 0, 255)\">[Note]</font></b> FOV applies after respawn")
+_G.FOVValue = 70
+CameraTab:AddSlider("FieldOfViewValue", {
+    Text = "Field of View[视野调节]",
+    Min = 70,
+    Default = 70,
+    Max = 120,
+    Rounding = 1,
+    Compact = true,
+    Callback = function(v)
+        _G.FOVValue = v
+    end
+})
+CameraTab:AddToggle("EnableFieldOfView", {
+    Text = "Enable FOV[应用视野]",
+    Callback = function(v)
+        _G.FOV = v
+        game:GetService("RunService").RenderStepped:Connect(function()
+            if _G.FOV then
+                workspace.Camera.FieldOfView = _G.FOVValue
+            end
+        end)
+    end
+})
+LightingTab:AddSlider("BrightnessValue", {
+    Text = "Brightness[亮度数值]",
+    Min = 0,
+    Default = 0,
+    Max = 3,
+    Rounding = 1,
+    Compact = true,
+    Callback = function(v)
+        _G.Brightness = v
+    end
+})
+LightingTab:AddToggle("NoGlobalShadows", {
+    Text = "No Shadows[无阴影]",
+    Default = false,
+    Callback = function(v)
+        _G.GlobalShadows = v
+    end
+})
+LightingTab:AddToggle("NoFog", {
+    Text = "No Fog[除雾]",
+    Default = false,
+    Callback = function(v)
+        _G.NoFog = v
+    end
+})
+LightingTab:AddDivider()
+LightingTab:AddToggle("EnableLighting", {
+    Text = "Enable Lighting[启用]",
+    Default = false,
+    Callback = function(v)
+        _G.Fullbright = v
+        game:GetService("RunService").RenderStepped:Connect(function()
+            if not game.Lighting:GetAttribute("FogStart") then
+                game.Lighting:SetAttribute("FogStart", game.Lighting.FogStart)
+            end
+            if not game.Lighting:GetAttribute("FogEnd") then
+                game.Lighting:SetAttribute("FogEnd", game.Lighting.FogEnd)
+            end
+            game.Lighting.FogStart = _G.NoFog and 0 or game.Lighting:GetAttribute("FogStart")
+            game.Lighting.FogEnd = _G.NoFog and math.huge or game.Lighting:GetAttribute("FogEnd")
+            local fog = game.Lighting:FindFirstChildOfClass("Atmosphere")
+            if fog then
+                if not fog:GetAttribute("Density") then
+                    fog:SetAttribute("Density", fog.Density)
+                end
+                fog.Density = _G.NoFog and 0 or fog:GetAttribute("Density")
+            end
+            if _G.Fullbright then
+                game.Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+                game.Lighting.Brightness = _G.Brightness or 0
+                game.Lighting.GlobalShadows = not _G.GlobalShadows
+            else
+                game.Lighting.OutdoorAmbient = Color3.fromRGB(55, 55, 55)
+                game.Lighting.Brightness = 0
+                game.Lighting.GlobalShadows = true
+            end
+        end)
+    end
+})
 local MenuGroup = Tabs["UI Settings"]:AddLeftGroupbox("Menu", "wrench")
 MenuGroup:AddToggle("KeybindMenuOpen", {Default=Library.KeybindFrame.Visible, Text="Open Keybind Menu", Callback=function(v) Library.KeybindFrame.Visible=v; Library:Notify({Title="Keybind Menu", Description=v and "Opened" or "Closed", Time=1}) end})
 MenuGroup:AddToggle("ShowCustomCursor", {Text="Custom Cursor", Default=true, Callback=function(v) Library.ShowCustomCursor=v; Library:Notify({Title="Custom Cursor", Description=v and "Enabled" or "Disabled", Time=1}) end})
