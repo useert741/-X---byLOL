@@ -158,6 +158,10 @@ local AttackAnimIDs = {
     ["100592913030351"] = true, ["70447634862911"] = true, ["106847695270773"] = true,
     ["120112897026015"] = true, ["74707328554358"] = true, ["133336594357903"] = true,
     ["86204001129974"] = true, ["124243639579224"] = true, ["131543461321709"] = true,
+    ["99829427721752"] = true, ["114356208094580"] = true, ["114506382930939"] = true,
+    ["124705663396411"] = true, ["126171487400618"] = true, ["138938529389204"] = true,
+    ["139309647473555"] = true, ["109700476007435"] = true, ["93366464803829"] = true,
+    ["98590570796574"] = true,
 }
 
 local AttackSoundIDs = {
@@ -181,6 +185,14 @@ local AttackSoundIDs = {
     ["140412278320643"] = true, ["140194172008986"] = true, ["85544168523099"] = true,
     ["131406927389838"] = true, ["140242176732868"] = true, ["86174610237192"] = true,
     ["112395455254818"] = true, ["109431876587852"] = true,
+    ["72425554233832"] = true, ["76467993976301"] = true, ["77245770579014"] = true,
+    ["78298577002481"] = true, ["85810983952228"] = true, ["89315669689903"] = true,
+    ["90878551190839"] = true, ["94043596324983"] = true, ["97894923442490"] = true,
+    ["98675142200448"] = true, ["99829427721752"] = true, ["103684883268194"] = true,
+    ["110115912768379"] = true, ["124330645976935"] = true, ["124397369810639"] = true,
+    ["124903763333174"] = true, ["128856426573270"] = true, ["131123355704017"] = true,
+    ["135448067174226"] = true, ["136841625231863"] = true, ["128367348686124"] = true,
+    ["116527305931161"] = true,
 }
 
 local animConns = {}
@@ -536,6 +548,128 @@ BlockGroup:AddToggle("LooseFacing", {Text="Loose Facing[宽松面向]", Default=
 BlockGroup:AddToggle("StrictFacing", {Text="Strict Facing[严格面向]", Default=false, Callback=function(s) BlockSettings.StrictFacing = s; if s then BlockSettings.LooseFacing = false; pcall(function() Toggles.LooseFacing:SetValue(false) end) end end})
 BlockGroup:AddToggle("ShowRangeVisual", {Text="Show Trigger Range[显示触发范围]", Default=false, Callback=function(s) BlockSettings.ShowRangeVisual=s; UpdateRangeVisual() end})
 BlockGroup:AddToggle("InverseMode", {Text="Inverse Mode[反转模式]", Default=false, Callback=function(s) BlockSettings.InverseMode = s; UpdateRangeVisual(); Library:Notify({Title="Inverse Mode", Description=s and "Range circles attached to killers" or "Normal mode", Time=2}) end})
+
+-- Hitbox Trigger 自动格挡（碰撞触发）
+local hitboxBlockEnabled = false
+local hitboxScale = 0.6  -- 默认缩放60%
+local processedHitboxes = {}
+local hitboxLoopConnection = nil
+
+local function getKillerData()
+    local data = {}
+    if workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers") then
+        for _, killerModel in pairs(workspace.Players.Killers:GetChildren()) do
+            if killerModel:IsA("Model") then
+                local killerPlayer = game:GetService("Players"):GetPlayerFromCharacter(killerModel)
+                local name = killerPlayer and killerPlayer.Name or killerModel.Name
+                data[name] = killerModel
+            end
+        end
+    end
+    return data
+end
+
+local function startHitboxBlockMode()
+    if hitboxLoopConnection then return end
+    local hitboxesFolder = workspace:FindFirstChild("Hitboxes")
+    if not hitboxesFolder then
+        hitboxesFolder = Instance.new("Folder")
+        hitboxesFolder.Name = "Hitboxes"
+        hitboxesFolder.Parent = workspace
+    end
+    hitboxLoopConnection = game:GetService("RunService").Heartbeat:Connect(function()
+        if not hitboxBlockEnabled then return end
+        local character = localPlayer.Character
+        if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+        local root = character.HumanoidRootPart
+        local killerData = getKillerData()
+        for _, hitbox in ipairs(hitboxesFolder:GetChildren()) do
+            if hitbox:IsA("BasePart") and string.find(hitbox.Name, "Hitbox") then
+                local isKillerHitbox = false
+                local killerModel = nil
+                for name, model in pairs(killerData) do
+                    if string.find(hitbox.Name, name) then
+                        isKillerHitbox = true
+                        killerModel = model
+                        break
+                    end
+                end
+                if isKillerHitbox and killerModel and killerModel:GetAttribute("IsFakeNoli") == true then
+                    -- 跳过假Noli
+                else
+                    if isKillerHitbox then
+                        if not processedHitboxes[hitbox] then
+                            processedHitboxes[hitbox] = {
+                                originalSize = hitbox.Size,
+                                originalColor = hitbox.Color,
+                                originalTransparency = hitbox.Transparency,
+                                originalMaterial = hitbox.Material,
+                            }
+                            hitbox.Size = hitbox.Size * hitboxScale
+                            hitbox.Color = Color3.fromRGB(137, 180, 250)  -- 主题浅蓝色
+                        end
+                        local overlapParts = workspace:GetPartBoundsInBox(hitbox.CFrame, hitbox.Size)
+                        local touching = false
+                        for _, part in ipairs(overlapParts) do
+                            if part:IsDescendantOf(character) then
+                                touching = true
+                                break
+                            end
+                        end
+                        if touching then
+                            pressBlock()
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end
+
+local function stopHitboxBlockMode()
+    if hitboxLoopConnection then
+        hitboxLoopConnection:Disconnect()
+        hitboxLoopConnection = nil
+    end
+    for hitbox, data in pairs(processedHitboxes) do
+        if hitbox and hitbox.Parent then
+            hitbox.Size = data.originalSize
+            hitbox.Color = data.originalColor
+        end
+    end
+    processedHitboxes = {}
+end
+
+BlockGroup:AddToggle("HitboxBlockToggle", {
+    Text = "Hitbox Trigger[碰撞触发]",
+    Default = false,
+    Callback = function(state)
+        hitboxBlockEnabled = state
+        if state then
+            startHitboxBlockMode()
+        else
+            stopHitboxBlockMode()
+        end
+    end
+})
+
+BlockGroup:AddSlider("HitboxScale", {
+    Text = "Hitbox Scale[碰撞箱大小]",
+    Default = 0.6,
+    Min = 0.1,
+    Max = 1.5,
+    Rounding = 2,
+    Callback = function(v)
+        hitboxScale = v
+        -- 动态更新已处理hitbox的大小
+        for hitbox, data in pairs(processedHitboxes) do
+            if hitbox and hitbox.Parent then
+                hitbox.Size = data.originalSize * v
+            end
+        end
+    end
+})
+
 local AutoPunchGroup = Tabs["Combat"]:AddRightGroupbox("Auto Punch[自动拳击]", "punch")
 local autoPunchEnabled = false; local punchLoop = nil
 local function startPunchLoop()
@@ -1561,6 +1695,7 @@ Library:OnUnload(function()
     if RangeVisual then RangeVisual:Destroy() end; clearAllInverseVisuals()
     if extendAnimConnection then extendAnimConnection:Disconnect() end
     getgenv().emergency_stop = true; print("Fixsaken unloaded!")
+    stopHitboxBlockMode()
 end)
 Library:SetWatermarkVisibility(true)
 local function getUSATimeAndGreeting()
