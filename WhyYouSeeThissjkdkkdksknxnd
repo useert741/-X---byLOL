@@ -108,14 +108,18 @@ local function isKillerFacingPlayer(killerModel, myRoot)
     if BlockSettings.StrictFacing then return dot > 0 end
     if BlockSettings.LooseFacing then return dot > -0.3 else return dot > 0 end
 end
+
 local AttackAnimIDs = {
-    ["18885909645"] = true, ["18885937766"] = true, ["18885940850"] = true,
-    ["126830014841198"] = true, ["105458270463374"] = true, ["106538427162796"] = true,
-    ["83829782357897"] = true, ["122709416391891"] = true, ["88451353906104"] = true,
-    ["109667959938617"] = true, ["118298475669935"] = true, ["88970503168421"] = true,
-    ["81299297965542"] = true, ["70371667919898"] = true, ["95414473113522"] = true,
-    ["77375846492436"] = true, ["121293883585738"] = true, ["91628732643385"] = true,
-    ["99050723653468"] = true, ["119181003138006"] = true, ["101736016625776"] = true,
+    ["18885909645"] = true, ["18885919947"] = true, ["18885937766"] = true, ["18885940850"] = true,
+    ["18885903667"] = true, ["18885906143"] = true,
+    ["126830014841198"] = true, ["126355327951215"] = true, ["121086746534252"] = true,
+    ["105458270463374"] = true, ["83829782357897"] = true, ["125403313786645"] = true,
+    ["118298475669935"] = true, ["82113744478546"] = true, ["70371667919898"] = true,
+    ["99135633258223"] = true, ["97167027849946"] = true, ["109230267448394"] = true,
+    ["139835501033932"] = true, ["126896426760253"] = true, ["109667959938617"] = true,
+    ["126681776859538"] = true, ["129976080405072"] = true, ["121293883585738"] = true,
+    ["81639435858902"] = true, ["137314737492715"] = true, ["92173139187970"] = true,
+    ["122709416391"] = true, ["879895330952"] = true, ["124269076578545"] = true,
     ["98456918873918"] = true, ["133363345661032"] = true, ["128414736976503"] = true,
     ["115403107018365"] = true, ["124619925708292"] = true, ["136323728355613"] = true,
     ["140242176732868"] = true, ["112809109188560"] = true, ["102228729296384"] = true,
@@ -138,14 +142,24 @@ local AttackAnimIDs = {
     ["74183834601348"] = true, ["88582935528044"] = true, ["107444859834748"] = true,
     ["95166423060976"] = true, ["131123355704017"] = true, ["111647315359080"] = true,
     ["84122523631600"] = true, ["107593207834624"] = true,
-    ["126355327951215"] = true, ["121086746534252"] = true, ["125403313786645"] = true,
-    ["82113744478546"] = true, ["99135633258223"] = true, ["97167027849946"] = true,
-    ["109230267448394"] = true, ["139835501033932"] = true, ["126896426760253"] = true,
-    ["126681776859538"] = true, ["129976080405072"] = true, ["81639435858902"] = true,
-    ["137314737492715"] = true, ["92173139187970"] = true, ["122709416391"] = true,
-    ["879895330952"] = true,
-    ["124269076578545"] = true,
+    ["131430497821198"] = true, ["127172483138092"] = true, ["87259391926321"] = true,
+    ["106014898528300"] = true, ["86545133269813"] = true, ["89448354637442"] = true,
+    ["90499469533503"] = true, ["116618003477002"] = true, ["106086955212611"] = true,
+    ["107640065977686"] = true, ["77124578197357"] = true, ["101771617803133"] = true,
+    ["134958187822107"] = true, ["111313169447787"] = true, ["71685573690338"] = true,
+    ["129843313690921"] = true, ["97623143664485"] = true, ["136007065400978"] = true,
+    ["86096387000557"] = true, ["108807732150251"] = true, ["138040001965654"] = true,
+    ["73502073176819"] = true, ["86709774283672"] = true, ["140703210927645"] = true,
+    ["96173857867228"] = true, ["121255898612475"] = true, ["98031287364865"] = true,
+    ["119462383658044"] = true, ["77448521277146"] = true, ["103741352379819"] = true,
+    ["131696603025265"] = true, ["122503338277352"] = true, ["97648548303678"] = true,
+    ["94162446513587"] = true, ["84426150435898"] = true, ["93069721274110"] = true,
+    ["114620047310688"] = true, ["97433060861952"] = true, ["82183356141401"] = true,
+    ["100592913030351"] = true, ["70447634862911"] = true, ["106847695270773"] = true,
+    ["120112897026015"] = true, ["74707328554358"] = true, ["133336594357903"] = true,
+    ["86204001129974"] = true, ["124243639579224"] = true, ["131543461321709"] = true,
 }
+
 local AttackSoundIDs = {
     ["102228729296384"] = true, ["140242176732868"] = true, ["112809109188560"] = true,
     ["136323728355613"] = true, ["115026634746636"] = true, ["84116622032112"] = true,
@@ -160,8 +174,15 @@ local AttackSoundIDs = {
     ["89004992452376"] = true, ["101553872555606"] = true, ["101698569375359"] = true,
     ["106300477136129"] = true, ["116581754553533"] = true, ["117231507259853"] = true,
     ["119089145505438"] = true, ["121954639447247"] = true, ["125213046326879"] = true,
-    ["131406927389838"] = true, ["71834552297085"] = true, ["805165833096"] = true,
+    ["131406927389838"] = true, ["71834552297085"] = true, ["80516583309685"] = true,
+    ["70845653728841"] = true, ["76959687420003"] = true, ["86833981571073"] = true,
+    ["110372418055226"] = true, ["86494585504534"] = true, ["107444859834748"] = true,
+    ["121369993837377"] = true, ["104910828105172"] = true, ["117173212095661"] = true,
+    ["140412278320643"] = true, ["140194172008986"] = true, ["85544168523099"] = true,
+    ["131406927389838"] = true, ["140242176732868"] = true, ["86174610237192"] = true,
+    ["112395455254818"] = true, ["109431876587852"] = true,
 }
+
 local animConns = {}
 local animBlockedUntil = {}
 local soundBlockedUntil = {}
@@ -928,7 +949,6 @@ do
     ChanceAimGroup:AddDropdown("ChanceAimBehavior", {Text = "Aim Behavior[自瞄行为]", Values = {"Normal", "360"}, Default = "Normal", Callback = function(v) aimBehavior = v end})
     ChanceAimGroup:AddSlider("ChanceSpinDuration", {Text = "Spin Duration[旋转持续时间]", Default = 0.5, Min = 0.1, Max = 2, Rounding = 2, Callback = function(v) spinDuration = v end})
 end
-
 local HitboxGroup = Tabs["Bypass"]:AddRightGroupbox("Hitbox[碰撞箱]", "target")
 local extendEnabled = false; local extendPower = 3; local extendDuration = 0.15
 local function ExtendHitbox(studs, time)
@@ -970,87 +990,6 @@ end
 HitboxGroup:AddToggle("ExtendEnable", {Text="Hitbox Extend[碰撞箱扩展]", Default=false, Callback=function(s) onExtendToggle(s) end})
 HitboxGroup:AddSlider("ExtendPower", {Text="Extend Power[扩展强度]", Default=3, Min=1, Max=100, Rounding=1, Callback=function(v) extendPower=v end})
 HitboxGroup:AddSlider("ExtendDuration", {Text="Duration[持续时间]", Default=0.15, Min=0.05, Max=0.5, Rounding=2, Callback=function(v) extendDuration=v end})
-local hitboxUILoaded = false
-local function loadHitboxUI()
-    if hitboxUILoaded then return end; hitboxUILoaded = true
-    local Players = game:GetService("Players"); local RunService = game:GetService("RunService"); local CoreGui = game:GetService("CoreGui"); local Workspace = game:GetService("Workspace")
-    local speaker = Players.LocalPlayer; local HitboxGay = false; local loopRunning = false; local player = Players.LocalPlayer
-    local function isAnimationPlaying(ids)
-        local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid"); local animator = hum and hum:FindFirstChildOfClass("Animator")
-        if not animator then return false end
-        if typeof(ids) ~= "table" then ids = { ids } end
-        for _, track in ipairs(animator:GetPlayingAnimationTracks()) do local animId = track.Animation.AnimationId:match("%d+"); for _, id in ipairs(ids) do if animId == tostring(id) then return true end end end
-        return false
-    end
-    local gui = Instance.new("ScreenGui"); gui.Name = "HitboxGayGui"; gui.Parent = CoreGui
-    local button = Instance.new("TextButton"); button.Size = UDim2.new(0, 150, 0, 50); button.Position = UDim2.new(0.4, 0, 0.2, 0); button.Text = "Hitbox: OFF"; button.BackgroundColor3 = Color3.fromRGB(40, 40, 40); button.TextColor3 = Color3.fromRGB(255, 255, 255); button.Active = true; button.Draggable = true; button.Parent = gui
-    local lastText = "Hitbox: OFF"
-    task.spawn(function() while true do RunService.RenderStepped:Wait(); local txt = HitboxGay and "Hitbox: ON" or "Hitbox: OFF"; if txt ~= lastText then button.Text = txt; lastText = txt end end end)
-    local function getRoot(character) return character and character:FindFirstChild("HumanoidRootPart") end
-    local checkBoxSize = Vector3.new(100, 50, 100)
-    local function isDescendantOf(obj, parent) return obj and parent and obj:IsDescendantOf(parent) end
-    local function getNearestHumanoid()
-        if not speaker.Character then return nil end
-        local root = getRoot(speaker.Character); if not root then return nil end
-        local char = speaker.Character
-        local isSurvivor = isDescendantOf(char, Workspace.Players:FindFirstChild("Survivors"))
-        local isKiller = isDescendantOf(char, Workspace.Players:FindFirstChild("Killers"))
-        local targetGroup = nil; if isSurvivor then targetGroup = Workspace.Players:FindFirstChild("Killers") elseif isKiller then targetGroup = Workspace.Players:FindFirstChild("Survivors") end
-        local parts = Workspace:GetPartBoundsInBox(root.CFrame, checkBoxSize)
-        local nearest, dist = nil, math.huge
-        for _, part in pairs(parts) do
-            local c = part:FindFirstAncestorOfClass("Model")
-            if c and c:FindFirstChild("Humanoid") and c:FindFirstChild("HumanoidRootPart") then
-                if c ~= speaker.Character and c.Humanoid.Health > 0 then
-                    _G.IsNpc = false; local valid = targetGroup and isDescendantOf(c, targetGroup) or true
-                    if valid then local hrp = c.HumanoidRootPart; local d = (hrp.Position - root.Position).Magnitude; if d < dist then dist = d; nearest = hrp end end
-                end
-            end
-        end
-        if not nearest then for _, part in pairs(parts) do local c = part:FindFirstAncestorOfClass("Model"); if c and c:FindFirstChild("Humanoid") and c:FindFirstChild("HumanoidRootPart") and c ~= speaker.Character and c.Humanoid.Health > 0 then _G.IsNpc = true; local hrp = c.HumanoidRootPart; local d = (hrp.Position - root.Position).Magnitude; if d < dist then dist = d; nearest = hrp end end end end
-        return nearest
-    end
-    local function startHitboxGay()
-        if loopRunning then return end; loopRunning = true
-        task.spawn(function()
-            while HitboxGay do
-                RunService.Heartbeat:Wait()
-                local character = speaker.Character; local root = getRoot(character)
-                local vel, movel = nil, 0.1
-                while not (character and character.Parent and root and root.Parent) do RunService.Heartbeat:Wait(); character = speaker.Character; root = getRoot(character) end
-                vel = root.Velocity
-                local ids = {
-                    126830014841198, 126355327951215, 121086746534252, 18885909645,
-                    106776364623742, 105458270463374, 106538427162796, 126896426760253,
-                    83829782357897, 116618003477002, 86545133269813, 106014898528300,
-                    87259391926321, 133491532453922, 98031287364865, 119462383658044,
-                    77448521277146, 103741352379819, 131696603025265, 122503338277352,
-                    97648548303678, 94162446513587, 84426150435898, 93069721274110,
-                    114620047310688, 97433060861952, 82183356141401, 100592913030351,
-                    121293883585738, 70447634862911, 92173139187970, 106847695270773,
-                    125403313786645, 81639435858902, 137314737492715, 120112897026015,
-                    82113744478546, 118298475669935, 126681776859538, 129976080405072,
-                    109667959938617, 74707328554358, 133336594357903, 86204001129974,
-                    124243639579224, 70371667919898, 131543461321709, 136323728355613
-                }
-                if isAnimationPlaying(ids) then
-                    local target = getNearestHumanoid()
-                    if target then
-                        local futurePos = not _G.IsNpc and target.Position + target.Velocity * 1.2 or target.Position
-                        local offset = futurePos - root.Position; local distance = offset.Magnitude; local direction = offset.Unit
-                        local speed = distance * 6
-                        root.Velocity = vel + Vector3.new(direction.X * speed, direction.Y * speed, direction.Z * speed)
-                    end
-                end
-                RunService.RenderStepped:Wait(); if character and root then root.Velocity = vel end
-                RunService.Stepped:Wait(); if character and root then root.Velocity = vel + Vector3.new(0, movel, 0); movel = -movel end
-            end
-            loopRunning = false
-        end)
-    end
-    button.MouseButton1Click:Connect(function() HitboxGay = not HitboxGay; if HitboxGay then startHitboxGay() end end)
-end
-HitboxGroup:AddButton({Text = "Load Hitbox Track[加载hitbox追踪]", Func = function() loadHitboxUI(); Library:Notify({Title="Hitbox Track", Description="Load successful", Time=2}) end})
 local Services = { Players = game:GetService("Players"), RunService = game:GetService("RunService"), Workspace = game:GetService("Workspace") }
 local LocalPlayer = Services.Players.LocalPlayer
 local Camera = Services.Workspace.CurrentCamera
@@ -1453,6 +1392,26 @@ MiscGroupLeft:AddToggle("NetworkPingToggle", {
         Library:Notify({Title="Network Ping Compensation", Description=state and "Enabled" or "Disabled", Time=1})
     end
 })
+local timerSide = cfg:get("timerSide", "Middle")
+local function applyTimerPos()
+    local rt = lp.PlayerGui:FindFirstChild("RoundTimer")
+    local m  = rt and rt:FindFirstChild("Main")
+    if m then m.Position = UDim2.new(timerSide == "Middle" and 0.5 or 0.9, 0, m.Position.Y.Scale, m.Position.Y.Offset) end
+end
+applyTimerPos()
+MiscGroupLeft:AddDropdown("TimerPosition", {
+    Text = "Timer Position[时间位置]",
+    Values = {"Middle", "Right"},
+    Default = timerSide,
+    Callback = function(v)
+        timerSide = v
+        cfg:set("timerSide", v)
+        applyTimerPos()
+    end
+})
+lp.CharacterAdded:Connect(function()
+    task.delay(1, function() applyTimerPos() end)
+end)
 local MiscTabbox = Tabs["Misc"]:AddRightTabbox()
 local UIHiderTab = MiscTabbox:AddTab("UI Hider[界面隐藏]", "eye-off")
 local CameraTab = MiscTabbox:AddTab("Camera[相机]", "camera")
@@ -1601,7 +1560,6 @@ ThemeManager:ApplyToTab(Tabs["UI Settings"])
 Library:OnUnload(function()
     if RangeVisual then RangeVisual:Destroy() end; clearAllInverseVisuals()
     if extendAnimConnection then extendAnimConnection:Disconnect() end
-    local gui = game.CoreGui:FindFirstChild("HitboxGayGui"); if gui then gui:Destroy() end
     getgenv().emergency_stop = true; print("Fixsaken unloaded!")
 end)
 Library:SetWatermarkVisibility(true)
