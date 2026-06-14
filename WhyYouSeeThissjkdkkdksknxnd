@@ -551,22 +551,23 @@ BlockGroup:AddToggle("InverseMode", {Text="Inverse Mode[反转模式]", Default=
 
 -- Hitbox Trigger 自动格挡（碰撞触发）
 local hitboxBlockEnabled = false
-local hitboxScale = 0.6  -- 默认缩放60%
+local hitboxSizeMultiplier = 1  -- 默认原比例
 local processedHitboxes = {}
 local hitboxLoopConnection = nil
 
-local function getKillerData()
-    local data = {}
+local function getKillerUsernames()
+    local killerNames = {}
     if workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers") then
         for _, killerModel in pairs(workspace.Players.Killers:GetChildren()) do
-            if killerModel:IsA("Model") then
-                local killerPlayer = game:GetService("Players"):GetPlayerFromCharacter(killerModel)
-                local name = killerPlayer and killerPlayer.Name or killerModel.Name
-                data[name] = killerModel
+            local killerPlayer = game:GetService("Players"):GetPlayerFromCharacter(killerModel)
+            if killerPlayer then
+                table.insert(killerNames, killerPlayer.Name)
+            else
+                table.insert(killerNames, killerModel.Name)
             end
         end
     end
-    return data
+    return killerNames
 end
 
 local function startHitboxBlockMode()
@@ -582,43 +583,37 @@ local function startHitboxBlockMode()
         local character = localPlayer.Character
         if not character or not character:FindFirstChild("HumanoidRootPart") then return end
         local root = character.HumanoidRootPart
-        local killerData = getKillerData()
+        local killerNames = getKillerUsernames()
         for _, hitbox in ipairs(hitboxesFolder:GetChildren()) do
             if hitbox:IsA("BasePart") and string.find(hitbox.Name, "Hitbox") then
                 local isKillerHitbox = false
-                local killerModel = nil
-                for name, model in pairs(killerData) do
-                    if string.find(hitbox.Name, name) then
+                for _, killerName in ipairs(killerNames) do
+                    if string.find(hitbox.Name, killerName) then
                         isKillerHitbox = true
-                        killerModel = model
                         break
                     end
                 end
-                if isKillerHitbox and killerModel and killerModel:GetAttribute("IsFakeNoli") == true then
-                    -- 跳过假Noli
-                else
-                    if isKillerHitbox then
-                        if not processedHitboxes[hitbox] then
-                            processedHitboxes[hitbox] = {
-                                originalSize = hitbox.Size,
-                                originalColor = hitbox.Color,
-                                originalTransparency = hitbox.Transparency,
-                                originalMaterial = hitbox.Material,
-                            }
-                            hitbox.Size = hitbox.Size * hitboxScale
-                            hitbox.Color = Color3.fromRGB(137, 180, 250)  -- 主题浅蓝色
+                if isKillerHitbox then
+                    if not processedHitboxes[hitbox] then
+                        processedHitboxes[hitbox] = {
+                            originalSize = hitbox.Size,
+                            originalColor = hitbox.Color,
+                            originalTransparency = hitbox.Transparency,
+                            originalMaterial = hitbox.Material,
+                        }
+                    end
+                    hitbox.Size = processedHitboxes[hitbox].originalSize * hitboxSizeMultiplier
+                    hitbox.Color = Color3.fromRGB(137, 180, 250)  -- 主题色
+                    local overlapParts = workspace:GetPartBoundsInBox(hitbox.CFrame, hitbox.Size)
+                    local touching = false
+                    for _, part in ipairs(overlapParts) do
+                        if part:IsDescendantOf(character) then
+                            touching = true
+                            break
                         end
-                        local overlapParts = workspace:GetPartBoundsInBox(hitbox.CFrame, hitbox.Size)
-                        local touching = false
-                        for _, part in ipairs(overlapParts) do
-                            if part:IsDescendantOf(character) then
-                                touching = true
-                                break
-                            end
-                        end
-                        if touching then
-                            pressBlock()
-                        end
+                    end
+                    if touching then
+                        pressBlock()
                     end
                 end
             end
@@ -653,20 +648,14 @@ BlockGroup:AddToggle("HitboxBlockToggle", {
     end
 })
 
-BlockGroup:AddSlider("HitboxScale", {
-    Text = "Hitbox Scale[碰撞箱大小]",
-    Default = 0.6,
-    Min = 0.1,
-    Max = 1.5,
-    Rounding = 2,
+BlockGroup:AddSlider("HitboxSize", {
+    Text = "Hitbox Size[碰撞箱大小]",
+    Default = 1,
+    Min = 0.5,
+    Max = 5,
+    Rounding = 1,
     Callback = function(v)
-        hitboxScale = v
-        -- 动态更新已处理hitbox的大小
-        for hitbox, data in pairs(processedHitboxes) do
-            if hitbox and hitbox.Parent then
-                hitbox.Size = data.originalSize * v
-            end
-        end
+        hitboxSizeMultiplier = v
     end
 })
 
