@@ -109,17 +109,15 @@ local function isKillerFacingPlayer(killerModel, myRoot)
     if BlockSettings.LooseFacing then return dot > -0.3 else return dot > 0 end
 end
 
+-- 仅保留原始 Fixsaken 的攻击动画 ID
 local AttackAnimIDs = {
-    ["18885909645"] = true, ["18885919947"] = true, ["18885937766"] = true, ["18885940850"] = true,
-    ["18885903667"] = true, ["18885906143"] = true,
-    ["126830014841198"] = true, ["126355327951215"] = true, ["121086746534252"] = true,
-    ["105458270463374"] = true, ["83829782357897"] = true, ["125403313786645"] = true,
-    ["118298475669935"] = true, ["82113744478546"] = true, ["70371667919898"] = true,
-    ["99135633258223"] = true, ["97167027849946"] = true, ["109230267448394"] = true,
-    ["139835501033932"] = true, ["126896426760253"] = true, ["109667959938617"] = true,
-    ["126681776859538"] = true, ["129976080405072"] = true, ["121293883585738"] = true,
-    ["81639435858902"] = true, ["137314737492715"] = true, ["92173139187970"] = true,
-    ["122709416391"] = true, ["879895330952"] = true, ["124269076578545"] = true,
+    ["18885909645"] = true, ["18885937766"] = true, ["18885940850"] = true,
+    ["126830014841198"] = true, ["105458270463374"] = true, ["106538427162796"] = true,
+    ["83829782357897"] = true, ["122709416391891"] = true, ["88451353906104"] = true,
+    ["109667959938617"] = true, ["118298475669935"] = true, ["88970503168421"] = true,
+    ["81299297965542"] = true, ["70371667919898"] = true, ["95414473113522"] = true,
+    ["77375846492436"] = true, ["121293883585738"] = true, ["91628732643385"] = true,
+    ["99050723653468"] = true, ["119181003138006"] = true, ["101736016625776"] = true,
     ["98456918873918"] = true, ["133363345661032"] = true, ["128414736976503"] = true,
     ["115403107018365"] = true, ["124619925708292"] = true, ["136323728355613"] = true,
     ["140242176732868"] = true, ["112809109188560"] = true, ["102228729296384"] = true,
@@ -142,28 +140,16 @@ local AttackAnimIDs = {
     ["74183834601348"] = true, ["88582935528044"] = true, ["107444859834748"] = true,
     ["95166423060976"] = true, ["131123355704017"] = true, ["111647315359080"] = true,
     ["84122523631600"] = true, ["107593207834624"] = true,
-    ["131430497821198"] = true, ["127172483138092"] = true, ["87259391926321"] = true,
-    ["106014898528300"] = true, ["86545133269813"] = true, ["89448354637442"] = true,
-    ["90499469533503"] = true, ["116618003477002"] = true, ["106086955212611"] = true,
-    ["107640065977686"] = true, ["77124578197357"] = true, ["101771617803133"] = true,
-    ["134958187822107"] = true, ["111313169447787"] = true, ["71685573690338"] = true,
-    ["129843313690921"] = true, ["97623143664485"] = true, ["136007065400978"] = true,
-    ["86096387000557"] = true, ["108807732150251"] = true, ["138040001965654"] = true,
-    ["73502073176819"] = true, ["86709774283672"] = true, ["140703210927645"] = true,
-    ["96173857867228"] = true, ["121255898612475"] = true, ["98031287364865"] = true,
-    ["119462383658044"] = true, ["77448521277146"] = true, ["103741352379819"] = true,
-    ["131696603025265"] = true, ["122503338277352"] = true, ["97648548303678"] = true,
-    ["94162446513587"] = true, ["84426150435898"] = true, ["93069721274110"] = true,
-    ["114620047310688"] = true, ["97433060861952"] = true, ["82183356141401"] = true,
-    ["100592913030351"] = true, ["70447634862911"] = true, ["106847695270773"] = true,
-    ["120112897026015"] = true, ["74707328554358"] = true, ["133336594357903"] = true,
-    ["86204001129974"] = true, ["124243639579224"] = true, ["131543461321709"] = true,
-    ["99829427721752"] = true, ["114356208094580"] = true, ["114506382930939"] = true,
-    ["124705663396411"] = true, ["126171487400618"] = true, ["138938529389204"] = true,
-    ["139309647473555"] = true, ["109700476007435"] = true, ["93366464803829"] = true,
-    ["98590570796574"] = true,
+    ["126355327951215"] = true, ["121086746534252"] = true, ["125403313786645"] = true,
+    ["82113744478546"] = true, ["99135633258223"] = true, ["97167027849946"] = true,
+    ["109230267448394"] = true, ["139835501033932"] = true, ["126896426760253"] = true,
+    ["126681776859538"] = true, ["129976080405072"] = true, ["81639435858902"] = true,
+    ["137314737492715"] = true, ["92173139187970"] = true, ["122709416391"] = true,
+    ["879895330952"] = true,
+    ["124269076578545"] = true,
 }
 
+-- 仅保留原始 Fixsaken 的攻击音效 ID
 local AttackSoundIDs = {
     ["102228729296384"] = true, ["140242176732868"] = true, ["112809109188560"] = true,
     ["136323728355613"] = true, ["115026634746636"] = true, ["84116622032112"] = true,
@@ -178,21 +164,7 @@ local AttackSoundIDs = {
     ["89004992452376"] = true, ["101553872555606"] = true, ["101698569375359"] = true,
     ["106300477136129"] = true, ["116581754553533"] = true, ["117231507259853"] = true,
     ["119089145505438"] = true, ["121954639447247"] = true, ["125213046326879"] = true,
-    ["131406927389838"] = true, ["71834552297085"] = true, ["80516583309685"] = true,
-    ["70845653728841"] = true, ["76959687420003"] = true, ["86833981571073"] = true,
-    ["110372418055226"] = true, ["86494585504534"] = true, ["107444859834748"] = true,
-    ["121369993837377"] = true, ["104910828105172"] = true, ["117173212095661"] = true,
-    ["140412278320643"] = true, ["140194172008986"] = true, ["85544168523099"] = true,
-    ["131406927389838"] = true, ["140242176732868"] = true, ["86174610237192"] = true,
-    ["112395455254818"] = true, ["109431876587852"] = true,
-    ["72425554233832"] = true, ["76467993976301"] = true, ["77245770579014"] = true,
-    ["78298577002481"] = true, ["85810983952228"] = true, ["89315669689903"] = true,
-    ["90878551190839"] = true, ["94043596324983"] = true, ["97894923442490"] = true,
-    ["98675142200448"] = true, ["99829427721752"] = true, ["103684883268194"] = true,
-    ["110115912768379"] = true, ["124330645976935"] = true, ["124397369810639"] = true,
-    ["124903763333174"] = true, ["128856426573270"] = true, ["131123355704017"] = true,
-    ["135448067174226"] = true, ["136841625231863"] = true, ["128367348686124"] = true,
-    ["116527305931161"] = true,
+    ["131406927389838"] = true, ["71834552297085"] = true, ["805165833096"] = true,
 }
 
 local animConns = {}
@@ -551,7 +523,6 @@ BlockGroup:AddToggle("InverseMode", {Text="Inverse Mode[反转模式]", Default=
 
 -- Hitbox Trigger 自动格挡（碰撞触发）
 local hitboxBlockEnabled = false
-local hitboxSizeMultiplier = 1  -- 默认原比例
 local processedHitboxes = {}
 local hitboxLoopConnection = nil
 
@@ -596,14 +567,10 @@ local function startHitboxBlockMode()
                 if isKillerHitbox then
                     if not processedHitboxes[hitbox] then
                         processedHitboxes[hitbox] = {
-                            originalSize = hitbox.Size,
                             originalColor = hitbox.Color,
-                            originalTransparency = hitbox.Transparency,
-                            originalMaterial = hitbox.Material,
                         }
+                        hitbox.Color = Color3.fromRGB(137, 180, 250) -- 强调色
                     end
-                    hitbox.Size = processedHitboxes[hitbox].originalSize * hitboxSizeMultiplier
-                    hitbox.Color = Color3.fromRGB(137, 180, 250)  -- 主题色
                     local overlapParts = workspace:GetPartBoundsInBox(hitbox.CFrame, hitbox.Size)
                     local touching = false
                     for _, part in ipairs(overlapParts) do
@@ -628,7 +595,6 @@ local function stopHitboxBlockMode()
     end
     for hitbox, data in pairs(processedHitboxes) do
         if hitbox and hitbox.Parent then
-            hitbox.Size = data.originalSize
             hitbox.Color = data.originalColor
         end
     end
@@ -645,17 +611,6 @@ BlockGroup:AddToggle("HitboxBlockToggle", {
         else
             stopHitboxBlockMode()
         end
-    end
-})
-
-BlockGroup:AddSlider("HitboxSize", {
-    Text = "Hitbox Size[碰撞箱大小]",
-    Default = 1,
-    Min = 0.5,
-    Max = 5,
-    Rounding = 1,
-    Callback = function(v)
-        hitboxSizeMultiplier = v
     end
 })
 
