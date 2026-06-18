@@ -14,7 +14,8 @@ local Window = Library:CreateWindow({
 })
 local Tabs = {
     ["Player Info"] = Window:AddTab("Player Info[玩家信息]", "user", "View your player information"),
-    ["Combat"] = Window:AddTab("Combat[战斗]", "swords", "Combat enhancements and aimbot"),
+    ["Combat"] = Window:AddTab("Combat[战斗]", "swords", "General combat enhancements"),
+    ["Survivor"] = Window:AddTab("Survivor[幸存者]", "user", "Survivor-specific features"),
     ["ESP"] = Window:AddTab("ESP[绘制]", "eye", "Visual overlays for players and items"),
     ["Generator"] = Window:AddTab("Generator[发电机]", "zap", "Generator repair and puzzle solvers"),
     ["Actions"] = Window:AddTab("Actions[动作]", "activity", "Emotes, custom animations, and fake block"),
@@ -85,10 +86,52 @@ local function getPunchButton()
     local container = main:FindFirstChild("AbilityContainer"); if not container then return nil end
     return container:FindFirstChild("Punch")
 end
+local function hbGetRemote()
+    return svc.RS:FindFirstChild("Modules") and svc.RS.Modules:FindFirstChild("Network") and svc.RS.Modules.Network:FindFirstChild("RemoteEvent")
+end
+local function combatGetKillersFolder()
+    local p = svc.WS:FindFirstChild("Players")
+    return p and p:FindFirstChild("Killers")
+end
+local function combatGetNearestKiller()
+    local char = lp.Character; if not char then return nil end
+    local myRoot = char:FindFirstChild("HumanoidRootPart"); if not myRoot then return nil end
+    local kf = combatGetKillersFolder(); if not kf then return nil end
+    local best, bestD = nil, math.huge
+    for _, k in pairs(kf:GetChildren()) do
+        local hrp = k:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local d = (hrp.Position - myRoot.Position).Magnitude
+            if d < bestD then best, bestD = k, d end
+        end
+    end
+    return best
+end
+local function combatRollMiss(chance)
+    if chance <= 0 then return false end
+    if chance >= 100 then return true end
+    return math.random(1, 100) <= chance
+end
+local function combatFireAbility(abilityType)
+    local rem = hbGetRemote()
+    if not rem then return end
+    local buf
+    if abilityType == "Block" then
+        buf = buffer.fromstring("\x03\x05\x00\x00\x00Block")
+    elseif abilityType == "Punch" then
+        buf = buffer.fromstring("\x03\x05\x00\x00\x00Punch")
+    elseif abilityType == "Charge" then
+        buf = buffer.fromstring("\x03\x06\x00\x00\x00Charge")
+    elseif abilityType == "Clone" then
+        buf = buffer.fromstring("\x03\x05\x00\x00\x00Clone")
+    else
+        buf = buffer.fromstring("\x03\x05\x00\x00\x00Block")
+    end
+    pcall(function() rem:FireServer("UseActorAbility", {[1] = buf}) end)
+    pcall(function() rem:FireServer(abilityType) end)
+end
 local function pressBlock()
-    local btn = getBlockButton(); if not btn then return false end
-    pcall(function() btn:Activate() end)
-    for _, conn in ipairs(getconnections(btn.MouseButton1Click) or {}) do pcall(function() conn:Fire() end) end
+    combatFireAbility("Block")
     return true
 end
 local function pressPunch()
@@ -108,65 +151,61 @@ local function isKillerFacingPlayer(killerModel, myRoot)
     if BlockSettings.StrictFacing then return dot > 0 end
     if BlockSettings.LooseFacing then return dot > -0.3 else return dot > 0 end
 end
-
--- 仅保留原始 Fixsaken 的攻击动画 ID
-local AttackAnimIDs = {
-    ["18885909645"] = true, ["18885937766"] = true, ["18885940850"] = true,
-    ["126830014841198"] = true, ["105458270463374"] = true, ["106538427162796"] = true,
-    ["83829782357897"] = true, ["122709416391891"] = true, ["88451353906104"] = true,
-    ["109667959938617"] = true, ["118298475669935"] = true, ["88970503168421"] = true,
-    ["81299297965542"] = true, ["70371667919898"] = true, ["95414473113522"] = true,
-    ["77375846492436"] = true, ["121293883585738"] = true, ["91628732643385"] = true,
-    ["99050723653468"] = true, ["119181003138006"] = true, ["101736016625776"] = true,
-    ["98456918873918"] = true, ["133363345661032"] = true, ["128414736976503"] = true,
-    ["115403107018365"] = true, ["124619925708292"] = true, ["136323728355613"] = true,
-    ["140242176732868"] = true, ["112809109188560"] = true, ["102228729296384"] = true,
-    ["80516583309685"] = true, ["111261564982886"] = true, ["75467546215199"] = true,
-    ["80919153988550"] = true, ["86451559088289"] = true, ["115026634746636"] = true,
-    ["84116622032112"] = true, ["108907358619313"] = true, ["127793641088496"] = true,
-    ["86174610237192"] = true, ["95079963655241"] = true, ["101199185291628"] = true,
-    ["119942598489800"] = true, ["84307400688050"] = true, ["113037804008732"] = true,
-    ["105200830849301"] = true, ["75330693422988"] = true, ["82221759983649"] = true,
-    ["81702359653578"] = true, ["108610718831698"] = true, ["112395455254818"] = true,
-    ["109431876587852"] = true, ["109348678063422"] = true, ["85853080745515"] = true,
-    ["90819435118493"] = true, ["117173212095661"] = true, ["100321250424257"] = true,
-    ["77100821793542"] = true, ["81989261113189"] = true, ["129108619555351"] = true,
-    ["119583605486352"] = true, ["79980897195554"] = true, ["110877859670130"] = true,
-    ["104910828105172"] = true, ["110126546193799"] = true, ["104388455240670"] = true,
-    ["85544168523099"] = true, ["103736328206432"] = true, ["128307808203038"] = true,
-    ["111104117703814"] = true, ["97100466324703"] = true, ["74000375845213"] = true,
-    ["111502315377475"] = true, ["84340345572285"] = true, ["120394605928086"] = true,
-    ["134973085112081"] = true, ["79554277951408"] = true, ["115476331903507"] = true,
-    ["74183834601348"] = true, ["88582935528044"] = true, ["107444859834748"] = true,
-    ["95166423060976"] = true, ["131123355704017"] = true, ["111647315359080"] = true,
-    ["84122523631600"] = true, ["107593207834624"] = true,
-    ["126355327951215"] = true, ["121086746534252"] = true, ["125403313786645"] = true,
-    ["82113744478546"] = true, ["99135633258223"] = true, ["97167027849946"] = true,
-    ["109230267448394"] = true, ["139835501033932"] = true, ["126896426760253"] = true,
-    ["126681776859538"] = true, ["129976080405072"] = true, ["81639435858902"] = true,
-    ["137314737492715"] = true, ["92173139187970"] = true, ["122709416391"] = true,
-    ["879895330952"] = true,
-    ["124269076578545"] = true,
-}
-
--- 仅保留原始 Fixsaken 的攻击音效 ID
 local AttackSoundIDs = {
-    ["102228729296384"] = true, ["140242176732868"] = true, ["112809109188560"] = true,
-    ["136323728355613"] = true, ["115026634746636"] = true, ["84116622032112"] = true,
-    ["108907358619313"] = true, ["127793641088496"] = true, ["86174610237192"] = true,
-    ["95079963655241"] = true, ["101199185291628"] = true, ["119942598489800"] = true,
-    ["84307400688050"] = true, ["113037804008732"] = true, ["105200830849301"] = true,
-    ["75330693422988"] = true, ["82221759983649"] = true, ["81702359653578"] = true,
-    ["108610718831698"] = true, ["112395455254818"] = true, ["109431876587852"] = true,
-    ["109348678063422"] = true, ["85853080745515"] = true, ["12222216"] = true,
-    ["105840448036441"] = true, ["114742322778642"] = true, ["119583605486352"] = true,
-    ["79980897195554"] = true, ["71805956520207"] = true, ["79391273191671"] = true,
-    ["89004992452376"] = true, ["101553872555606"] = true, ["101698569375359"] = true,
-    ["106300477136129"] = true, ["116581754553533"] = true, ["117231507259853"] = true,
-    ["119089145505438"] = true, ["121954639447247"] = true, ["125213046326879"] = true,
-    ["131406927389838"] = true, ["71834552297085"] = true, ["805165833096"] = true,
+    ["140242176732868"]=true,["136323728355613"]=true,
+    ["115026634746636"]=true,["84116622032112"]=true, ["108907358619313"]=true,["127793641088496"]=true,
+    ["86174610237192"]=true, ["95079963655241"]=true, ["101199185291628"]=true,["119942598489800"]=true,
+    ["84307400688050"]=true, ["105200830849301"]=true,["75330693422988"]=true,
+    ["82221759983649"]=true, ["81702359653578"]=true, ["85853080745515"]=true,
+    ["108610718831698"]=true,["112395455254818"]=true,["109431876587852"]=true,["12222216"]=true,
+    ["79980897195554"]=true, ["119583605486352"]=true,["71834552297085"]=true, ["116581754553533"]=true,
+    ["86833981571073"]=true, ["110372418055226"]=true,["105840448036441"]=true,["86494585504534"]=true,
+    ["80516583309685"]=true, ["131406927389838"]=true,["89004992452376"]=true, ["117231507259853"]=true,
+    ["101698569375359"]=true,["101553872555606"]=true,["140412278320643"]=true,["106300477136129"]=true,
+    ["117173212095661"]=true,["104910828105172"]=true,["140194172008986"]=true,["85544168523099"]=true,
+    ["114506382930939"]=true,["99829427721752"]=true, ["120059928759346"]=true,["104625283622511"]=true,
+    ["105316545074913"]=true,["126131675979001"]=true,["82336352305186"]=true, ["93366464803829"]=true,
+    ["84069821282466"]=true, ["128856426573270"]=true,["121954639447247"]=true,["128195973631079"]=true,
+    ["124903763333174"]=true,["94317217837143"]=true, ["98111231282218"]=true, ["119089145505438"]=true,
+    ["136728245733659"]=true,["107444859834748"]=true,["76959687420003"]=true,
+    ["72425554233832"]=true, ["96594507550917"]=true, ["139996647355899"]=true,["107345261604889"]=true,
+    ["127557531826290"]=true,["108651070773439"]=true,["74842815979546"]=true, ["124397369810639"]=true,
+    ["76467993976301"]=true, ["118493324723683"]=true,["78298577002481"]=true, ["116527305931161"]=true,
+    ["5148302439"]=true,     ["98675142200448"]=true, ["128367348686124"]=true,["71805956520207"]=true,
+    ["125213046326879"]=true,["103684883268194"]=true,["109246041199659"]=true,
+    ["80540530406270"]=true, ["139523195429581"]=true,["105204810054381"]=true,["114742322778642"]=true,
+    ["116468089135195"]=true,["112809109188560"]=true,["109348678063422"]=true,
 }
-
+local AttackAnimIDs = {
+    ["83829782357897"] = true,
+    ["105458270463374"] = true,
+    ["106538427162796"] = true,
+    ["88451353906104"] = true,
+    ["122709416391891"] = true,
+    ["126830014841198"] = true,
+    ["18885909645"] = true,
+    ["121293883585738"] = true,
+    ["124705663396411"] = true,
+    ["126171487400618"] = true,
+    ["90620531468240"] = true,
+    ["127245564598429"] = true,
+    ["93069721274110"] = true,
+    ["81299297965542"] = true,
+    ["91509234639766"] = true,
+    ["77375846492436"] = true,
+    ["93366464803829"] = true,
+    ["92567970681901"] = true,
+    ["118298475669935"] = true,
+    ["94958041603347"] = true,
+    ["109667959938617"] = true,
+    ["106860049270347"] = true,
+    ["130958529065375"] = true,
+    ["108196996477620"] = true,
+    ["114506382930939"] = true,
+    ["114126519127454"] = true,
+    ["70371667919898"] = true,
+    ["84069821282466"] = true,
+}
 local animConns = {}
 local animBlockedUntil = {}
 local soundBlockedUntil = {}
@@ -295,115 +334,13 @@ game:GetService("RunService").RenderStepped:Connect(function()
         if root then RangeVisual.CFrame = root.CFrame; updateNormalRangeVisualColor() end
     end
 end)
+
 local PlayerGroup = Tabs["Combat"]:AddLeftGroupbox("Player Enhancements[玩家增强]", "user")
 PlayerGroup:AddToggle("AntiSlow", {Text = "Anti-Slow[无减速]", Default = false, Callback = function(state) Library:Notify({Title="Anti-Slow", Description=state and "Enabled" or "Disabled", Time=1}) task.spawn(function() while Toggles.AntiSlow.Value and task.wait() do if localPlayer.Character and localPlayer.Character:FindFirstChild("SpeedMultipliers") then for _, v in localPlayer.Character.SpeedMultipliers:GetChildren() do if v.Value < 1 then v.Value = 1 end end end end end) end})
 PlayerGroup:AddToggle("AntiStun", {Text = "Anti-Stun[无眩晕]", Default = false, Callback = function(state) Library:Notify({Title="Anti-Stun", Description=state and "Enabled" or "Disabled", Time=1}) task.spawn(function() while Toggles.AntiStun.Value and task.wait() do if localPlayer.Character and localPlayer.Character:FindFirstChild("SpeedMultipliers") then local stunned = localPlayer.Character.SpeedMultipliers:FindFirstChild("Stunned"); if stunned then stunned.Value = 1 end end end end) end})
 PlayerGroup:AddToggle("AlwaysSprint", {Text = "Always Sprint[一直奔跑]", Default = false, Callback = function(state) Library:Notify({Title="Always Sprint", Description=state and "Enabled" or "Disabled", Time=1}) _G.alwaysSprint = state task.spawn(function() while _G.alwaysSprint and task.wait() do local sprint = require(game:GetService("ReplicatedStorage").Systems.Character.Game.Sprinting); if not sprint.IsSprinting then sprint.IsSprinting = true; sprint.__sprintedEvent:Fire(true) end end end) end})
 PlayerGroup:AddToggle("AllowJump", {Text = "Enable Jump[启用跳跃]", Default = false, Tooltip = "Repeated jumping may get you banned!", Callback = function(state) Library:Notify({Title="Enable Jump", Description=state and "Enabled" or "Disabled", Time=1}) _G.restoringJump = state if state then task.spawn(function() while _G.restoringJump do local char = localPlayer.Character or localPlayer.CharacterAdded:Wait(); local humanoid = char:FindFirstChildOfClass("Humanoid"); local jumpBtn = localPlayer.PlayerGui:FindFirstChild("TouchGui") and localPlayer.PlayerGui.TouchGui:FindFirstChild("TouchControlFrame") and localPlayer.PlayerGui.TouchGui.TouchControlFrame:FindFirstChild("JumpButton"); if humanoid then humanoid.JumpPower = 50 end; if jumpBtn then jumpBtn.Visible = true end; task.wait(1) end end) else local char = localPlayer.Character; local humanoid = char and char:FindFirstChildOfClass("Humanoid"); if humanoid then humanoid.JumpPower = 0 end; local jumpBtn = localPlayer.PlayerGui:FindFirstChild("TouchGui") and localPlayer.PlayerGui.TouchGui:FindFirstChild("TouchControlFrame") and localPlayer.PlayerGui.TouchGui.TouchControlFrame:FindFirstChild("JumpButton"); if jumpBtn then jumpBtn.Visible = false end end end})
 PlayerGroup:AddToggle("AlwaysShowChat", {Text = "Always Show Chat[显示聊天框]", Default = false, Callback = function(state) Library:Notify({Title="Always Show Chat", Description=state and "Enabled" or "Disabled", Time=1}) _G.showChat = state task.spawn(function() while _G.showChat and task.wait() do game:GetService("TextChatService"):FindFirstChildOfClass("ChatWindowConfiguration").Enabled = true end end) if not state and playingState ~= "Spectating" then game:GetService("TextChatService"):FindFirstChildOfClass("ChatWindowConfiguration").Enabled = false end end})
-local BackstabSettings = {
-    Enabled = false, Mode = "Blatant", Distance = 15, Offset = 2.0, ShowRange = false,
-    RangeColor = Color3.fromRGB(255, 100, 100), RangeTransparency = 0.5, TeleportSmoothness = 8, TeleportDuration = 0.15,
-    RangeVisuals = {}, Active = false, ActiveKiller = nil, ActiveTrack = nil, LoopConnection = nil, LastBackstab = 0, BackstabCooldown = 1.5, Debug = false,
-}
-local BackstabGroup = Tabs["Combat"]:AddLeftGroupbox("Auto Backstab[自动背刺]", "target")
-BackstabGroup:AddToggle("EnableBackstab", {Text = "Enable Backstab[启用背刺辅助]", Default = false, Callback = function(state) BackstabSettings.Enabled = state if not state then for k,v in pairs(BackstabSettings.RangeVisuals) do pcall(function() v:Destroy() end) end BackstabSettings.RangeVisuals = {} if BackstabSettings.Active then stopBackstab() end end Library:Notify({Title="Backstab Assist", Description=state and "Enabled" or "Disabled", Time=1}) end})
-BackstabGroup:AddDropdown("BackstabMode", {Text = "Backstab Mode[背刺模式]", Values = {"Blatant", "Teleport"}, Default = "Blatant", Callback = function(sel) BackstabSettings.Mode = sel end})
-BackstabGroup:AddSlider("BackstabDistance", {Text = "Backstab Distance[背刺距离]", Default = 15, Min = 5, Max = 30, Rounding = 1, Callback = function(v) BackstabSettings.Distance = v if BackstabSettings.ShowRange then for k,part in pairs(BackstabSettings.RangeVisuals) do if part and part.Parent then part.Size = Vector3.new(v * 2, 1, v * 2) end end end end})
-BackstabGroup:AddSlider("BackstabOffset", {Text = "Backstab Offset[背刺偏移]", Default = 2.0, Min = 1, Max = 5, Rounding = 1, Callback = function(v) BackstabSettings.Offset = v end})
-BackstabGroup:AddToggle("ShowBackstabRange", {Text = "Show Backstab Range[显示背刺范围]", Default = false, Callback = function(state) BackstabSettings.ShowRange = state if state then local kf = getKillersFolder(); if kf then for _,k in ipairs(kf:GetChildren()) do if k:IsA("Model") then createBackstabRangeVisual(k) end end end else for _,part in pairs(BackstabSettings.RangeVisuals) do pcall(function() part:Destroy() end) end BackstabSettings.RangeVisuals = {} end end})
-BackstabGroup:AddLabel("Range Color[范围颜色]"):AddColorPicker("BackstabRangeColor", {Default = BackstabSettings.RangeColor, Title = "Range Color", Callback = function(v) BackstabSettings.RangeColor = v; for _,part in pairs(BackstabSettings.RangeVisuals) do if part then part.Color = v end end end})
-local function debugLog(msg) if BackstabSettings.Debug then print("[Backstab] "..msg) end end
-local function createBackstabRangeVisual(killerModel)
-    if not killerModel or not killerModel:IsA("Model") then return nil end
-    if BackstabSettings.RangeVisuals[killerModel] then return end
-    local root = killerModel:FindFirstChild("HumanoidRootPart"); if not root then return nil end
-    local part = Instance.new("Part"); part.Name = "BackstabRangeVisual"; part.Shape = Enum.PartType.Ball
-    part.Size = Vector3.new(BackstabSettings.Distance * 2, 1, BackstabSettings.Distance * 2)
-    part.Color = BackstabSettings.RangeColor; part.Material = Enum.Material.ForceField; part.Transparency = BackstabSettings.RangeTransparency
-    part.Anchored = false; part.CanCollide = false; part.CFrame = root.CFrame
-    local weld = Instance.new("WeldConstraint"); weld.Part0 = root; weld.Part1 = part; weld.Parent = part; part.Parent = root
-    BackstabSettings.RangeVisuals[killerModel] = part; return part
-end
-local function updateBackstabRangeVisuals()
-    if not BackstabSettings.ShowRange then return end
-    local killersFolder = getKillersFolder(); if not killersFolder then return end
-    for _, killer in ipairs(killersFolder:GetChildren()) do if killer:IsA("Model") and not BackstabSettings.RangeVisuals[killer] then createBackstabRangeVisual(killer) end end
-    for killer, part in pairs(BackstabSettings.RangeVisuals) do if not killer or not killer.Parent then pcall(function() part:Destroy() end); BackstabSettings.RangeVisuals[killer] = nil end end
-end
-local function stopBackstab()
-    if BackstabSettings.LoopConnection then BackstabSettings.LoopConnection:Disconnect(); BackstabSettings.LoopConnection = nil end
-    BackstabSettings.Active = false; BackstabSettings.ActiveKiller = nil; BackstabSettings.ActiveTrack = nil
-    local char = localPlayer.Character; if char then local hum = char:FindFirstChildOfClass("Humanoid"); if hum then hum.AutoRotate = true end end
-end
-local function startBackstabLoop(killerModel, track)
-    if BackstabSettings.LoopConnection then BackstabSettings.LoopConnection:Disconnect() end
-    local char = localPlayer.Character; if not char then stopBackstab(); return end
-    local hum = char:FindFirstChildOfClass("Humanoid"); if hum then hum.AutoRotate = false end
-    BackstabSettings.LoopConnection = game:GetService("RunService").RenderStepped:Connect(function()
-        if not BackstabSettings.Active then stopBackstab(); return end
-        if not killerModel or not killerModel.Parent then stopBackstab(); return end
-        local myChar = localPlayer.Character; if not myChar or not myChar.Parent then stopBackstab(); return end
-        local root = myChar:FindFirstChild("HumanoidRootPart"); local killerRoot = killerModel:FindFirstChild("HumanoidRootPart")
-        if not root or not killerRoot then stopBackstab(); return end
-        local behindOffset = -killerRoot.CFrame.LookVector * BackstabSettings.Offset
-        local targetPos = killerRoot.Position + behindOffset + Vector3.new(0,0.5,0)
-        root.CFrame = CFrame.new(targetPos, killerRoot.Position)
-    end)
-    if track and track.Parent then
-        local conn; conn = track.Stopped:Connect(function() conn:Disconnect(); stopBackstab() end)
-        local ancConn; ancConn = track.AncestryChanged:Connect(function() if not track.Parent then ancConn:Disconnect(); stopBackstab() end end)
-    else task.delay(BackstabSettings.TeleportDuration + 0.5, function() if BackstabSettings.Active and BackstabSettings.ActiveTrack == track then stopBackstab() end end) end
-end
-local function performBackstab(killerModel, track, shouldLock)
-    if not killerModel or not killerModel.Parent then return false end
-    local myChar = localPlayer.Character; if not myChar then return false end
-    local root = myChar:FindFirstChild("HumanoidRootPart"); local killerRoot = killerModel:FindFirstChild("HumanoidRootPart")
-    if not root or not killerRoot then return false end
-    local mode = BackstabSettings.Mode
-    local behindOffset = -killerRoot.CFrame.LookVector * BackstabSettings.Offset
-    local targetPos = killerRoot.Position + behindOffset + Vector3.new(0,0.5,0)
-    local targetCF = CFrame.new(targetPos, killerRoot.Position)
-    local startCF = root.CFrame
-    local steps = BackstabSettings.TeleportSmoothness; local stepTime = BackstabSettings.TeleportDuration / steps
-    for i=1, steps do root.CFrame = startCF:Lerp(targetCF, i/steps); task.wait(stepTime) end
-    root.CFrame = targetCF
-    if mode == "Blatant" then
-        if shouldLock then BackstabSettings.Active = true; BackstabSettings.ActiveKiller = killerModel; BackstabSettings.ActiveTrack = track; startBackstabLoop(killerModel, track) end
-    end
-    return true
-end
-local function getNearestKillerForBackstab()
-    local killers = getKillersFolder(); if not killers then return nil end
-    local myChar = localPlayer.Character; if not myChar then return nil end
-    local myRoot = myChar:FindFirstChild("HumanoidRootPart"); if not myRoot then return nil end
-    local nearest, nearestDist = nil, math.huge
-    for _, killer in ipairs(killers:GetChildren()) do if killer:IsA("Model") and killer:FindFirstChild("HumanoidRootPart") and killer:GetAttribute("IsFakeNoli") ~= true then local dist = (killer.HumanoidRootPart.Position - myRoot.Position).Magnitude; if dist <= BackstabSettings.Distance and dist < nearestDist then nearestDist = dist; nearest = killer end end end
-    return nearest
-end
-local backstabAnimIds = { moveOnly = { ["100725497418533"] = true }, lock = { ["108018357044094"] = true } }
-local backstabAnimConn = nil
-local function hookPlayerAnimationsForBackstab()
-    local char = localPlayer.Character; if not char then return end
-    local hum = char:FindFirstChildOfClass("Humanoid"); if not hum then return end
-    local animator = hum:FindFirstChildOfClass("Animator"); if not animator then return end
-    if backstabAnimConn then backstabAnimConn:Disconnect() end
-    backstabAnimConn = animator.AnimationPlayed:Connect(function(track)
-        if not BackstabSettings.Enabled then return end
-        local playersFolder = workspace:FindFirstChild("Players"); if not playersFolder then return end
-        local survivors = playersFolder:FindFirstChild("Survivors"); if not survivors then return end
-        if not char:IsDescendantOf(survivors) then return end
-        local animId = track.Animation.AnimationId:match("%d+"); if not animId then return end
-        local shouldLock = false; if backstabAnimIds.moveOnly[animId] then shouldLock = false elseif backstabAnimIds.lock[animId] then shouldLock = true else return end
-        local now = tick(); if now - BackstabSettings.LastBackstab < BackstabSettings.BackstabCooldown then return end
-        local target = getNearestKillerForBackstab()
-        if target then BackstabSettings.LastBackstab = now; performBackstab(target, track, shouldLock) end
-    end)
-end
-if localPlayer.Character then hookPlayerAnimationsForBackstab() end
-localPlayer.CharacterAdded:Connect(function() task.wait(0.5); hookPlayerAnimationsForBackstab() end)
-task.spawn(function() while task.wait(1) do if BackstabSettings.ShowRange then updateBackstabRangeVisuals() else for _,part in pairs(BackstabSettings.RangeVisuals) do pcall(function() part:Destroy() end) end BackstabSettings.RangeVisuals = {} end end end)
-local oldUnload = Library.OnUnload; Library.OnUnload = function() if backstabAnimConn then backstabAnimConn:Disconnect() end; stopBackstab(); for _,part in pairs(BackstabSettings.RangeVisuals) do pcall(function() part:Destroy() end) end; if oldUnload then oldUnload() end end
 local StaminaGroup = Tabs["Combat"]:AddLeftGroupbox("Stamina Settings[体力设置]", "zap")
 local StaminaSettings = { MaxStamina=100, StaminaGain=25, StaminaLoss=10, SprintSpeed=28, InfiniteGain=9999 }
 local SettingToggles = { MaxStamina=false, StaminaGain=false, StaminaLoss=false, SprintSpeed=false }
@@ -483,36 +420,8 @@ end
 MoveGroup:AddToggle("FrontFlipToggle", {Text="Show Front Flip Button[显示前滚翻按钮]", Default=false, Callback=function(s) SetFrontFlip(s); Library:Notify({Title="Front Flip Button", Description=s and "Shown" or "Hidden", Time=1}) end})
 MoveGroup:AddSlider("JumpHeight", {Text="Jump Height[跳跃高度]", Step=1, Value={Min=20,Max=200,Default=jumpHeight}, Suffix="Unit", Callback=function(v) jumpHeight=v end})
 MoveGroup:AddSlider("JumpDistance", {Text="Jump Distance[跳跃距离]", Step=1, Value={Min=10,Max=100,Default=jumpDistance}, Suffix="Unit", Callback=function(v) jumpDistance=v end})
-local BypassGroupLeft = Tabs["Bypass"]:AddLeftGroupbox("Speed Modify[速度修改]", "gauge")
-local BypassGroupRight = Tabs["Bypass"]:AddRightGroupbox("Flight[飞行]", "plane")
-local speedValue = 0; local speedToggle = false
-local function speedLoop() while speedToggle do local hum = localPlayer.Character and localPlayer.Character:FindFirstChild("Humanoid"); if hum and hum.MoveDirection ~= Vector3.zero then localPlayer.Character:TranslateBy(hum.MoveDirection * speedValue * game:GetService("RunService").RenderStepped:Wait()) end; task.wait() end end
-BypassGroupLeft:AddSlider("SpeedBypass", {Text="Speed[速度]", Default=16, Min=1, Max=500, Rounding=0, Callback=function(v) speedValue=v end})
-BypassGroupLeft:AddToggle("SpeedToggle", {Text="Enable Speed[启用速度]", Default=false, Callback=function(s) speedToggle=s; if s then task.spawn(speedLoop); Library:Notify({Title="Speed", Description="Enabled", Time=1}) else Library:Notify({Title="Speed", Description="Disabled", Time=1}) end end})
-local CFSpeed = 50; local CFLoop = nil
-local function StartCFly()
-    local char = localPlayer.Character; if not char then return end
-    local hum = char:FindFirstChildOfClass('Humanoid'); local head = char:WaitForChild("Head")
-    if not hum or not head then return end
-    hum.PlatformStand = true; head.Anchored = true
-    if CFLoop then CFLoop:Disconnect(); CFLoop = nil end
-    CFLoop = game:GetService("RunService").Heartbeat:Connect(function(dt)
-        if not char or not hum or not head then if CFLoop then CFLoop:Disconnect(); CFLoop = nil end return end
-        local moveDir = hum.MoveDirection * (CFSpeed * dt)
-        local headCF = head.CFrame; local cam = workspace.CurrentCamera; local camCF = cam.CFrame
-        local off = headCF:ToObjectSpace(camCF).Position; camCF = camCF * CFrame.new(-off.X, -off.Y, -off.Z + 1)
-        local camPos = camCF.Position; local headPos = headCF.Position
-        local objVel = CFrame.new(camPos, Vector3.new(headPos.X, camPos.Y, headPos.Z)):VectorToObjectSpace(moveDir)
-        head.CFrame = CFrame.new(headPos) * (camCF - camPos) * CFrame.new(objVel)
-    end)
-end
-local function StopCFly()
-    if CFLoop then CFLoop:Disconnect(); CFLoop = nil end
-    local char = localPlayer.Character; if char then local hum = char:FindFirstChildOfClass('Humanoid'); local head = char:FindFirstChild("Head"); if hum then hum.PlatformStand = false end; if head then head.Anchored = false end end
-end
-BypassGroupRight:AddToggle("CFlyToggle", {Text="Flight[飞行]", Default=false, Callback=function(v) if v then StartCFly(); Library:Notify({Title="Flight", Description="Enabled", Time=1}) else StopCFly(); Library:Notify({Title="Flight", Description="Disabled", Time=1}) end end})
-BypassGroupRight:AddSlider("CFlySpeed", {Text="Flight Speed[飞行速度]", Default=50, Min=1, Max=200, Rounding=1, Callback=function(v) CFSpeed=v end})
-local BlockGroup = Tabs["Combat"]:AddRightGroupbox("Auto Block[自动格挡]", "shield")
+
+local BlockGroup = Tabs["Survivor"]:AddRightGroupbox("Auto Block[自动格挡]", "shield")
 BlockGroup:AddToggle("AutoBlockToggle", {Text="Enable Auto Block[启用自动格挡]", Default=false, Callback=function(s) BlockSettings.Enabled=s; Library:Notify({Title="Auto Block", Description=s and "Enabled" or "Disabled", Time=1}) end})
 BlockGroup:AddSlider("TriggerDistance", {Text="Trigger Distance[触发距离]", Default=20, Min=5, Max=50, Rounding=0, Callback=function(v) BlockSettings.TriggerDistance=v; UpdateRangeVisual() end})
 BlockGroup:AddToggle("FacingCheck", {Text="Killer Facing Check[杀手面向检测]", Default=true, Callback=function(s) BlockSettings.FacingCheck=s end})
@@ -520,101 +429,7 @@ BlockGroup:AddToggle("LooseFacing", {Text="Loose Facing[宽松面向]", Default=
 BlockGroup:AddToggle("StrictFacing", {Text="Strict Facing[严格面向]", Default=false, Callback=function(s) BlockSettings.StrictFacing = s; if s then BlockSettings.LooseFacing = false; pcall(function() Toggles.LooseFacing:SetValue(false) end) end end})
 BlockGroup:AddToggle("ShowRangeVisual", {Text="Show Trigger Range[显示触发范围]", Default=false, Callback=function(s) BlockSettings.ShowRangeVisual=s; UpdateRangeVisual() end})
 BlockGroup:AddToggle("InverseMode", {Text="Inverse Mode[反转模式]", Default=false, Callback=function(s) BlockSettings.InverseMode = s; UpdateRangeVisual(); Library:Notify({Title="Inverse Mode", Description=s and "Range circles attached to killers" or "Normal mode", Time=2}) end})
-
--- Hitbox Trigger 自动格挡（碰撞触发）
-local hitboxBlockEnabled = false
-local processedHitboxes = {}
-local hitboxLoopConnection = nil
-
-local function getKillerUsernames()
-    local killerNames = {}
-    if workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers") then
-        for _, killerModel in pairs(workspace.Players.Killers:GetChildren()) do
-            local killerPlayer = game:GetService("Players"):GetPlayerFromCharacter(killerModel)
-            if killerPlayer then
-                table.insert(killerNames, killerPlayer.Name)
-            else
-                table.insert(killerNames, killerModel.Name)
-            end
-        end
-    end
-    return killerNames
-end
-
-local function startHitboxBlockMode()
-    if hitboxLoopConnection then return end
-    local hitboxesFolder = workspace:FindFirstChild("Hitboxes")
-    if not hitboxesFolder then
-        hitboxesFolder = Instance.new("Folder")
-        hitboxesFolder.Name = "Hitboxes"
-        hitboxesFolder.Parent = workspace
-    end
-    hitboxLoopConnection = game:GetService("RunService").Heartbeat:Connect(function()
-        if not hitboxBlockEnabled then return end
-        local character = localPlayer.Character
-        if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-        local root = character.HumanoidRootPart
-        local killerNames = getKillerUsernames()
-        for _, hitbox in ipairs(hitboxesFolder:GetChildren()) do
-            if hitbox:IsA("BasePart") and string.find(hitbox.Name, "Hitbox") then
-                local isKillerHitbox = false
-                for _, killerName in ipairs(killerNames) do
-                    if string.find(hitbox.Name, killerName) then
-                        isKillerHitbox = true
-                        break
-                    end
-                end
-                if isKillerHitbox then
-                    if not processedHitboxes[hitbox] then
-                        processedHitboxes[hitbox] = {
-                            originalColor = hitbox.Color,
-                        }
-                        hitbox.Color = Color3.fromRGB(137, 180, 250) -- 强调色
-                    end
-                    local overlapParts = workspace:GetPartBoundsInBox(hitbox.CFrame, hitbox.Size)
-                    local touching = false
-                    for _, part in ipairs(overlapParts) do
-                        if part:IsDescendantOf(character) then
-                            touching = true
-                            break
-                        end
-                    end
-                    if touching then
-                        pressBlock()
-                    end
-                end
-            end
-        end
-    end)
-end
-
-local function stopHitboxBlockMode()
-    if hitboxLoopConnection then
-        hitboxLoopConnection:Disconnect()
-        hitboxLoopConnection = nil
-    end
-    for hitbox, data in pairs(processedHitboxes) do
-        if hitbox and hitbox.Parent then
-            hitbox.Color = data.originalColor
-        end
-    end
-    processedHitboxes = {}
-end
-
-BlockGroup:AddToggle("HitboxBlockToggle", {
-    Text = "Hitbox Trigger[碰撞触发]",
-    Default = false,
-    Callback = function(state)
-        hitboxBlockEnabled = state
-        if state then
-            startHitboxBlockMode()
-        else
-            stopHitboxBlockMode()
-        end
-    end
-})
-
-local AutoPunchGroup = Tabs["Combat"]:AddRightGroupbox("Auto Punch[自动拳击]", "punch")
+local AutoPunchGroup = Tabs["Survivor"]:AddRightGroupbox("Auto Punch[自动拳击]", "punch")
 local autoPunchEnabled = false; local punchLoop = nil
 local function startPunchLoop()
     if punchLoop then punchLoop:Disconnect() end
@@ -674,194 +489,7 @@ end
 local function stopPunchAimbotLoop() if punchAimbotConnection then punchAimbotConnection:Disconnect(); punchAimbotConnection = nil end end
 AutoPunchGroup:AddToggle("PunchAimbot", {Text = "Punch Aimbot[拳击自瞄]", Default = false, Callback = function(state) punchAimbotEnabled = state; if state then startPunchAimbotLoop(); Library:Notify({Title = "Punch Aimbot", Description = "Enabled", Time = 1}) else stopPunchAimbotLoop(); Library:Notify({Title = "Punch Aimbot", Description = "Disabled", Time = 1}) end end})
 AutoPunchGroup:AddSlider("PunchAimbotMaxDist", {Text = "Max Distance[最大距离]", Default = 20, Min = 5, Max = 50, Rounding = 0, Callback = function(v) punchAimbotMaxDist = v end})
-local VeerAutoTrickGroup = Tabs["Combat"]:AddRightGroupbox("Veeronica Auto Trick[Veeronica自动特技]", "zap")
-do
-    local atEnabled = false
-    local atActiveMonitors = {}
-    local atDescendantAddedConn = nil
-    local function atGetBehaviorFolder()
-        return svc.RS:WaitForChild("Assets"):WaitForChild("Survivors"):WaitForChild("Veeronica"):WaitForChild("Behavior")
-    end
-    local function atGetSprintingButton()
-        return lp.PlayerGui:WaitForChild("MainUI"):WaitForChild("SprintingButton")
-    end
-    local atBehaviorFolder = nil
-    task.spawn(function()
-        local ok, f = pcall(atGetBehaviorFolder)
-        if ok and f then atBehaviorFolder = f end
-    end)
-    local function atSafeConnectPropertyChanged(instance, prop, fn)
-        local ok, signal = pcall(function() return instance:GetPropertyChangedSignal(prop) end)
-        if ok and signal then return signal:Connect(fn) end
-        return nil
-    end
-    local function atMonitorHighlight(h)
-        if not h or atActiveMonitors[h] then return end
-        local connections = {}
-        local prevState = false
-        local function cleanup()
-            for _, conn in ipairs(connections) do if conn and conn.Connected then conn:Disconnect() end end
-            atActiveMonitors[h] = nil
-        end
-        local function adorneeIsPlayer(hh)
-            if not hh then return false end
-            local adornee = hh.Adornee
-            local char = lp.Character
-            if not adornee or not char then return false end
-            return adornee == char or adornee:IsDescendantOf(char)
-        end
-        local function onChanged()
-            if not atEnabled then return end
-            if not h or not h.Parent then cleanup(); return end
-            local currState = adorneeIsPlayer(h)
-            if prevState ~= currState then
-                if currState then
-                    local ok2, btn = pcall(atGetSprintingButton)
-                    if ok2 and btn then
-                        for _, v in pairs(getconnections(btn.MouseButton1Down)) do
-                            pcall(function() v:Fire() end)
-                            pcall(function() if v.Function then v:Function() end end)
-                        end
-                    end
-                end
-            end
-            prevState = currState
-        end
-        local c = atSafeConnectPropertyChanged(h, "Adornee", onChanged)
-        if c then table.insert(connections, c) end
-        table.insert(connections, h.AncestryChanged:Connect(function(_, parent) if not parent then cleanup() else onChanged() end end))
-        table.insert(connections, lp.CharacterAdded:Connect(onChanged))
-        table.insert(connections, lp.CharacterRemoving:Connect(onChanged))
-        atActiveMonitors[h] = cleanup
-        task.spawn(onChanged)
-    end
-    local function atStartManager()
-        if atDescendantAddedConn or not atBehaviorFolder then return end
-        for _, desc in ipairs(atBehaviorFolder:GetDescendants()) do if desc:IsA("Highlight") then atMonitorHighlight(desc) end end
-        atDescendantAddedConn = atBehaviorFolder.DescendantAdded:Connect(function(child) if child:IsA("Highlight") then atMonitorHighlight(child) end end)
-    end
-    local function atStopManager()
-        if atDescendantAddedConn and atDescendantAddedConn.Connected then atDescendantAddedConn:Disconnect() end
-        atDescendantAddedConn = nil
-        local cleans = {}
-        for _, cleanup in pairs(atActiveMonitors) do if type(cleanup) == "function" then table.insert(cleans, cleanup) end end
-        for _, fn in ipairs(cleans) do pcall(fn) end
-        atActiveMonitors = {}
-    end
-    VeerAutoTrickGroup:AddToggle("VeerAutoTrick", {Text = "Auto Trick[自动特技]", Default = false, Callback = function(on)
-        atEnabled = on
-        if on then
-            if not atBehaviorFolder then local ok, f = pcall(atGetBehaviorFolder); if ok and f then atBehaviorFolder = f end end
-            atStartManager()
-        else atStopManager() end
-    end})
-end
-local VeerSK8Group = Tabs["Combat"]:AddRightGroupbox("Veeronica SK8 Control[Veeronica滑板控制]", "zap")
-do
-    local sk8_camera = workspace.CurrentCamera
-    local sk8_shiftlockEnabled = false
-    local sk8_shiftConn = nil
-    local function sk8_setShiftlock(state)
-        sk8_shiftlockEnabled = state
-        if sk8_shiftConn then sk8_shiftConn:Disconnect(); sk8_shiftConn = nil end
-        if sk8_shiftlockEnabled then
-            svc.Input.MouseBehavior = Enum.MouseBehavior.LockCenter
-            sk8_shiftConn = svc.Run.RenderStepped:Connect(function()
-                local character = lp.Character
-                local root = character and character:FindFirstChild("HumanoidRootPart")
-                if root then
-                    local camCF = sk8_camera.CFrame
-                    root.CFrame = CFrame.new(root.Position, Vector3.new(camCF.LookVector.X+root.Position.X, root.Position.Y, camCF.LookVector.Z+root.Position.Z))
-                end
-            end)
-        else svc.Input.MouseBehavior = Enum.MouseBehavior.Default end
-    end
-    local sk8_chargeAnimIds = { "117058860640843" }
-    local sk8_DASH_SPEED = 60
-    local sk8_controlEnabled = cfg:get("sk8ControlEnabled", true)
-    local sk8_controlActive = false
-    local sk8_overrideConn = nil
-    local sk8_savedHumState = {}
-    local function sk8_getHumanoid()
-        if not lp or not lp.Character then return nil end
-        return lp.Character:FindFirstChildOfClass("Humanoid")
-    end
-    local function sk8_saveHumState(hum)
-        if not hum or sk8_savedHumState[hum] then return end
-        local s = {}
-        pcall(function()
-            s.WalkSpeed = hum.WalkSpeed
-            local ok, _ = pcall(function() s.JumpPower = hum.JumpPower end)
-            if not ok then pcall(function() s.JumpPower = hum.JumpHeight end) end
-            local ok2, ar = pcall(function() return hum.AutoRotate end)
-            if ok2 then s.AutoRotate = ar end
-            s.PlatformStand = hum.PlatformStand
-        end)
-        sk8_savedHumState[hum] = s
-    end
-    local function sk8_restoreHumState(hum)
-        if not hum then return end
-        local s = sk8_savedHumState[hum]; if not s then return end
-        pcall(function()
-            if s.WalkSpeed ~= nil then hum.WalkSpeed = s.WalkSpeed end
-            if s.JumpPower ~= nil then
-                local ok, _ = pcall(function() hum.JumpPower = s.JumpPower end)
-                if not ok then pcall(function() hum.JumpHeight = s.JumpPower end) end
-            end
-            if s.AutoRotate ~= nil then pcall(function() hum.AutoRotate = s.AutoRotate end) end
-            if s.PlatformStand ~= nil then hum.PlatformStand = s.PlatformStand end
-        end)
-        sk8_savedHumState[hum] = nil
-    end
-    local function sk8_startOverride()
-        if sk8_controlActive then return end
-        local hum = sk8_getHumanoid(); if not hum then return end
-        sk8_controlActive = true; sk8_saveHumState(hum)
-        pcall(function() hum.WalkSpeed = sk8_DASH_SPEED; hum.AutoRotate = false end)
-        sk8_setShiftlock(true)
-        sk8_overrideConn = svc.Run.RenderStepped:Connect(function()
-            local humanoid = sk8_getHumanoid()
-            local rootPart = humanoid and humanoid.Parent and humanoid.Parent:FindFirstChild("HumanoidRootPart")
-            if not humanoid or not rootPart then return end
-            pcall(function() humanoid.WalkSpeed = sk8_DASH_SPEED; humanoid.AutoRotate = false end)
-            local direction = rootPart.CFrame.LookVector
-            local horizontal = Vector3.new(direction.X, 0, direction.Z)
-            if horizontal.Magnitude > 0 then humanoid:Move(horizontal.Unit) else humanoid:Move(Vector3.new(0,0,0)) end
-        end)
-    end
-    local function sk8_stopOverride()
-        if not sk8_controlActive then return end
-        sk8_controlActive = false
-        if sk8_overrideConn then pcall(function() sk8_overrideConn:Disconnect() end); sk8_overrideConn = nil end
-        sk8_setShiftlock(false)
-        local hum = sk8_getHumanoid()
-        if hum then pcall(function() sk8_restoreHumState(hum); hum:Move(Vector3.new(0,0,0)) end) end
-    end
-    local function sk8_detectChargeAnim()
-        local hum = sk8_getHumanoid(); if not hum then return false end
-        for _, track in ipairs(hum:GetPlayingAnimationTracks()) do
-            local ok, animId = pcall(function() return tostring(track.Animation and track.Animation.AnimationId or ""):match("%d+") end)
-            if ok and animId and animId ~= "" then if table.find(sk8_chargeAnimIds, animId) then return true end end
-        end
-        return false
-    end
-    svc.Run.RenderStepped:Connect(function()
-        if not sk8_controlEnabled then if sk8_controlActive then sk8_stopOverride() end; return end
-        local hum = sk8_getHumanoid()
-        if not hum then if sk8_controlActive then sk8_stopOverride() end; return end
-        if sk8_detectChargeAnim() then if not sk8_controlActive then sk8_startOverride() end
-        else if sk8_controlActive then sk8_stopOverride() end end
-    end)
-    lp.CharacterAdded:Connect(function()
-        if sk8_shiftConn then sk8_shiftConn:Disconnect(); sk8_shiftConn = nil end
-        sk8_savedHumState = {}
-    end)
-    VeerSK8Group:AddToggle("VeerSK8Toggle", {Text = "Enable SK8 Control[启用滑板控制]", Default = sk8_controlEnabled, Callback = function(on)
-        sk8_controlEnabled = on; cfg:set("sk8ControlEnabled", on)
-        if not on and sk8_controlActive then sk8_stopOverride() end
-    end})
-end
-local ChanceAimGroup = Tabs["Combat"]:AddRightGroupbox("Chance Aimbot[Chance自瞄]", "target")
+local ChanceAimGroup = Tabs["Survivor"]:AddRightGroupbox("Chance Aimbot[Chance自瞄]", "target")
 do
     local aimEnabled = false
     local predMode = "Velocity"
@@ -1027,6 +655,328 @@ do
     ChanceAimGroup:AddDropdown("ChanceAimBehavior", {Text = "Aim Behavior[自瞄行为]", Values = {"Normal", "360"}, Default = "Normal", Callback = function(v) aimBehavior = v end})
     ChanceAimGroup:AddSlider("ChanceSpinDuration", {Text = "Spin Duration[旋转持续时间]", Default = 0.5, Min = 0.1, Max = 2, Rounding = 2, Callback = function(v) spinDuration = v end})
 end
+local BackstabSettings = {
+    Enabled = false, Mode = "Blatant", Distance = 15, Offset = 2.0, ShowRange = false,
+    RangeColor = Color3.fromRGB(255, 100, 100), RangeTransparency = 0.5, TeleportSmoothness = 8, TeleportDuration = 0.15,
+    RangeVisuals = {}, Active = false, ActiveKiller = nil, ActiveTrack = nil, LoopConnection = nil, LastBackstab = 0, BackstabCooldown = 1.5, Debug = false,
+}
+local BackstabGroup = Tabs["Survivor"]:AddLeftGroupbox("Auto Backstab[自动背刺]", "target")
+BackstabGroup:AddToggle("EnableBackstab", {Text = "Enable Backstab[启用背刺辅助]", Default = false, Callback = function(state) BackstabSettings.Enabled = state if not state then for k,v in pairs(BackstabSettings.RangeVisuals) do pcall(function() v:Destroy() end) end BackstabSettings.RangeVisuals = {} if BackstabSettings.Active then stopBackstab() end end Library:Notify({Title="Backstab Assist", Description=state and "Enabled" or "Disabled", Time=1}) end})
+BackstabGroup:AddDropdown("BackstabMode", {Text = "Backstab Mode[背刺模式]", Values = {"Blatant", "Teleport"}, Default = "Blatant", Callback = function(sel) BackstabSettings.Mode = sel end})
+BackstabGroup:AddSlider("BackstabDistance", {Text = "Backstab Distance[背刺距离]", Default = 15, Min = 5, Max = 30, Rounding = 1, Callback = function(v) BackstabSettings.Distance = v if BackstabSettings.ShowRange then for k,part in pairs(BackstabSettings.RangeVisuals) do if part and part.Parent then part.Size = Vector3.new(v * 2, 1, v * 2) end end end end})
+BackstabGroup:AddSlider("BackstabOffset", {Text = "Backstab Offset[背刺偏移]", Default = 2.0, Min = 1, Max = 5, Rounding = 1, Callback = function(v) BackstabSettings.Offset = v end})
+BackstabGroup:AddToggle("ShowBackstabRange", {Text = "Show Backstab Range[显示背刺范围]", Default = false, Callback = function(state) BackstabSettings.ShowRange = state if state then local kf = getKillersFolder(); if kf then for _,k in ipairs(kf:GetChildren()) do if k:IsA("Model") then createBackstabRangeVisual(k) end end end else for _,part in pairs(BackstabSettings.RangeVisuals) do pcall(function() part:Destroy() end) end BackstabSettings.RangeVisuals = {} end end})
+BackstabGroup:AddLabel("Range Color[范围颜色]"):AddColorPicker("BackstabRangeColor", {Default = BackstabSettings.RangeColor, Title = "Range Color", Callback = function(v) BackstabSettings.RangeColor = v; for _,part in pairs(BackstabSettings.RangeVisuals) do if part then part.Color = v end end end})
+local function debugLog(msg) if BackstabSettings.Debug then print("[Backstab] "..msg) end end
+local function createBackstabRangeVisual(killerModel)
+    if not killerModel or not killerModel:IsA("Model") then return nil end
+    if BackstabSettings.RangeVisuals[killerModel] then return end
+    local root = killerModel:FindFirstChild("HumanoidRootPart"); if not root then return nil end
+    local part = Instance.new("Part"); part.Name = "BackstabRangeVisual"; part.Shape = Enum.PartType.Ball
+    part.Size = Vector3.new(BackstabSettings.Distance * 2, 1, BackstabSettings.Distance * 2)
+    part.Color = BackstabSettings.RangeColor; part.Material = Enum.Material.ForceField; part.Transparency = BackstabSettings.RangeTransparency
+    part.Anchored = false; part.CanCollide = false; part.CFrame = root.CFrame
+    local weld = Instance.new("WeldConstraint"); weld.Part0 = root; weld.Part1 = part; weld.Parent = part; part.Parent = root
+    BackstabSettings.RangeVisuals[killerModel] = part; return part
+end
+local function updateBackstabRangeVisuals()
+    if not BackstabSettings.ShowRange then return end
+    local killersFolder = getKillersFolder(); if not killersFolder then return end
+    for _, killer in ipairs(killersFolder:GetChildren()) do if killer:IsA("Model") and not BackstabSettings.RangeVisuals[killer] then createBackstabRangeVisual(killer) end end
+    for killer, part in pairs(BackstabSettings.RangeVisuals) do if not killer or not killer.Parent then pcall(function() part:Destroy() end); BackstabSettings.RangeVisuals[killer] = nil end end
+end
+local function stopBackstab()
+    if BackstabSettings.LoopConnection then BackstabSettings.LoopConnection:Disconnect(); BackstabSettings.LoopConnection = nil end
+    BackstabSettings.Active = false; BackstabSettings.ActiveKiller = nil; BackstabSettings.ActiveTrack = nil
+    local char = localPlayer.Character; if char then local hum = char:FindFirstChildOfClass("Humanoid"); if hum then hum.AutoRotate = true end end
+end
+local function startBackstabLoop(killerModel, track)
+    if BackstabSettings.LoopConnection then BackstabSettings.LoopConnection:Disconnect() end
+    local char = localPlayer.Character; if not char then stopBackstab(); return end
+    local hum = char:FindFirstChildOfClass("Humanoid"); if hum then hum.AutoRotate = false end
+    BackstabSettings.LoopConnection = game:GetService("RunService").RenderStepped:Connect(function()
+        if not BackstabSettings.Active then stopBackstab(); return end
+        if not killerModel or not killerModel.Parent then stopBackstab(); return end
+        local myChar = localPlayer.Character; if not myChar or not myChar.Parent then stopBackstab(); return end
+        local root = myChar:FindFirstChild("HumanoidRootPart"); local killerRoot = killerModel:FindFirstChild("HumanoidRootPart")
+        if not root or not killerRoot then stopBackstab(); return end
+        local behindOffset = -killerRoot.CFrame.LookVector * BackstabSettings.Offset
+        local targetPos = killerRoot.Position + behindOffset + Vector3.new(0,0.5,0)
+        root.CFrame = CFrame.new(targetPos, killerRoot.Position)
+    end)
+    if track and track.Parent then
+        local conn; conn = track.Stopped:Connect(function() conn:Disconnect(); stopBackstab() end)
+        local ancConn; ancConn = track.AncestryChanged:Connect(function() if not track.Parent then ancConn:Disconnect(); stopBackstab() end end)
+    else task.delay(BackstabSettings.TeleportDuration + 0.5, function() if BackstabSettings.Active and BackstabSettings.ActiveTrack == track then stopBackstab() end end) end
+end
+local function performBackstab(killerModel, track, shouldLock)
+    if not killerModel or not killerModel.Parent then return false end
+    local myChar = localPlayer.Character; if not myChar then return false end
+    local root = myChar:FindFirstChild("HumanoidRootPart"); local killerRoot = killerModel:FindFirstChild("HumanoidRootPart")
+    if not root or not killerRoot then return false end
+    local mode = BackstabSettings.Mode
+    local behindOffset = -killerRoot.CFrame.LookVector * BackstabSettings.Offset
+    local targetPos = killerRoot.Position + behindOffset + Vector3.new(0,0.5,0)
+    local targetCF = CFrame.new(targetPos, killerRoot.Position)
+    local startCF = root.CFrame
+    local steps = BackstabSettings.TeleportSmoothness; local stepTime = BackstabSettings.TeleportDuration / steps
+    for i=1, steps do root.CFrame = startCF:Lerp(targetCF, i/steps); task.wait(stepTime) end
+    root.CFrame = targetCF
+    if mode == "Blatant" then
+        if shouldLock then BackstabSettings.Active = true; BackstabSettings.ActiveKiller = killerModel; BackstabSettings.ActiveTrack = track; startBackstabLoop(killerModel, track) end
+    end
+    return true
+end
+local function getNearestKillerForBackstab()
+    local killers = getKillersFolder(); if not killers then return nil end
+    local myChar = localPlayer.Character; if not myChar then return nil end
+    local myRoot = myChar:FindFirstChild("HumanoidRootPart"); if not myRoot then return nil end
+    local nearest, nearestDist = nil, math.huge
+    for _, killer in ipairs(killers:GetChildren()) do if killer:IsA("Model") and killer:FindFirstChild("HumanoidRootPart") and killer:GetAttribute("IsFakeNoli") ~= true then local dist = (killer.HumanoidRootPart.Position - myRoot.Position).Magnitude; if dist <= BackstabSettings.Distance and dist < nearestDist then nearestDist = dist; nearest = killer end end end
+    return nearest
+end
+local backstabAnimIds = { moveOnly = { ["100725497418533"] = true }, lock = { ["108018357044094"] = true } }
+local backstabAnimConn = nil
+local function hookPlayerAnimationsForBackstab()
+    local char = localPlayer.Character; if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid"); if not hum then return end
+    local animator = hum:FindFirstChildOfClass("Animator"); if not animator then return end
+    if backstabAnimConn then backstabAnimConn:Disconnect() end
+    backstabAnimConn = animator.AnimationPlayed:Connect(function(track)
+        if not BackstabSettings.Enabled then return end
+        local playersFolder = workspace:FindFirstChild("Players"); if not playersFolder then return end
+        local survivors = playersFolder:FindFirstChild("Survivors"); if not survivors then return end
+        if not char:IsDescendantOf(survivors) then return end
+        local animId = track.Animation.AnimationId:match("%d+"); if not animId then return end
+        local shouldLock = false; if backstabAnimIds.moveOnly[animId] then shouldLock = false elseif backstabAnimIds.lock[animId] then shouldLock = true else return end
+        local now = tick(); if now - BackstabSettings.LastBackstab < BackstabSettings.BackstabCooldown then return end
+        local target = getNearestKillerForBackstab()
+        if target then BackstabSettings.LastBackstab = now; performBackstab(target, track, shouldLock) end
+    end)
+end
+if localPlayer.Character then hookPlayerAnimationsForBackstab() end
+localPlayer.CharacterAdded:Connect(function() task.wait(0.5); hookPlayerAnimationsForBackstab() end)
+task.spawn(function() while task.wait(1) do if BackstabSettings.ShowRange then updateBackstabRangeVisuals() else for _,part in pairs(BackstabSettings.RangeVisuals) do pcall(function() part:Destroy() end) end BackstabSettings.RangeVisuals = {} end end end)
+local oldUnload = Library.OnUnload; Library.OnUnload = function() if backstabAnimConn then backstabAnimConn:Disconnect() end; stopBackstab(); for _,part in pairs(BackstabSettings.RangeVisuals) do pcall(function() part:Destroy() end) end; if oldUnload then oldUnload() end end
+
+local VeerAutoTrickGroup = Tabs["Survivor"]:AddRightGroupbox("Veeronica Auto Trick[Veeronica自动特技]", "zap")
+do
+    local atEnabled = false
+    local atActiveMonitors = {}
+    local atDescendantAddedConn = nil
+    local function atGetBehaviorFolder()
+        return svc.RS:WaitForChild("Assets"):WaitForChild("Survivors"):WaitForChild("Veeronica"):WaitForChild("Behavior")
+    end
+    local function atGetSprintingButton()
+        return lp.PlayerGui:WaitForChild("MainUI"):WaitForChild("SprintingButton")
+    end
+    local atBehaviorFolder = nil
+    task.spawn(function()
+        local ok, f = pcall(atGetBehaviorFolder)
+        if ok and f then atBehaviorFolder = f end
+    end)
+    local function atSafeConnectPropertyChanged(instance, prop, fn)
+        local ok, signal = pcall(function() return instance:GetPropertyChangedSignal(prop) end)
+        if ok and signal then return signal:Connect(fn) end
+        return nil
+    end
+    local function atMonitorHighlight(h)
+        if not h or atActiveMonitors[h] then return end
+        local connections = {}
+        local prevState = false
+        local function cleanup()
+            for _, conn in ipairs(connections) do if conn and conn.Connected then conn:Disconnect() end end
+            atActiveMonitors[h] = nil
+        end
+        local function adorneeIsPlayer(hh)
+            if not hh then return false end
+            local adornee = hh.Adornee
+            local char = lp.Character
+            if not adornee or not char then return false end
+            return adornee == char or adornee:IsDescendantOf(char)
+        end
+        local function onChanged()
+            if not atEnabled then return end
+            if not h or not h.Parent then cleanup(); return end
+            local currState = adorneeIsPlayer(h)
+            if prevState ~= currState then
+                if currState then
+                    local ok2, btn = pcall(atGetSprintingButton)
+                    if ok2 and btn then
+                        for _, v in pairs(getconnections(btn.MouseButton1Down)) do
+                            pcall(function() v:Fire() end)
+                            pcall(function() if v.Function then v:Function() end end)
+                        end
+                    end
+                end
+            end
+            prevState = currState
+        end
+        local c = atSafeConnectPropertyChanged(h, "Adornee", onChanged)
+        if c then table.insert(connections, c) end
+        table.insert(connections, h.AncestryChanged:Connect(function(_, parent) if not parent then cleanup() else onChanged() end end))
+        table.insert(connections, lp.CharacterAdded:Connect(onChanged))
+        table.insert(connections, lp.CharacterRemoving:Connect(onChanged))
+        atActiveMonitors[h] = cleanup
+        task.spawn(onChanged)
+    end
+    local function atStartManager()
+        if atDescendantAddedConn or not atBehaviorFolder then return end
+        for _, desc in ipairs(atBehaviorFolder:GetDescendants()) do if desc:IsA("Highlight") then atMonitorHighlight(desc) end end
+        atDescendantAddedConn = atBehaviorFolder.DescendantAdded:Connect(function(child) if child:IsA("Highlight") then atMonitorHighlight(child) end end)
+    end
+    local function atStopManager()
+        if atDescendantAddedConn and atDescendantAddedConn.Connected then atDescendantAddedConn:Disconnect() end
+        atDescendantAddedConn = nil
+        local cleans = {}
+        for _, cleanup in pairs(atActiveMonitors) do if type(cleanup) == "function" then table.insert(cleans, cleanup) end end
+        for _, fn in ipairs(cleans) do pcall(fn) end
+        atActiveMonitors = {}
+    end
+    VeerAutoTrickGroup:AddToggle("VeerAutoTrick", {Text = "Auto Trick[自动特技]", Default = false, Callback = function(on)
+        atEnabled = on
+        if on then
+            if not atBehaviorFolder then local ok, f = pcall(atGetBehaviorFolder); if ok and f then atBehaviorFolder = f end end
+            atStartManager()
+        else atStopManager() end
+    end})
+end
+
+local VeerSK8Group = Tabs["Survivor"]:AddRightGroupbox("Veeronica SK8 Control[Veeronica滑板控制]", "zap")
+do
+    local sk8_camera = workspace.CurrentCamera
+    local sk8_shiftlockEnabled = false
+    local sk8_shiftConn = nil
+    local function sk8_setShiftlock(state)
+        sk8_shiftlockEnabled = state
+        if sk8_shiftConn then sk8_shiftConn:Disconnect(); sk8_shiftConn = nil end
+        if sk8_shiftlockEnabled then
+            svc.Input.MouseBehavior = Enum.MouseBehavior.LockCenter
+            sk8_shiftConn = svc.Run.RenderStepped:Connect(function()
+                local character = lp.Character
+                local root = character and character:FindFirstChild("HumanoidRootPart")
+                if root then
+                    local camCF = sk8_camera.CFrame
+                    root.CFrame = CFrame.new(root.Position, Vector3.new(camCF.LookVector.X+root.Position.X, root.Position.Y, camCF.LookVector.Z+root.Position.Z))
+                end
+            end)
+        else svc.Input.MouseBehavior = Enum.MouseBehavior.Default end
+    end
+    local sk8_chargeAnimIds = { "117058860640843" }
+    local sk8_DASH_SPEED = 60
+    local sk8_controlEnabled = cfg:get("sk8ControlEnabled", true)
+    local sk8_controlActive = false
+    local sk8_overrideConn = nil
+    local sk8_savedHumState = {}
+    local function sk8_getHumanoid()
+        if not lp or not lp.Character then return nil end
+        return lp.Character:FindFirstChildOfClass("Humanoid")
+    end
+    local function sk8_saveHumState(hum)
+        if not hum or sk8_savedHumState[hum] then return end
+        local s = {}
+        pcall(function()
+            s.WalkSpeed = hum.WalkSpeed
+            local ok, _ = pcall(function() s.JumpPower = hum.JumpPower end)
+            if not ok then pcall(function() s.JumpPower = hum.JumpHeight end) end
+            local ok2, ar = pcall(function() return hum.AutoRotate end)
+            if ok2 then s.AutoRotate = ar end
+            s.PlatformStand = hum.PlatformStand
+        end)
+        sk8_savedHumState[hum] = s
+    end
+    local function sk8_restoreHumState(hum)
+        if not hum then return end
+        local s = sk8_savedHumState[hum]; if not s then return end
+        pcall(function()
+            if s.WalkSpeed ~= nil then hum.WalkSpeed = s.WalkSpeed end
+            if s.JumpPower ~= nil then
+                local ok, _ = pcall(function() hum.JumpPower = s.JumpPower end)
+                if not ok then pcall(function() hum.JumpHeight = s.JumpPower end) end
+            end
+            if s.AutoRotate ~= nil then pcall(function() hum.AutoRotate = s.AutoRotate end) end
+            if s.PlatformStand ~= nil then hum.PlatformStand = s.PlatformStand end
+        end)
+        sk8_savedHumState[hum] = nil
+    end
+    local function sk8_startOverride()
+        if sk8_controlActive then return end
+        local hum = sk8_getHumanoid(); if not hum then return end
+        sk8_controlActive = true; sk8_saveHumState(hum)
+        pcall(function() hum.WalkSpeed = sk8_DASH_SPEED; hum.AutoRotate = false end)
+        sk8_setShiftlock(true)
+        sk8_overrideConn = svc.Run.RenderStepped:Connect(function()
+            local humanoid = sk8_getHumanoid()
+            local rootPart = humanoid and humanoid.Parent and humanoid.Parent:FindFirstChild("HumanoidRootPart")
+            if not humanoid or not rootPart then return end
+            pcall(function() humanoid.WalkSpeed = sk8_DASH_SPEED; humanoid.AutoRotate = false end)
+            local direction = rootPart.CFrame.LookVector
+            local horizontal = Vector3.new(direction.X, 0, direction.Z)
+            if horizontal.Magnitude > 0 then humanoid:Move(horizontal.Unit) else humanoid:Move(Vector3.new(0,0,0)) end
+        end)
+    end
+    local function sk8_stopOverride()
+        if not sk8_controlActive then return end
+        sk8_controlActive = false
+        if sk8_overrideConn then pcall(function() sk8_overrideConn:Disconnect() end); sk8_overrideConn = nil end
+        sk8_setShiftlock(false)
+        local hum = sk8_getHumanoid()
+        if hum then pcall(function() sk8_restoreHumState(hum); hum:Move(Vector3.new(0,0,0)) end) end
+    end
+    local function sk8_detectChargeAnim()
+        local hum = sk8_getHumanoid(); if not hum then return false end
+        for _, track in ipairs(hum:GetPlayingAnimationTracks()) do
+            local ok, animId = pcall(function() return tostring(track.Animation and track.Animation.AnimationId or ""):match("%d+") end)
+            if ok and animId and animId ~= "" then if table.find(sk8_chargeAnimIds, animId) then return true end end
+        end
+        return false
+    end
+    svc.Run.RenderStepped:Connect(function()
+        if not sk8_controlEnabled then if sk8_controlActive then sk8_stopOverride() end; return end
+        local hum = sk8_getHumanoid()
+        if not hum then if sk8_controlActive then sk8_stopOverride() end; return end
+        if sk8_detectChargeAnim() then if not sk8_controlActive then sk8_startOverride() end
+        else if sk8_controlActive then sk8_stopOverride() end end
+    end)
+    lp.CharacterAdded:Connect(function()
+        if sk8_shiftConn then sk8_shiftConn:Disconnect(); sk8_shiftConn = nil end
+        sk8_savedHumState = {}
+    end)
+    VeerSK8Group:AddToggle("VeerSK8Toggle", {Text = "Enable SK8 Control[启用滑板控制]", Default = sk8_controlEnabled, Callback = function(on)
+        sk8_controlEnabled = on; cfg:set("sk8ControlEnabled", on)
+        if not on and sk8_controlActive then sk8_stopOverride() end
+    end})
+end
+
+local BypassGroupLeft = Tabs["Bypass"]:AddLeftGroupbox("Speed Modify[速度修改]", "gauge")
+local BypassGroupRight = Tabs["Bypass"]:AddRightGroupbox("Flight[飞行]", "plane")
+local speedValue = 0; local speedToggle = false
+local function speedLoop() while speedToggle do local hum = localPlayer.Character and localPlayer.Character:FindFirstChild("Humanoid"); if hum and hum.MoveDirection ~= Vector3.zero then localPlayer.Character:TranslateBy(hum.MoveDirection * speedValue * game:GetService("RunService").RenderStepped:Wait()) end; task.wait() end end
+BypassGroupLeft:AddSlider("SpeedBypass", {Text="Speed[速度]", Default=16, Min=1, Max=500, Rounding=0, Callback=function(v) speedValue=v end})
+BypassGroupLeft:AddToggle("SpeedToggle", {Text="Enable Speed[启用速度]", Default=false, Callback=function(s) speedToggle=s; if s then task.spawn(speedLoop); Library:Notify({Title="Speed", Description="Enabled", Time=1}) else Library:Notify({Title="Speed", Description="Disabled", Time=1}) end end})
+local CFSpeed = 50; local CFLoop = nil
+local function StartCFly()
+    local char = localPlayer.Character; if not char then return end
+    local hum = char:FindFirstChildOfClass('Humanoid'); local head = char:WaitForChild("Head")
+    if not hum or not head then return end
+    hum.PlatformStand = true; head.Anchored = true
+    if CFLoop then CFLoop:Disconnect(); CFLoop = nil end
+    CFLoop = game:GetService("RunService").Heartbeat:Connect(function(dt)
+        if not char or not hum or not head then if CFLoop then CFLoop:Disconnect(); CFLoop = nil end return end
+        local moveDir = hum.MoveDirection * (CFSpeed * dt)
+        local headCF = head.CFrame; local cam = workspace.CurrentCamera; local camCF = cam.CFrame
+        local off = headCF:ToObjectSpace(camCF).Position; camCF = camCF * CFrame.new(-off.X, -off.Y, -off.Z + 1)
+        local camPos = camCF.Position; local headPos = headCF.Position
+        local objVel = CFrame.new(camPos, Vector3.new(headPos.X, camPos.Y, headPos.Z)):VectorToObjectSpace(moveDir)
+        head.CFrame = CFrame.new(headPos) * (camCF - camPos) * CFrame.new(objVel)
+    end)
+end
+local function StopCFly()
+    if CFLoop then CFLoop:Disconnect(); CFLoop = nil end
+    local char = localPlayer.Character; if char then local hum = char:FindFirstChildOfClass('Humanoid'); local head = char:FindFirstChild("Head"); if hum then hum.PlatformStand = false end; if head then head.Anchored = false end end
+end
+BypassGroupRight:AddToggle("CFlyToggle", {Text="Flight[飞行]", Default=false, Callback=function(v) if v then StartCFly(); Library:Notify({Title="Flight", Description="Enabled", Time=1}) else StopCFly(); Library:Notify({Title="Flight", Description="Disabled", Time=1}) end end})
+BypassGroupRight:AddSlider("CFlySpeed", {Text="Flight Speed[飞行速度]", Default=50, Min=1, Max=200, Rounding=1, Callback=function(v) CFSpeed=v end})
 local HitboxGroup = Tabs["Bypass"]:AddRightGroupbox("Hitbox[碰撞箱]", "target")
 local extendEnabled = false; local extendPower = 3; local extendDuration = 0.15
 local function ExtendHitbox(studs, time)
@@ -1068,6 +1018,87 @@ end
 HitboxGroup:AddToggle("ExtendEnable", {Text="Hitbox Extend[碰撞箱扩展]", Default=false, Callback=function(s) onExtendToggle(s) end})
 HitboxGroup:AddSlider("ExtendPower", {Text="Extend Power[扩展强度]", Default=3, Min=1, Max=100, Rounding=1, Callback=function(v) extendPower=v end})
 HitboxGroup:AddSlider("ExtendDuration", {Text="Duration[持续时间]", Default=0.15, Min=0.05, Max=0.5, Rounding=2, Callback=function(v) extendDuration=v end})
+local hitboxUILoaded = false
+local function loadHitboxUI()
+    if hitboxUILoaded then return end; hitboxUILoaded = true
+    local Players = game:GetService("Players"); local RunService = game:GetService("RunService"); local CoreGui = game:GetService("CoreGui"); local Workspace = game:GetService("Workspace")
+    local speaker = Players.LocalPlayer; local HitboxGay = false; local loopRunning = false; local player = Players.LocalPlayer
+    local function isAnimationPlaying(ids)
+        local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid"); local animator = hum and hum:FindFirstChildOfClass("Animator")
+        if not animator then return false end
+        if typeof(ids) ~= "table" then ids = { ids } end
+        for _, track in ipairs(animator:GetPlayingAnimationTracks()) do local animId = track.Animation.AnimationId:match("%d+"); for _, id in ipairs(ids) do if animId == tostring(id) then return true end end end
+        return false
+    end
+    local gui = Instance.new("ScreenGui"); gui.Name = "HitboxGayGui"; gui.Parent = CoreGui
+    local button = Instance.new("TextButton"); button.Size = UDim2.new(0, 150, 0, 50); button.Position = UDim2.new(0.4, 0, 0.2, 0); button.Text = "Hitbox: OFF"; button.BackgroundColor3 = Color3.fromRGB(40, 40, 40); button.TextColor3 = Color3.fromRGB(255, 255, 255); button.Active = true; button.Draggable = true; button.Parent = gui
+    local lastText = "Hitbox: OFF"
+    task.spawn(function() while true do RunService.RenderStepped:Wait(); local txt = HitboxGay and "Hitbox: ON" or "Hitbox: OFF"; if txt ~= lastText then button.Text = txt; lastText = txt end end end)
+    local function getRoot(character) return character and character:FindFirstChild("HumanoidRootPart") end
+    local checkBoxSize = Vector3.new(100, 50, 100)
+    local function isDescendantOf(obj, parent) return obj and parent and obj:IsDescendantOf(parent) end
+    local function getNearestHumanoid()
+        if not speaker.Character then return nil end
+        local root = getRoot(speaker.Character); if not root then return nil end
+        local char = speaker.Character
+        local isSurvivor = isDescendantOf(char, Workspace.Players:FindFirstChild("Survivors"))
+        local isKiller = isDescendantOf(char, Workspace.Players:FindFirstChild("Killers"))
+        local targetGroup = nil; if isSurvivor then targetGroup = Workspace.Players:FindFirstChild("Killers") elseif isKiller then targetGroup = Workspace.Players:FindFirstChild("Survivors") end
+        local parts = Workspace:GetPartBoundsInBox(root.CFrame, checkBoxSize)
+        local nearest, dist = nil, math.huge
+        for _, part in pairs(parts) do
+            local c = part:FindFirstAncestorOfClass("Model")
+            if c and c:FindFirstChild("Humanoid") and c:FindFirstChild("HumanoidRootPart") then
+                if c ~= speaker.Character and c.Humanoid.Health > 0 then
+                    _G.IsNpc = false; local valid = targetGroup and isDescendantOf(c, targetGroup) or true
+                    if valid then local hrp = c.HumanoidRootPart; local d = (hrp.Position - root.Position).Magnitude; if d < dist then dist = d; nearest = hrp end end
+                end
+            end
+        end
+        if not nearest then for _, part in pairs(parts) do local c = part:FindFirstAncestorOfClass("Model"); if c and c:FindFirstChild("Humanoid") and c:FindFirstChild("HumanoidRootPart") and c ~= speaker.Character and c.Humanoid.Health > 0 then _G.IsNpc = true; local hrp = c.HumanoidRootPart; local d = (hrp.Position - root.Position).Magnitude; if d < dist then dist = d; nearest = hrp end end end end
+        return nearest
+    end
+    local function startHitboxGay()
+        if loopRunning then return end; loopRunning = true
+        task.spawn(function()
+            while HitboxGay do
+                RunService.Heartbeat:Wait()
+                local character = speaker.Character; local root = getRoot(character)
+                local vel, movel = nil, 0.1
+                while not (character and character.Parent and root and root.Parent) do RunService.Heartbeat:Wait(); character = speaker.Character; root = getRoot(character) end
+                vel = root.Velocity
+                local ids = {
+                    126830014841198, 126355327951215, 121086746534252, 18885909645,
+                    106776364623742, 105458270463374, 106538427162796, 126896426760253,
+                    83829782357897, 116618003477002, 86545133269813, 106014898528300,
+                    87259391926321, 133491532453922, 98031287364865, 119462383658044,
+                    77448521277146, 103741352379819, 131696603025265, 122503338277352,
+                    97648548303678, 94162446513587, 84426150435898, 93069721274110,
+                    114620047310688, 97433060861952, 82183356141401, 100592913030351,
+                    121293883585738, 70447634862911, 92173139187970, 106847695270773,
+                    125403313786645, 81639435858902, 137314737492715, 120112897026015,
+                    82113744478546, 118298475669935, 126681776859538, 129976080405072,
+                    109667959938617, 74707328554358, 133336594357903, 86204001129974,
+                    124243639579224, 70371667919898, 131543461321709, 136323728355613
+                }
+                if isAnimationPlaying(ids) then
+                    local target = getNearestHumanoid()
+                    if target then
+                        local futurePos = not _G.IsNpc and target.Position + target.Velocity * 1.2 or target.Position
+                        local offset = futurePos - root.Position; local distance = offset.Magnitude; local direction = offset.Unit
+                        local speed = distance * 6
+                        root.Velocity = vel + Vector3.new(direction.X * speed, direction.Y * speed, direction.Z * speed)
+                    end
+                end
+                RunService.RenderStepped:Wait(); if character and root then root.Velocity = vel end
+                RunService.Stepped:Wait(); if character and root then root.Velocity = vel + Vector3.new(0, movel, 0); movel = -movel end
+            end
+            loopRunning = false
+        end)
+    end
+    button.MouseButton1Click:Connect(function() HitboxGay = not HitboxGay; if HitboxGay then startHitboxGay() end end)
+end
+HitboxGroup:AddButton({Text = "Load Hitbox Track[加载hitbox追踪]", Func = function() loadHitboxUI(); Library:Notify({Title="Hitbox Track", Description="Load successful", Time=2}) end})
 local Services = { Players = game:GetService("Players"), RunService = game:GetService("RunService"), Workspace = game:GetService("Workspace") }
 local LocalPlayer = Services.Players.LocalPlayer
 local Camera = Services.Workspace.CurrentCamera
@@ -1417,7 +1448,24 @@ local AnimPresets = {
     ["John Doe"] = { Idle = "105880087711722", Walk = "81193817424328", Run = "132653655520682" },
     ["Noli"] = { Idle = "83465205704188", Walk = "109700476007435", Run = "117451341682452" },
     ["1x1x1x1"] = { Idle = "138754221537146", Walk = "109130982296927", Run = "106485518413331" },
-    ["Nosferatu"] = { Idle = "70639889347646", Walk = "125580704385106", Run = "82983377044738" }
+    ["Nosferatu"] = { Idle = "70639889347646", Walk = "125580704385106", Run = "82983377044738" },
+    ["xX4ceOfSpadesXx"] = { Idle = "83386237316095", Walk = "73232931166638", Run = "102965304565670" },
+    ["The Pestilence"] = { Idle = "87749799033132", Walk = "89281559077512", Run = "108688319372143" },
+    ["Hacklord"] = { Idle = "106131211773069", Walk = "119112338263474", Run = "85339002634979" },
+    ["1x Milestone IV"] = { Idle = "139325613303804", Walk = "119822079059798", Run = "130006476298106" },
+    ["Digital Rider"] = { Idle = "83139195403190", Walk = "116833695762672", Run = "113749369268942" },
+    ["John Doe Milestone IV"] = { Idle = "82559085571201", Walk = "88665566861294", Run = "122746181525119" },
+    ["The Admin"] = { Idle = "119473916907837", Walk = "89706191899405", Run = "124250212996049" },
+    ["Noli Milestone IV"] = { Idle = "110933164243478", Walk = "132550421221296", Run = "105441420067903" },
+    ["Retro/KillerKyle"] = { Idle = "94287675905871", Walk = "131974753832094", Run = "115805325834498" },
+    ["White Pumpkin"] = { Idle = "129258407299450", Walk = "120452519884275", Run = "73353742411211" },
+    ["Pursuer"] = { Idle = "94895464960972", Walk = "100206079439305", Run = "138660433982140" },
+    ["Slasher Milestone IV"] = { Idle = "130845741894386", Walk = "83827107895294", Run = "70394212408625" },
+    ["Alfred Drevis"] = { Idle = "74229334184078", Walk = "110339633238364", Run = "103326147232210" },
+    ["Martyr"] = { Idle = "135861240743370", Walk = "110778442730032", Run = "140129180242872" },
+    ["Celebration"] = { Idle = "84321659776143", Walk = "80918877587764", Run = "111367557693514" },
+    ["Mafioso"] = { Idle = "96029349600709", Walk = "122086286372651", Run = "73833636394121" },
+    ["c00lkidd Milestone IV"] = { Idle = "136752484165169", Walk = "124582615971845", Run = "113259297401193" },
 }
 local presetNames = {}; for name, _ in pairs(AnimPresets) do table.insert(presetNames, name) end; table.sort(presetNames)
 local customAnimData = { active = false, preset = nil, tracks = { Idle = nil, Walk = nil, Run = nil }, connection = nil }
@@ -1462,6 +1510,7 @@ end
 local function removeFakeBlockButton() if fakeBlockConnection then fakeBlockConnection:Disconnect(); fakeBlockConnection = nil end; if fakeBlockButtonFrame then fakeBlockButtonFrame:Destroy(); fakeBlockButtonFrame = nil end end
 FakeBlockGroup:AddToggle("EnableFakeBlock", { Text = "Enable Fake Block[启用伪格挡]", Default = false, Callback = function(state) fakeBlockEnabled = state; if state then task.wait(0.5); createFakeBlockButton() else removeFakeBlockButton() end; Library:Notify({Title="Fake Block", Description=state and "Enabled" or "Disabled", Time=1}) end })
 localPlayer.CharacterAdded:Connect(function() if fakeBlockEnabled then task.wait(0.5); createFakeBlockButton() end end)
+
 local MiscGroupLeft = Tabs["Misc"]:AddLeftGroupbox("Utilities[实用工具]", "wrench")
 MiscGroupLeft:AddToggle("NetworkPingToggle", {
     Text = "Network Ping Compensation[网络延迟补偿]",
@@ -1638,8 +1687,8 @@ ThemeManager:ApplyToTab(Tabs["UI Settings"])
 Library:OnUnload(function()
     if RangeVisual then RangeVisual:Destroy() end; clearAllInverseVisuals()
     if extendAnimConnection then extendAnimConnection:Disconnect() end
+    local gui = game.CoreGui:FindFirstChild("HitboxGayGui"); if gui then gui:Destroy() end
     getgenv().emergency_stop = true; print("Fixsaken unloaded!")
-    stopHitboxBlockMode()
 end)
 Library:SetWatermarkVisibility(true)
 local function getUSATimeAndGreeting()
