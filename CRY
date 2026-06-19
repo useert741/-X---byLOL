@@ -50,6 +50,7 @@ local tabs = {
     ESP = window:CreateTab("ESP"),
     Gen = window:CreateTab("Generator"),
     Bypass = window:CreateTab("Bypass"),
+    Actions = window:CreateTab("Actions"),
     Misc = window:CreateTab("Misc"),
     UISettings = window:CreateTab("UI Settings"),
 }
@@ -305,6 +306,75 @@ local function flowSolve(p) if not p or not p.Solution then return end local idx
 do local modFolder=svc.RS:FindFirstChild("Modules") local miniFolder=modFolder and modFolder:FindFirstChild("Minigames") local fgFolder=miniFolder and miniFolder:FindFirstChild("FlowGameManager") local fgModule=fgFolder and fgFolder:FindFirstChild("FlowGame") if fgModule then local ok,FG=pcall(require,fgModule) if ok and FG and FG.new then local orig=FG.new FG.new=function(...) local p=orig(...) if flow.on then task.spawn(function() task.wait(0.3) flowSolve(p) end) end return p end end end end
 genV2:CreateToggle("Auto Repair", false, function(v) flow.on=v end)
 genV2:CreateSlider("Speed", 0.01, 0.50, 0.04, false, function(v) flow.speed=v end)
+
+pcall(function()
+    local function getRemoteEvent() return svc.RS:FindFirstChild("Modules") and svc.RS.Modules:FindFirstChild("Network") and svc.RS.Modules.Network:FindFirstChild("RemoteEvent") end
+    local function stopAllEmotes() local c=lp.Character if not c then return end local h=c:FindFirstChildOfClass("Humanoid") if h then local a=h:FindFirstChildOfClass("Animator") if a then for _,t in ipairs(a:GetPlayingAnimationTracks()) do pcall(function() t:Stop() t:Destroy() end) end end h.PlatformStand=false h.JumpPower=50 end local rp=c:FindFirstChild("HumanoidRootPart") if rp then for _,s in ipairs(rp:GetChildren()) do if s:IsA("Sound") then pcall(function() s:Stop() s:Destroy() end) end end end for _,ch in ipairs(c:GetChildren()) do if ch.Name:match("Emote") or ch.Name=="PlayerEmoteVFX" then pcall(function() ch:Destroy() end) end end local r=getRemoteEvent() if r then pcall(function() r:FireServer("StopEmote") end) pcall(function() r:FireServer("PlayEmote","Animations","Stop") end) end end
+    local function playEmote(aid,sid,vol,lp,rn,ea) stopAllEmotes() local c=lp.Character if not c then return nil end local h=c:FindFirstChildOfClass("Humanoid") local rp=c:FindFirstChild("HumanoidRootPart") if not h or not rp then return nil end h.PlatformStand=true h.JumpPower=0 local bv=Instance.new("BodyVelocity") bv.MaxForce=Vector3.new(100000,100000,100000) bv.Velocity=Vector3.zero bv.Parent=rp local an=Instance.new("Animation") an.AnimationId=aid local a=h:FindFirstChildOfClass("Animator") if not a then a=Instance.new("Animator") a.Parent=h end local t=a:LoadAnimation(an) t:Play() if sid and sid~="" then local s=Instance.new("Sound") s.SoundId=sid s.Volume=vol or 0.5 s.Looped=lp or false s.Parent=rp s:Play() end if ea then pcall(function() local e=svc.RS:FindFirstChild(ea) if e then local cl=e:Clone() cl.Name="PlayerEmoteVFX" if c.PrimaryPart then cl.CFrame=c.PrimaryPart.CFrame*CFrame.new(0,-1,-0.3) end local w=Instance.new("WeldConstraint") w.Part0=c.PrimaryPart w.Part1=cl w.Parent=cl cl.Parent=c cl.CanCollide=false end end) end if rn then local r=getRemoteEvent() if r then pcall(function() r:FireServer("PlayEmote","Animations",rn) end) end end local function cleanup() pcall(function() if bv and bv.Parent then bv:Destroy() end if t and t.IsPlaying then t:Stop() t:Destroy() end if an then an:Destroy() end if h then h.PlatformStand=false h.JumpPower=50 end if c then for _,ch in ipairs(c:GetChildren()) do if ch.Name:match("Emote") or ch.Name=="PlayerEmoteVFX" then ch:Destroy() end end local rp=c:FindFirstChild("HumanoidRootPart") if rp then for _,s in ipairs(rp:GetChildren()) do if s:IsA("Sound") then pcall(function() s:Stop() s:Destroy() end) end end end end local r=getRemoteEvent() if r then pcall(function() r:FireServer("StopEmote") end) end end) end t.Stopped:Connect(cleanup) return {cleanup=cleanup} end
+    local currentEmote=nil
+    local emoteSection = tabs.Actions:CreateSection("Emotes")
+    emoteSection:CreateButton("Silly Billy", function() if currentEmote then currentEmote.cleanup() currentEmote=nil end currentEmote=playEmote("rbxassetid://107464355830477","rbxassetid://77601084987544",0.5,false,nil,nil) window:Notify("Emote", "Silly Billy", 1) end)
+    emoteSection:CreateButton("Silly of it", function() if currentEmote then currentEmote.cleanup() currentEmote=nil end currentEmote=playEmote("rbxassetid://107464355830477","rbxassetid://120176009143091",0.5,false,nil,nil) window:Notify("Emote", "Silly of it", 1) end)
+    emoteSection:CreateButton("Subterfuge", function() if currentEmote then currentEmote.cleanup() currentEmote=nil end currentEmote=playEmote("rbxassetid://87482480949358","rbxassetid://132297506693854",2,false,"_Subterfuge",nil) window:Notify("Emote", "Subterfuge", 1) end)
+    emoteSection:CreateButton("Aw Shucks", function() if currentEmote then currentEmote.cleanup() currentEmote=nil end currentEmote=playEmote("rbxassetid://74238051754912","rbxassetid://123236721947419",0.5,false,"Shucks",nil) window:Notify("Emote", "Aw Shucks", 1) end)
+    emoteSection:CreateButton("Miss The Quiet", function() if currentEmote then currentEmote.cleanup() currentEmote=nil end currentEmote=playEmote("rbxassetid://100986631322204","rbxassetid://131936418953291",0.5,false,nil,nil) window:Notify("Emote", "Miss The Quiet", 1) end)
+    emoteSection:CreateButton("VIP (New Audio)", function() if currentEmote then currentEmote.cleanup() currentEmote=nil end currentEmote=playEmote("rbxassetid://138019937280193","rbxassetid://109474987384441",0.5,true,"HakariDance","Assets.Emotes.HakariDance.HakariBeamEffect") window:Notify("Emote", "VIP New", 1) end)
+    emoteSection:CreateButton("VIP (Old Audio)", function() if currentEmote then currentEmote.cleanup() currentEmote=nil end currentEmote=playEmote("rbxassetid://138019937280193","rbxassetid://87166578676888",0.5,true,"HakariDance","Assets.Emotes.HakariDance.HakariBeamEffect") window:Notify("Emote", "VIP Old", 1) end)
+    emoteSection:CreateButton("Number", function() if currentEmote then currentEmote.cleanup() currentEmote=nil end currentEmote=playEmote("rbxassetid://77708670523844","",nil,false,nil,nil) window:Notify("Emote", "Number", 1) end)
+    emoteSection:CreateButton("Pon Pon", function() if currentEmote then currentEmote.cleanup() currentEmote=nil end currentEmote=playEmote("rbxassetid://97364431357573","",nil,false,nil,nil) window:Notify("Emote", "Pon Pon", 1) end)
+    emoteSection:CreateButton("Homeless Man Defense", function() if currentEmote then currentEmote.cleanup() currentEmote=nil end currentEmote=playEmote("rbxassetid://134721295928800","",nil,false,nil,nil) window:Notify("Emote", "Homeless Man Defense", 1) end)
+    emoteSection:CreateButton("kawaii", function() if currentEmote then currentEmote.cleanup() currentEmote=nil end currentEmote=playEmote("rbxassetid://101183171353021","",nil,false,nil,nil) window:Notify("Emote", "kawaii", 1) end)
+    emoteSection:CreateButton("Cory Dance", function() if currentEmote then currentEmote.cleanup() currentEmote=nil end currentEmote=playEmote("rbxassetid://132103483261527","",nil,false,nil,nil) window:Notify("Emote", "Cory Dance", 1) end)
+end)
+
+pcall(function()
+    local customAnimSection = tabs.Actions:CreateSection("Custom Animations")
+    local AnimPresets={
+        ["Slasher"]={Idle="116050994905421",Walk="93622022596108",Run="93054787145505"},
+        ["c00lkidd"]={Idle="18885903667",Walk="18885906143",Run="96571077893813"},
+        ["John Doe"]={Idle="105880087711722",Walk="81193817424328",Run="132653655520682"},
+        ["Noli"]={Idle="83465205704188",Walk="109700476007435",Run="117451341682452"},
+        ["1x1x1x1"]={Idle="138754221537146",Walk="109130982296927",Run="106485518413331"},
+        ["Nosferatu"]={Idle="70639889347646",Walk="125580704385106",Run="82983377044738"},
+        ["xX4ceOfSpadesXx"]={Idle="83386237316095",Walk="73232931166638",Run="102965304565670"},
+        ["The Pestilence"]={Idle="87749799033132",Walk="89281559077512",Run="108688319372143"},
+        ["Hacklord"]={Idle="106131211773069",Walk="119112338263474",Run="85339002634979"},
+        ["1x Milestone IV"]={Idle="139325613303804",Walk="119822079059798",Run="130006476298106"},
+        ["Digital Rider"]={Idle="83139195403190",Walk="116833695762672",Run="113749369268942"},
+        ["John Doe Milestone IV"]={Idle="82559085571201",Walk="88665566861294",Run="122746181525119"},
+        ["The Admin"]={Idle="119473916907837",Walk="89706191899405",Run="124250212996049"},
+        ["Noli Milestone IV"]={Idle="110933164243478",Walk="132550421221296",Run="105441420067903"},
+        ["Retro/KillerKyle"]={Idle="94287675905871",Walk="131974753832094",Run="115805325834498"},
+        ["White Pumpkin"]={Idle="129258407299450",Walk="120452519884275",Run="73353742411211"},
+        ["Pursuer"]={Idle="94895464960972",Walk="100206079439305",Run="138660433982140"},
+        ["Slasher Milestone IV"]={Idle="130845741894386",Walk="83827107895294",Run="70394212408625"},
+        ["Alfred Drevis"]={Idle="74229334184078",Walk="110339633238364",Run="103326147232210"},
+        ["Martyr"]={Idle="135861240743370",Walk="110778442730032",Run="140129180242872"},
+        ["Celebration"]={Idle="84321659776143",Walk="80918877587764",Run="111367557693514"},
+        ["Mafioso"]={Idle="96029349600709",Walk="122086286372651",Run="73833636394121"},
+        ["c00lkidd Milestone IV"]={Idle="136752484165169",Walk="124582615971845",Run="113259297401193"},
+    }
+    local presetNames={} for n,_ in pairs(AnimPresets) do table.insert(presetNames,n) end table.sort(presetNames)
+    local customAnimData={active=false,preset=nil,tracks={Idle=nil,Walk=nil,Run=nil},connection=nil}
+    local function getHumanoidAndAnimator() local c=lp.Character if not c then return nil,nil end local h=c:FindFirstChildOfClass("Humanoid") if not h then return nil,nil end local a=h:FindFirstChildOfClass("Animator") if not a then a=Instance.new("Animator") a.Parent=h end return h,a end
+    local function stopCustomAnimations() if customAnimData.connection then customAnimData.connection:Disconnect() customAnimData.connection=nil end for _,t in pairs(customAnimData.tracks) do if t then t:Stop() t:Destroy() customAnimData.tracks[_]=nil end end customAnimData.active=false end
+    local function updateAnimation() local h,a=getHumanoidAndAnimator() if not h or not a or not customAnimData.preset then return end local sp=h.MoveDirection.Magnitude local ta=sp>0.5 and(h.WalkSpeed>20 and "Run" or "Walk") or "Idle" local tt=customAnimData.tracks[ta] if tt and not tt.IsPlaying then for at,tr in pairs(customAnimData.tracks) do if tr and tr~=tt then tr:Stop() end end tt:Play() elseif not tt then stopCustomAnimations() customAnimData.active=true customAnimData.preset=_G.LastSelectedPreset local p=AnimPresets[_G.LastSelectedPreset] if not p then return end for _,at in ipairs({"Idle","Walk","Run"}) do local id=p[at] if id and id~="" then local an=Instance.new("Animation") an.AnimationId="rbxassetid://"..id local t=a:LoadAnimation(an) t.Priority=Enum.AnimationPriority.Movement customAnimData.tracks[at]=t end end local nta=h.MoveDirection.Magnitude>0.5 and(h.WalkSpeed>20 and "Run" or "Walk") or "Idle" local nt=customAnimData.tracks[nta] if nt then nt:Play() end end end
+    local function applyPreset(pn) local p=AnimPresets[pn] if not p then return end local h,a=getHumanoidAndAnimator() if not h or not a then return end stopCustomAnimations() customAnimData.active=true customAnimData.preset=pn for _,at in ipairs({"Idle","Walk","Run"}) do local id=p[at] if id and id~="" then local an=Instance.new("Animation") an.AnimationId="rbxassetid://"..id local t=a:LoadAnimation(an) t.Priority=Enum.AnimationPriority.Movement customAnimData.tracks[at]=t end end local sp=h.MoveDirection.Magnitude local tt=customAnimData.tracks[sp>0.5 and(h.WalkSpeed>20 and "Run" or "Walk") or "Idle"] if tt then tt:Play() end customAnimData.connection=svc.Run.RenderStepped:Connect(updateAnimation) window:Notify("Anim", "Applied "..pn, 2) end
+    local function resetAnimations() stopCustomAnimations() _G.LastSelectedPreset=nil window:Notify("Anim Reset", "Default", 2) end
+    lp.CharacterAdded:Connect(function() task.wait(0.5) if _G.LastSelectedPreset and AnimPresets[_G.LastSelectedPreset] then applyPreset(_G.LastSelectedPreset) end end)
+    customAnimSection:CreateDropdown("Select Preset", presetNames, function(v) _G.LastSelectedPreset=v end, presetNames[1], false)
+    customAnimSection:CreateButton("Apply Preset", function() if _G.LastSelectedPreset then applyPreset(_G.LastSelectedPreset) else window:Notify("Error", "Select a preset", 2) end end)
+    customAnimSection:CreateButton("Reset to Default", resetAnimations)
+end)
+
+pcall(function()
+    local fakeBlockSection = tabs.Actions:CreateSection("Fake Block")
+    local fakeBlockEnabled,fakeBlockConn,fakeBlockBtnFrame=false,nil,nil
+    local function createFakeBlockButton() local sh=game.CoreGui.TopBarApp.TopBarApp.UnibarLeftFrame.UnibarMenu["2"] if not sh then return end if fakeBlockBtnFrame then fakeBlockBtnFrame:Destroy() fakeBlockBtnFrame=nil end local osize=sh.Size.X.Offset fakeBlockBtnFrame=Instance.new("Frame",sh) fakeBlockBtnFrame.Size=UDim2.new(0,48,0,44) fakeBlockBtnFrame.BackgroundTransparency=1 fakeBlockBtnFrame.BorderSizePixel=0 local ib=Instance.new("ImageButton",fakeBlockBtnFrame) ib.BackgroundTransparency=1 ib.BorderSizePixel=0 ib.Size=UDim2.new(0,36,0,36) ib.AnchorPoint=Vector2.new(0.5,0.5) ib.Position=UDim2.new(0.5,0,0.5,0) ib.Image="rbxassetid://75480465016995" fakeBlockConn=ib.Activated:Connect(function() local c=lp.Character if not c then return end local h=c:FindFirstChildOfClass("Humanoid") if not h then return end local a=h:FindFirstChildOfClass("Animator") if not a then a=Instance.new("Animator") a.Parent=h end local an=Instance.new("Animation") an.AnimationId="rbxassetid://72722244508749" local t=a:LoadAnimation(an) t:Play() t.Stopped:Connect(function() t:Destroy() an:Destroy() end) end) sh.Size=UDim2.new(0,osize+48,0,sh.Size.Y.Offset) fakeBlockBtnFrame.Position=UDim2.new(0,sh.Size.X.Offset-48,0,0) local sc=sh:GetPropertyChangedSignal("Size"):Connect(function() if fakeBlockBtnFrame then fakeBlockBtnFrame.Position=UDim2.new(0,sh.Size.X.Offset-48,0,0) else sc:Disconnect() end end) end
+    local function removeFakeBlockButton() if fakeBlockConn then fakeBlockConn:Disconnect() fakeBlockConn=nil end if fakeBlockBtnFrame then fakeBlockBtnFrame:Destroy() fakeBlockBtnFrame=nil end end
+    fakeBlockSection:CreateToggle("Enable Fake Block", false, function(v) fakeBlockEnabled=v if v then task.wait(0.5) createFakeBlockButton() else removeFakeBlockButton() end window:Notify("Fake Block", v and "On" or "Off", 1) end)
+    lp.CharacterAdded:Connect(function() if fakeBlockEnabled then task.wait(0.5) createFakeBlockButton() end end)
+end)
 
 local utilSection = tabs.Misc:CreateSection("Utilities")
 utilSection:CreateToggle("Network Ping Compensation", true, function(v) window:Notify("Ping Comp", v and "On" or "Off", 1) end)
