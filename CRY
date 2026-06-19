@@ -1,3 +1,49 @@
+getgenv().lastBlockTime = 0
+getgenv().blockCooldown = 0.5
+getgenv().faceKillerDuration = 0.5
+getgenv().faceKillerUntil = 0
+getgenv().currentTargetKiller = nil
+
+getgenv().FireBlockRemote = function()
+    local now = tick()
+    if now - getgenv().lastBlockTime < getgenv().blockCooldown then return end
+    getgenv().lastBlockTime = now
+    local args = {"UseActorAbility", {buffer.fromstring("\3\5\0\0\0Block")}}
+    game:GetService("ReplicatedStorage").Modules.Network.RemoteEvent:FireServer(unpack(args))
+end
+
+getgenv().getClosestKiller = function()
+    local playersFolder = workspace:FindFirstChild("Players")
+    local killersFolder = playersFolder and playersFolder:FindFirstChild("Killers")
+    if not killersFolder then return nil end
+    local myChar = lp.Character
+    if not myChar or not myChar:FindFirstChild("HumanoidRootPart") then return nil end
+    local myPos = myChar.HumanoidRootPart.Position
+    local nearest, nearestDist = nil, math.huge
+    for _, killer in ipairs(killersFolder:GetChildren()) do
+        local hrp = killer:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local dist = (hrp.Position - myPos).Magnitude
+            if dist < nearestDist then
+                nearestDist = dist
+                nearest = killer
+            end
+        end
+    end
+    return nearest
+end
+
+getgenv().fireRemotePunch = function()
+    local args = {"UseActorAbility", {buffer.fromstring("\3\5\0\0\0Punch")}}
+    game:GetService("ReplicatedStorage").Modules.Network.RemoteEvent:FireServer(unpack(args))
+
+    local closest = getgenv().getClosestKiller()
+    if closest then
+        getgenv().currentTargetKiller = closest
+        getgenv().faceKillerUntil = tick() + getgenv().faceKillerDuration
+    end
+end
+
 local config = {Color = Color3.fromRGB(255,255,255),Keybind = Enum.KeyCode.RightShift,Assets = false,MinHeight = 200,MaxHeight = 500,InitialHeight = 380,MinWidth = 300,MaxWidth = 500,InitialWidth = 420}
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/nfpw/XXSCRIPT/refs/heads/main/Library/Module.lua"))()
 local window = library:CreateWindow(config, game:GetService("CoreGui"))
@@ -11,10 +57,8 @@ for _,a in pairs(KillerMeleeActions) do for _,n in ipairs(a.melee or {}) do Bloc
 local function getKillersFolder() local p=workspace:FindFirstChild("Players") return p and p:FindFirstChild("Killers") end
 local function getBlockButton() local pg=lp:FindFirstChild("PlayerGui") if not pg then return nil end local m=pg:FindFirstChild("MainUI") if not m then return nil end local c=m:FindFirstChild("AbilityContainer") if not c then return nil end return c:FindFirstChild("Block") or c:FindFirstChild("Guard") end
 local function getPunchButton() local pg=lp:FindFirstChild("PlayerGui") if not pg then return nil end local m=pg:FindFirstChild("MainUI") if not m then return nil end local c=m:FindFirstChild("AbilityContainer") if not c then return nil end return c:FindFirstChild("Punch") end
-local function hbGetRemote() return svc.RS:FindFirstChild("Modules") and svc.RS.Modules:FindFirstChild("Network") and svc.RS.Modules.Network:FindFirstChild("RemoteEvent") end
-local function combatFireAbility(a) local r=hbGetRemote() if not r then return end local b if a=="Block" then b=buffer.fromstring("\x03\x05\x00\x00\x00Block") elseif a=="Punch" then b=buffer.fromstring("\x03\x05\x00\x00\x00Punch") elseif a=="Charge" then b=buffer.fromstring("\x03\x06\x00\x00\x00Charge") elseif a=="Clone" then b=buffer.fromstring("\x03\x05\x00\x00\x00Clone") else b=buffer.fromstring("\x03\x05\x00\x00\x00Block") end pcall(function() r:FireServer("UseActorAbility",{[1]=b}) end) pcall(function() r:FireServer(a) end) end
-local function pressBlock() combatFireAbility("Block") return true end
-local function pressPunch() local b=getPunchButton() if not b then return false end pcall(function() b:Activate() end) for _,c in ipairs(getconnections(b.MouseButton1Click) or {}) do pcall(function() c:Fire() end) end return true end
+local function pressBlock() getgenv().FireBlockRemote() end
+local function pressPunch() getgenv().fireRemotePunch() end
 local function isKillerFacingPlayer(m,rt) if not BlockSettings.FacingCheck then return true end if not m or not rt then return true end local h=m:FindFirstChild("Head") local cf=h and h.CFrame or(m:FindFirstChild("HumanoidRootPart") and m.HumanoidRootPart.CFrame) if not cf then return true end local kp,kf=cf.Position,cf.LookVector local tp=(rt.Position-kp).Unit local d=kf:Dot(tp) if BlockSettings.StrictFacing then return d>0 end if BlockSettings.LooseFacing then return d>-0.3 else return d>0 end end
 local AttackSoundIDs = {["140242176732868"]=true,["136323728355613"]=true,["115026634746636"]=true,["84116622032112"]=true,["108907358619313"]=true,["127793641088496"]=true,["86174610237192"]=true,["95079963655241"]=true,["101199185291628"]=true,["119942598489800"]=true,["84307400688050"]=true,["105200830849301"]=true,["75330693422988"]=true,["82221759983649"]=true,["81702359653578"]=true,["85853080745515"]=true,["108610718831698"]=true,["112395455254818"]=true,["109431876587852"]=true,["12222216"]=true,["79980897195554"]=true,["119583605486352"]=true,["71834552297085"]=true,["116581754553533"]=true,["86833981571073"]=true,["110372418055226"]=true,["105840448036441"]=true,["86494585504534"]=true,["80516583309685"]=true,["131406927389838"]=true,["89004992452376"]=true,["117231507259853"]=true,["101698569375359"]=true,["101553872555606"]=true,["140412278320643"]=true,["106300477136129"]=true,["117173212095661"]=true,["104910828105172"]=true,["140194172008986"]=true,["85544168523099"]=true,["114506382930939"]=true,["99829427721752"]=true,["120059928759346"]=true,["104625283622511"]=true,["105316545074913"]=true,["126131675979001"]=true,["82336352305186"]=true,["93366464803829"]=true,["84069821282466"]=true,["128856426573270"]=true,["121954639447247"]=true,["128195973631079"]=true,["124903763333174"]=true,["94317217837143"]=true,["98111231282218"]=true,["119089145505438"]=true,["136728245733659"]=true,["107444859834748"]=true,["76959687420003"]=true,["72425554233832"]=true,["96594507550917"]=true,["139996647355899"]=true,["107345261604889"]=true,["127557531826290"]=true,["108651070773439"]=true,["74842815979546"]=true,["124397369810639"]=true,["76467993976301"]=true,["118493324723683"]=true,["78298577002481"]=true,["116527305931161"]=true,["5148302439"]=true,["98675142200448"]=true,["128367348686124"]=true,["71805956520207"]=true,["125213046326879"]=true,["103684883268194"]=true,["109246041199659"]=true,["80540530406270"]=true,["139523195429581"]=true,["105204810054381"]=true,["114742322778642"]=true,["116468089135195"]=true,["112809109188560"]=true,["109348678063422"]=true}
 local AttackAnimIDs = {["83829782357897"]=true,["105458270463374"]=true,["106538427162796"]=true,["88451353906104"]=true,["122709416391891"]=true,["126830014841198"]=true,["18885909645"]=true,["121293883585738"]=true,["124705663396411"]=true,["126171487400618"]=true,["90620531468240"]=true,["127245564598429"]=true,["93069721274110"]=true,["81299297965542"]=true,["91509234639766"]=true,["77375846492436"]=true,["93366464803829"]=true,["92567970681901"]=true,["118298475669935"]=true,["94958041603347"]=true,["109667959938617"]=true,["106860049270347"]=true,["130958529065375"]=true,["108196996477620"]=true,["114506382930939"]=true,["114126519127454"]=true,["70371667919898"]=true,["84069821282466"]=true}
@@ -103,18 +147,8 @@ sb1:CreateToggle("Show Trigger Range", false, function(v) BlockSettings.ShowRang
 sb1:CreateToggle("Inverse Mode", false, function(v) BlockSettings.InverseMode=v UpdateRangeVisual() end)
 local sb2 = tabs.Survivor:CreateSection("Auto Punch")
 local autoPunchEnabled,punchLoop=false,nil
-local function startPunchLoop() if punchLoop then punchLoop:Disconnect() end punchLoop=svc.Run.RenderStepped:Connect(function() if not autoPunchEnabled then return end local pb=getPunchButton() if not pb then return end local ch=pb:FindFirstChild("Charges") if not ch then return end if(tonumber(ch.Text) or 0)<1 then return end local c=lp.Character local r=c and c:FindFirstChild("HumanoidRootPart") if not r then return end local ks=getKillersFolder() if not ks then return end for _,k in ipairs(ks:GetChildren()) do local hr=k:FindFirstChild("HumanoidRootPart") if hr and(hr.Position-r.Position).Magnitude<=20 then for _,co in ipairs(getconnections(pb.MouseButton1Click) or{}) do pcall(function() co:Fire() end) end break end end end) end
+local function startPunchLoop() if punchLoop then punchLoop:Disconnect() end punchLoop=svc.Run.RenderStepped:Connect(function() if not autoPunchEnabled then return end pressPunch() end) end
 sb2:CreateToggle("Auto Punch", false, function(v) autoPunchEnabled=v if v then startPunchLoop() else if punchLoop then punchLoop:Disconnect() punchLoop=nil end end window:Notify("Auto Punch", v and "On" or "Off", 1) end)
-local punchAimbotEnabled,punchAimbotMaxDist,punchAimbotConnection=false,20,nil
-local punchAnimIds={"87259391926321","140703210927645","136007065400978","136007065400978","129843313690921","129843313690921","86709774283672","87259391926321","129843313690921","129843313690921","108807732150251","138040001965654","86096387000557","86096387000557"}
-local punchAnimCheck={} for _,id in ipairs(punchAnimIds) do punchAnimCheck[id]=true end
-local function isPlayingPunchAnim() local c=lp.Character if not c then return false end local h=c:FindFirstChildOfClass("Humanoid") if not h then return false end local a=h:FindFirstChildOfClass("Animator") if not a then return false end for _,t in ipairs(a:GetPlayingAnimationTracks()) do local id=t.Animation.AnimationId:match("%d+") if punchAnimCheck[id] then return true end end return false end
-local function faceTarget(m) local c=lp.Character if not c or not c:FindFirstChild("HumanoidRootPart") then return end local r=c.HumanoidRootPart local tr=m:FindFirstChild("HumanoidRootPart") if not tr then return end r.CFrame=CFrame.new(r.Position,Vector3.new(tr.Position.X,r.Position.Y,tr.Position.Z)) end
-local function getNearestKillerForPunchAimbot() local ks=getKillersFolder() if not ks then return nil end local c=lp.Character if not c or not c:FindFirstChild("HumanoidRootPart") then return nil end local mp=c.HumanoidRootPart.Position local near,nd=nil,math.huge for _,k in ipairs(ks:GetChildren()) do if k:IsA("Model") and k:FindFirstChild("HumanoidRootPart") and k:GetAttribute("IsFakeNoli")~=true then local d=(k.HumanoidRootPart.Position-mp).Magnitude if d<=punchAimbotMaxDist and d<nd then nd=d near=k end end end return near end
-local function startPunchAimbotLoop() if punchAimbotConnection then return end punchAimbotConnection=svc.Run.Heartbeat:Connect(function() if not punchAimbotEnabled then return end local sf=workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors") if not sf or not lp.Character or not lp.Character:IsDescendantOf(sf) then return end if isPlayingPunchAnim() then local t=getNearestKillerForPunchAimbot() if t then faceTarget(t) end end end) end
-local function stopPunchAimbotLoop() if punchAimbotConnection then punchAimbotConnection:Disconnect() punchAimbotConnection=nil end end
-sb2:CreateToggle("Punch Aimbot", false, function(v) punchAimbotEnabled=v if v then startPunchAimbotLoop() window:Notify("Punch Aimbot", "On", 1) else stopPunchAimbotLoop() window:Notify("Punch Aimbot", "Off", 1) end end)
-sb2:CreateSlider("Max Distance", 5, 50, 20, true, function(v) punchAimbotMaxDist=v end)
 local sb3 = tabs.Survivor:CreateSection("Chance Aimbot")
 local aimEnabled,predMode,predValue,aimBehavior,spinDuration,antiBait,smoothSpeed,heightAim=false,"Velocity",0.5,"Normal",0.5,true,14,false
 local killerSpeeds={Slasher={walk=9,run=28},c00lkidd={walk=7.75,run=28},JohnDoe={walk=9,run=27.25},["1x1x1x1"]={walk=8.5,run=27},Noli={walk=7.5,run=27.5},Guest666={walk=9,run=27},Nosferatu={walk=7.25,run=27.5},Doombringer={walk=8,run=27},JaneDoe={walk=9,run=27},Builderman={walk=8.5,run=27.5},Dusekkar={walk=8,run=27.5}}
@@ -306,26 +340,6 @@ local function flowSolve(p) if not p or not p.Solution then return end local idx
 do local modFolder=svc.RS:FindFirstChild("Modules") local miniFolder=modFolder and modFolder:FindFirstChild("Minigames") local fgFolder=miniFolder and miniFolder:FindFirstChild("FlowGameManager") local fgModule=fgFolder and fgFolder:FindFirstChild("FlowGame") if fgModule then local ok,FG=pcall(require,fgModule) if ok and FG and FG.new then local orig=FG.new FG.new=function(...) local p=orig(...) if flow.on then task.spawn(function() task.wait(0.3) flowSolve(p) end) end return p end end end end
 genV2:CreateToggle("Auto Repair", false, function(v) flow.on=v end)
 genV2:CreateSlider("Speed", 0.01, 0.50, 0.04, false, function(v) flow.speed=v end)
-
-pcall(function()
-    local function getRemoteEvent() return svc.RS:FindFirstChild("Modules") and svc.RS.Modules:FindFirstChild("Network") and svc.RS.Modules.Network:FindFirstChild("RemoteEvent") end
-    local function stopAllEmotes() local c=lp.Character if not c then return end local h=c:FindFirstChildOfClass("Humanoid") if h then local a=h:FindFirstChildOfClass("Animator") if a then for _,t in ipairs(a:GetPlayingAnimationTracks()) do pcall(function() t:Stop() t:Destroy() end) end end h.PlatformStand=false h.JumpPower=50 end local rp=c:FindFirstChild("HumanoidRootPart") if rp then for _,s in ipairs(rp:GetChildren()) do if s:IsA("Sound") then pcall(function() s:Stop() s:Destroy() end) end end end for _,ch in ipairs(c:GetChildren()) do if ch.Name:match("Emote") or ch.Name=="PlayerEmoteVFX" then pcall(function() ch:Destroy() end) end end local r=getRemoteEvent() if r then pcall(function() r:FireServer("StopEmote") end) pcall(function() r:FireServer("PlayEmote","Animations","Stop") end) end end
-    local function playEmote(aid,sid,vol,lp,rn,ea) stopAllEmotes() local c=lp.Character if not c then return nil end local h=c:FindFirstChildOfClass("Humanoid") local rp=c:FindFirstChild("HumanoidRootPart") if not h or not rp then return nil end h.PlatformStand=true h.JumpPower=0 local bv=Instance.new("BodyVelocity") bv.MaxForce=Vector3.new(100000,100000,100000) bv.Velocity=Vector3.zero bv.Parent=rp local an=Instance.new("Animation") an.AnimationId=aid local a=h:FindFirstChildOfClass("Animator") if not a then a=Instance.new("Animator") a.Parent=h end local t=a:LoadAnimation(an) t:Play() if sid and sid~="" then local s=Instance.new("Sound") s.SoundId=sid s.Volume=vol or 0.5 s.Looped=lp or false s.Parent=rp s:Play() end if ea then pcall(function() local e=svc.RS:FindFirstChild(ea) if e then local cl=e:Clone() cl.Name="PlayerEmoteVFX" if c.PrimaryPart then cl.CFrame=c.PrimaryPart.CFrame*CFrame.new(0,-1,-0.3) end local w=Instance.new("WeldConstraint") w.Part0=c.PrimaryPart w.Part1=cl w.Parent=cl cl.Parent=c cl.CanCollide=false end end) end if rn then local r=getRemoteEvent() if r then pcall(function() r:FireServer("PlayEmote","Animations",rn) end) end end local function cleanup() pcall(function() if bv and bv.Parent then bv:Destroy() end if t and t.IsPlaying then t:Stop() t:Destroy() end if an then an:Destroy() end if h then h.PlatformStand=false h.JumpPower=50 end if c then for _,ch in ipairs(c:GetChildren()) do if ch.Name:match("Emote") or ch.Name=="PlayerEmoteVFX" then ch:Destroy() end end local rp=c:FindFirstChild("HumanoidRootPart") if rp then for _,s in ipairs(rp:GetChildren()) do if s:IsA("Sound") then pcall(function() s:Stop() s:Destroy() end) end end end end local r=getRemoteEvent() if r then pcall(function() r:FireServer("StopEmote") end) end end) end t.Stopped:Connect(cleanup) return {cleanup=cleanup} end
-    local currentEmote=nil
-    local emoteSection = tabs.Actions:CreateSection("Emotes")
-    emoteSection:CreateButton("Silly Billy", function() if currentEmote then currentEmote.cleanup() currentEmote=nil end currentEmote=playEmote("rbxassetid://107464355830477","rbxassetid://77601084987544",0.5,false,nil,nil) window:Notify("Emote", "Silly Billy", 1) end)
-    emoteSection:CreateButton("Silly of it", function() if currentEmote then currentEmote.cleanup() currentEmote=nil end currentEmote=playEmote("rbxassetid://107464355830477","rbxassetid://120176009143091",0.5,false,nil,nil) window:Notify("Emote", "Silly of it", 1) end)
-    emoteSection:CreateButton("Subterfuge", function() if currentEmote then currentEmote.cleanup() currentEmote=nil end currentEmote=playEmote("rbxassetid://87482480949358","rbxassetid://132297506693854",2,false,"_Subterfuge",nil) window:Notify("Emote", "Subterfuge", 1) end)
-    emoteSection:CreateButton("Aw Shucks", function() if currentEmote then currentEmote.cleanup() currentEmote=nil end currentEmote=playEmote("rbxassetid://74238051754912","rbxassetid://123236721947419",0.5,false,"Shucks",nil) window:Notify("Emote", "Aw Shucks", 1) end)
-    emoteSection:CreateButton("Miss The Quiet", function() if currentEmote then currentEmote.cleanup() currentEmote=nil end currentEmote=playEmote("rbxassetid://100986631322204","rbxassetid://131936418953291",0.5,false,nil,nil) window:Notify("Emote", "Miss The Quiet", 1) end)
-    emoteSection:CreateButton("VIP (New Audio)", function() if currentEmote then currentEmote.cleanup() currentEmote=nil end currentEmote=playEmote("rbxassetid://138019937280193","rbxassetid://109474987384441",0.5,true,"HakariDance","Assets.Emotes.HakariDance.HakariBeamEffect") window:Notify("Emote", "VIP New", 1) end)
-    emoteSection:CreateButton("VIP (Old Audio)", function() if currentEmote then currentEmote.cleanup() currentEmote=nil end currentEmote=playEmote("rbxassetid://138019937280193","rbxassetid://87166578676888",0.5,true,"HakariDance","Assets.Emotes.HakariDance.HakariBeamEffect") window:Notify("Emote", "VIP Old", 1) end)
-    emoteSection:CreateButton("Number", function() if currentEmote then currentEmote.cleanup() currentEmote=nil end currentEmote=playEmote("rbxassetid://77708670523844","",nil,false,nil,nil) window:Notify("Emote", "Number", 1) end)
-    emoteSection:CreateButton("Pon Pon", function() if currentEmote then currentEmote.cleanup() currentEmote=nil end currentEmote=playEmote("rbxassetid://97364431357573","",nil,false,nil,nil) window:Notify("Emote", "Pon Pon", 1) end)
-    emoteSection:CreateButton("Homeless Man Defense", function() if currentEmote then currentEmote.cleanup() currentEmote=nil end currentEmote=playEmote("rbxassetid://134721295928800","",nil,false,nil,nil) window:Notify("Emote", "Homeless Man Defense", 1) end)
-    emoteSection:CreateButton("kawaii", function() if currentEmote then currentEmote.cleanup() currentEmote=nil end currentEmote=playEmote("rbxassetid://101183171353021","",nil,false,nil,nil) window:Notify("Emote", "kawaii", 1) end)
-    emoteSection:CreateButton("Cory Dance", function() if currentEmote then currentEmote.cleanup() currentEmote=nil end currentEmote=playEmote("rbxassetid://132103483261527","",nil,false,nil,nil) window:Notify("Emote", "Cory Dance", 1) end)
-end)
 
 pcall(function()
     local customAnimSection = tabs.Actions:CreateSection("Custom Animations")
