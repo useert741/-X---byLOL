@@ -74,6 +74,7 @@ BlockSettings = {
     LooseFacing = true,
     StrictFacing = false,
     InverseMode = false,
+    HitboxDetection = false,
 }
 
 local function getKillersFolder()
@@ -119,118 +120,115 @@ local function pressPunch()
     getgenv().fireRemotePunch()
 end
 
-local stealthEnabled = false
-local stealthOriginalCFrame = nil
-local stealthRootPart = nil
-local stealthOldNamecall = nil
-local stealthOldFireServer = nil
-local stealthDiedConn = nil
-local stealthRemovingConn = nil
+local activeHitboxes = {}
+local hitboxDetectionEnabled = false
 
-local function getStealthTargetRemote()
-    local mod = svc.RS:FindFirstChild("Modules")
-    if not mod then return nil end
-    local net = mod:FindFirstChild("Network")
-    if not net then return nil end
-    local net2 = net:FindFirstChild("Network")
-    if not net2 then return nil end
-    return net2:FindFirstChild("UnreliableRemoteEvent")
+local function isPartKillerHitbox(part)
+    if not part:IsA("BasePart") then return false end
+    local name = part.Name:lower()
+    if not (name:find("hitbox") or name:find("attack") or name:find("damage")) then return false end
+    local model = part.Parent
+    while model and not model:IsA("Model") do model = model.Parent end
+    if not model then return false end
+    local killersFolder = getKillersFolder()
+    if not killersFolder then return false end
+    local parent = model.Parent
+    while parent do
+        if parent == killersFolder then
+            return true
+        end
+        parent = parent.Parent
+    end
+    return false
 end
 
-local function stealthDisconnectSpy()
-    if stealthDiedConn then stealthDiedConn:Disconnect() stealthDiedConn = nil end
-    if stealthRemovingConn then stealthRemovingConn:Disconnect() stealthRemovingConn = nil end
-    if stealthOldNamecall then
-        pcall(function()
-            if hookmetamethod then
-                hookmetamethod(game, "__namecall", stealthOldNamecall)
-            else
-                local mt = getrawmetatable(game)
-                setreadonly(mt, false)
-                mt.__namecall = stealthOldNamecall
-                setreadonly(mt, true)
+local function onHitboxAdded(part)
+    if not hitboxDetectionEnabled then return end
+    if isPartKillerHitbox(part) then
+        activeHitboxes[part] = {createTime = tick(), triggered = false}
+        local conn
+        conn = part.AncestryChanged:Connect(function()
+            if not part.Parent then
+                activeHitboxes[part] = nil
+                conn:Disconnect()
             end
         end)
-        stealthOldNamecall = nil
-    end
-    if stealthOldFireServer then
-        local tr = getStealthTargetRemote()
-        if tr then
-            pcall(function() hookfunction(tr.FireServer, stealthOldFireServer) end)
-        end
-        stealthOldFireServer = nil
+        task.delay(0.6, function()
+            if activeHitboxes[part] then
+                activeHitboxes[part] = nil
+                if conn then conn:Disconnect() end
+            end
+        end)
     end
 end
 
-local function stealthEnable()
-    if stealthEnabled then return end
-    local tr = getStealthTargetRemote()
-    if not tr then return end
-    stealthEnabled = true
+workspace.DescendantAdded:Connect(onHitboxAdded)
+
+local function checkHitboxCollision()
+    if not hitboxDetectionEnabled then return end
     local char = lp.Character
     if not char then return end
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    stealthRootPart = root
-    stealthOriginalCFrame = root.CFrame
-    root.CFrame = stealthOriginalCFrame + Vector3.new(0, -300, 0)
-    root.Anchored = true
+    local myRoot = char:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return end
+    local myPos = myRoot.Position
+    local killerFolder = getKillersFolder()
+    if not killerFolder then return end
 
-    stealthRemovingConn = lp.CharacterRemoving:Connect(function()
-        stealthDisconnectSpy()
-        stealthEnabled = false
-    end)
-    if char then
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            stealthDiedConn = hum.Died:Connect(function()
-                stealthDisconnectSpy()
-                stealthEnabled = false
-            end)
+    for hitbox, data in pairs(activeHitboxes) do
+        if not hitbox or not hitbox.Parent then
+            activeHitboxes[hitbox] = nil
+        elseif data.triggered then
+        else
+            local age = tick() - data.createTime
+            if age > 0.5 then
+                activeHitboxes[hitbox] = nil
+            end
+            local dist = (hitbox.Position - myPos).Magnitude
+            if dist <= 5 then
+                local model = hitbox.Parent
+                while model and not model:IsA("Model") do model = model.Parent end
+                if not model then end
+                local isC00lkidd = false
+                if model.Name:lower():find("c00lkidd") or model:GetAttribute("ActorDisplayName") == "c00lkidd" then
+                    isC00lkidd = true
+                end
+                if isC00lkidd then
+                    pressBlock()
+                    data.triggered = true
+                else
+                    local hum = model:FindFirstChildOfClass("Humanoid")
+                    local animator = hum and hum:FindFirstChildOfClass("Animator")
+                    local hasAttackAnim = false
+                    if animator then
+                        for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+                            local animId = track.Animation.AnimationId:match("%d+")
+                            if animId and autoBlockTriggerAnims[animId] then
+                                hasAttackAnim = true
+                                break
+                            end
+                        end
+                    end
+                    local hasAttackSound = false
+                    for _, sound in ipairs(model:GetDescendants()) do
+                        if sound:IsA("Sound") and sound.IsPlaying then
+                            local sid = tostring(sound.SoundId):match("%d+")
+                            if sid and autoBlockTriggerSounds[sid] then
+                                hasAttackSound = true
+                                break
+                            end
+                        end
+                    end
+                    if hasAttackAnim or hasAttackSound then
+                        pressBlock()
+                        data.triggered = true
+                    end
+                end
+            end
         end
     end
-
-    if hookmetamethod then
-        stealthOldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-            local method = getnamecallmethod()
-            if self == tr and (method == "FireServer" or method == "fireServer") then
-                return
-            end
-            return stealthOldNamecall(self, ...)
-        end))
-    else
-        local mt = getrawmetatable(game)
-        setreadonly(mt, false)
-        stealthOldNamecall = mt.__namecall
-        mt.__namecall = newcclosure(function(self, ...)
-            local method = getnamecallmethod()
-            if self == tr and (method == "FireServer" or method == "fireServer") then
-                return
-            end
-            return stealthOldNamecall(self, ...)
-        end)
-        setreadonly(mt, true)
-    end
-
-    if hookfunction then
-        stealthOldFireServer = hookfunction(tr.FireServer, newcclosure(function(self, ...)
-            if self == tr then return end
-            return stealthOldFireServer(self, ...)
-        end))
-    end
 end
 
-local function stealthDisable()
-    if not stealthEnabled then return end
-    stealthEnabled = false
-    if stealthRootPart and stealthOriginalCFrame then
-        stealthRootPart.Anchored = false
-        stealthRootPart.CFrame = stealthOriginalCFrame
-    end
-    stealthDisconnectSpy()
-    stealthRootPart = nil
-    stealthOriginalCFrame = nil
-end
+svc.Run.RenderStepped:Connect(checkHitboxCollision)
 
 local autoBlockTriggerSounds = {
     ["102228729296384"]=true,["140242176732868"]=true,["112809109188560"]=true,["136323728355613"]=true,
@@ -804,6 +802,15 @@ local sb1 = tabs.Survivor:CreateSection("Auto Block")
 sb1:CreateToggle("Auto Block", false, function(v)
     BlockSettings.Enabled = v
     window:Notify("Auto Block", v and "On" or "Off", 1)
+end)
+sb1:CreateToggle("Hitbox Detection", false, function(v)
+    hitboxDetectionEnabled = v
+    if not v then
+        for hitbox, _ in pairs(activeHitboxes) do
+            activeHitboxes[hitbox] = nil
+        end
+    end
+    window:Notify("Hitbox Detection", v and "On" or "Off", 1)
 end)
 sb1:CreateSlider("Detection Range", 5, 50, 20, true, function(v)
     BlockSettings.TriggerDistance = v
@@ -1759,11 +1766,6 @@ end
 htSection:CreateButton("Load Hitbox Track", function()
     loadHitboxUI()
     window:Notify("Hitbox Track", "Loaded", 2)
-end)
-
-local stealthSection = tabs.Bypass:CreateSection("Stealth")
-stealthSection:CreateToggle("Enable Stealth", false, function(v)
-    if v then stealthEnable() else stealthDisable() end
 end)
 
 local ESPSettings = {
@@ -2773,7 +2775,6 @@ window:SetCloseCallback(function()
     if RangeVisual then RangeVisual:Destroy() end
     for _, v in pairs(InverseRangeVisuals) do if v then v:Destroy() end end
     if extendAnimConnection then extendAnimConnection:Disconnect() end
-    stealthDisable()
     shared.emergency_stop = true
 end)
 
