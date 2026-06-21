@@ -75,6 +75,8 @@ BlockSettings = {
     StrictFacing = false,
     InverseMode = false,
     HitboxDetection = false,
+    HitboxSize = Vector3.new(7.5, 6, 4.5),
+    HitboxOffset = 1.4,
 }
 
 local function getKillersFolder()
@@ -120,108 +122,70 @@ local function pressPunch()
     getgenv().fireRemotePunch()
 end
 
-local activeHitboxes = {}
 local hitboxDetectionEnabled = false
 
-local function isPartKillerHitbox(part)
-    if not part:IsA("BasePart") then return false end
-    local name = part.Name:lower()
-    if not (name:find("hitbox") or name:find("attack") or name:find("damage")) then return false end
-    local model = part.Parent
-    while model and not model:IsA("Model") do model = model.Parent end
-    if not model then return false end
-    local killersFolder = getKillersFolder()
-    if not killersFolder then return false end
-    local parent = model.Parent
-    while parent do
-        if parent == killersFolder then
-            return true
-        end
-        parent = parent.Parent
-    end
-    return false
+local function isPointInBox(point, centerCF, forward, up, right, size)
+    local localPos = centerCF:PointToObjectSpace(point)
+    local half = size / 2
+    return math.abs(localPos.X) <= half.X and math.abs(localPos.Y) <= half.Y and math.abs(localPos.Z) <= half.Z
 end
-
-local function onHitboxAdded(part)
-    if not hitboxDetectionEnabled then return end
-    if isPartKillerHitbox(part) then
-        activeHitboxes[part] = {createTime = tick(), triggered = false}
-        local conn
-        conn = part.AncestryChanged:Connect(function()
-            if not part.Parent then
-                activeHitboxes[part] = nil
-                conn:Disconnect()
-            end
-        end)
-        task.delay(0.6, function()
-            if activeHitboxes[part] then
-                activeHitboxes[part] = nil
-                if conn then conn:Disconnect() end
-            end
-        end)
-    end
-end
-
-workspace.DescendantAdded:Connect(onHitboxAdded)
 
 local function checkHitboxCollision()
     if not hitboxDetectionEnabled then return end
     local char = lp.Character
     if not char then return end
-    local myRoot = char:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return end
-    local myPos = myRoot.Position
+    local queryPart = char:FindFirstChild("QueryHitbox")
+    if not queryPart or not queryPart:IsA("BasePart") then return end
+    local myPos = queryPart.Position
+
     local killerFolder = getKillersFolder()
     if not killerFolder then return end
 
-    for hitbox, data in pairs(activeHitboxes) do
-        if not hitbox or not hitbox.Parent then
-            activeHitboxes[hitbox] = nil
-        elseif data.triggered then
-        else
-            local age = tick() - data.createTime
-            if age > 0.5 then
-                activeHitboxes[hitbox] = nil
+    for _, killer in ipairs(killerFolder:GetChildren()) do
+        if not killer:IsA("Model") then continue end
+        local hrp = killer:FindFirstChild("HumanoidRootPart")
+        if not hrp then continue end
+        local center = hrp.CFrame
+        local forward = center.LookVector
+        local up = center.UpVector
+        local right = center.RightVector
+
+        local offsetCenter = center + forward * BlockSettings.HitboxOffset
+
+        if isPointInBox(myPos, offsetCenter, forward, up, right, BlockSettings.HitboxSize) then
+            local isC00lkidd = false
+            if killer.Name:lower():find("c00lkidd") or killer:GetAttribute("ActorDisplayName") == "c00lkidd" then
+                isC00lkidd = true
             end
-            local dist = (hitbox.Position - myPos).Magnitude
-            if dist <= 5 then
-                local model = hitbox.Parent
-                while model and not model:IsA("Model") do model = model.Parent end
-                if not model then end
-                local isC00lkidd = false
-                if model.Name:lower():find("c00lkidd") or model:GetAttribute("ActorDisplayName") == "c00lkidd" then
-                    isC00lkidd = true
+            if isC00lkidd then
+                pressBlock()
+                return
+            else
+                local hum = killer:FindFirstChildOfClass("Humanoid")
+                local animator = hum and hum:FindFirstChildOfClass("Animator")
+                local hasAttackAnim = false
+                if animator then
+                    for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+                        local animId = track.Animation.AnimationId:match("%d+")
+                        if animId and autoBlockTriggerAnims[animId] then
+                            hasAttackAnim = true
+                            break
+                        end
+                    end
                 end
-                if isC00lkidd then
+                local hasAttackSound = false
+                for _, sound in ipairs(killer:GetDescendants()) do
+                    if sound:IsA("Sound") and sound.IsPlaying then
+                        local sid = tostring(sound.SoundId):match("%d+")
+                        if sid and autoBlockTriggerSounds[sid] then
+                            hasAttackSound = true
+                            break
+                        end
+                    end
+                end
+                if hasAttackAnim or hasAttackSound then
                     pressBlock()
-                    data.triggered = true
-                else
-                    local hum = model:FindFirstChildOfClass("Humanoid")
-                    local animator = hum and hum:FindFirstChildOfClass("Animator")
-                    local hasAttackAnim = false
-                    if animator then
-                        for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
-                            local animId = track.Animation.AnimationId:match("%d+")
-                            if animId and autoBlockTriggerAnims[animId] then
-                                hasAttackAnim = true
-                                break
-                            end
-                        end
-                    end
-                    local hasAttackSound = false
-                    for _, sound in ipairs(model:GetDescendants()) do
-                        if sound:IsA("Sound") and sound.IsPlaying then
-                            local sid = tostring(sound.SoundId):match("%d+")
-                            if sid and autoBlockTriggerSounds[sid] then
-                                hasAttackSound = true
-                                break
-                            end
-                        end
-                    end
-                    if hasAttackAnim or hasAttackSound then
-                        pressBlock()
-                        data.triggered = true
-                    end
+                    return
                 end
             end
         end
@@ -805,11 +769,6 @@ sb1:CreateToggle("Auto Block", false, function(v)
 end)
 sb1:CreateToggle("Hitbox Detection", false, function(v)
     hitboxDetectionEnabled = v
-    if not v then
-        for hitbox, _ in pairs(activeHitboxes) do
-            activeHitboxes[hitbox] = nil
-        end
-    end
     window:Notify("Hitbox Detection", v and "On" or "Off", 1)
 end)
 sb1:CreateSlider("Detection Range", 5, 50, 20, true, function(v)
