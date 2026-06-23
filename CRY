@@ -75,6 +75,7 @@ BlockSettings = {
     StrictFacing = false,
     InverseMode = false,
     HitboxDetection = false,
+    EnableDistanceCheck = false,
     HitboxSize = Vector3.new(7.5, 6, 4.5),
     HitboxOffset = 1.4,
 }
@@ -130,6 +131,24 @@ local function isPointInBox(point, centerCF, forward, up, right, size)
     return math.abs(localPos.X) <= half.X and math.abs(localPos.Y) <= half.Y and math.abs(localPos.Z) <= half.Z
 end
 
+local c00lkiddSkipAnims = {
+    ["98456918873918"] = true,
+    ["106776364623742"] = true,
+    ["18885937766"] = true,
+    ["18885940850"] = true,
+    ["18885919947"] = true,
+}
+local c00lkiddSkipSounds = {
+    ["121369993837377"] = true,
+    ["75467546215199"] = true,
+    ["80919153988550"] = true,
+    ["105442738366569"] = true,
+    ["86451559088289"] = true,
+    ["86570181006382"] = true,
+    ["75621952288867"] = true,
+    ["111104117703814"] = true,
+}
+
 local function checkHitboxCollision()
     if not hitboxDetectionEnabled then return end
     local char = lp.Character
@@ -145,6 +164,12 @@ local function checkHitboxCollision()
         if not killer:IsA("Model") then continue end
         local hrp = killer:FindFirstChild("HumanoidRootPart")
         if not hrp then continue end
+
+        if BlockSettings.EnableDistanceCheck then
+            local dist = (hrp.Position - myPos).Magnitude
+            if dist > BlockSettings.TriggerDistance then continue end
+        end
+
         local center = hrp.CFrame
         local forward = center.LookVector
         local up = center.UpVector
@@ -158,8 +183,33 @@ local function checkHitboxCollision()
                 isC00lkidd = true
             end
             if isC00lkidd then
-                pressBlock()
-                return
+                local shouldSkip = false
+                local hum = killer:FindFirstChildOfClass("Humanoid")
+                local animator = hum and hum:FindFirstChildOfClass("Animator")
+                if animator then
+                    for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+                        local animId = track.Animation.AnimationId:match("%d+")
+                        if animId and c00lkiddSkipAnims[animId] then
+                            shouldSkip = true
+                            break
+                        end
+                    end
+                end
+                if not shouldSkip then
+                    for _, sound in ipairs(killer:GetDescendants()) do
+                        if sound:IsA("Sound") and sound.IsPlaying then
+                            local sid = tostring(sound.SoundId):match("%d+")
+                            if sid and c00lkiddSkipSounds[sid] then
+                                shouldSkip = true
+                                break
+                            end
+                        end
+                    end
+                end
+                if not shouldSkip then
+                    pressBlock()
+                    return
+                end
             else
                 local hum = killer:FindFirstChildOfClass("Humanoid")
                 local animator = hum and hum:FindFirstChildOfClass("Animator")
@@ -782,6 +832,10 @@ end)
 sb1:CreateToggle("Hitbox Detection", false, function(v)
     hitboxDetectionEnabled = v
     window:Notify("Hitbox Detection", v and "On" or "Off", 1)
+end)
+sb1:CreateToggle("Enable Distance Check", false, function(v)
+    BlockSettings.EnableDistanceCheck = v
+    window:Notify("Distance Check", v and "On" or "Off", 1)
 end)
 sb1:CreateSlider("Detection Range", 5, 50, 20, true, function(v)
     BlockSettings.TriggerDistance = v
