@@ -779,6 +779,85 @@ move:CreateToggle("Show Front Flip Button", false, function(v) SetFrontFlip(v) w
 move:CreateSlider("Jump Height", 20, 200, 72, true, function(v) jumpHeight = v end)
 move:CreateSlider("Jump Distance", 10, 100, 35, true, function(v) jumpDistance = v end)
 
+local nosSection = tabs.Combat:CreateSection("Nosferatu")
+local nosEnabled = false
+local nosMode = "Normal"
+local nosTeleportSpeed = 1
+local nosLoopConnection = nil
+local nosNetworkModule = nil
+
+pcall(function()
+    nosNetworkModule = require(game:GetService("ReplicatedStorage").Modules.Network.Network)
+end)
+
+local function getSurvivors()
+    local survivors = {}
+    local playersFolder = workspace:FindFirstChild("Players")
+    if playersFolder then
+        local survivorsFolder = playersFolder:FindFirstChild("Survivors")
+        if survivorsFolder then
+            for _, model in ipairs(survivorsFolder:GetChildren()) do
+                if model:IsA("Model") and model ~= lp.Character then
+                    local hrp = model:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        table.insert(survivors, hrp)
+                    end
+                end
+            end
+        end
+    end
+    return survivors
+end
+
+local function nosLoop()
+    while nosEnabled do
+        if nosNetworkModule then
+            local eventName = lp.Name .. "NosEndFlight"
+            local success, err = pcall(function()
+                nosNetworkModule:FireServerConnection(eventName, "REMOTE_EVENT", true)
+            end)
+            if not success then
+                window:Notify("Nosferatu Error", "Failed to send event", 2)
+            end
+        end
+        if nosMode == "Teleport" then
+            local char = lp.Character
+            if char then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    local survivors = getSurvivors()
+                    if #survivors > 0 then
+                        local target = survivors[math.random(1, #survivors)]
+                        if target and target.Parent then
+                            hrp.CFrame = target.CFrame + Vector3.new(0, 2, 0)
+                        end
+                    end
+                end
+            end
+        end
+        task.wait(nosTeleportSpeed)
+    end
+end
+
+nosSection:CreateToggle("Enable Nosferatu", false, function(v)
+    nosEnabled = v
+    if nosLoopConnection then
+        nosLoopConnection:Disconnect()
+        nosLoopConnection = nil
+    end
+    if v then
+        nosLoopConnection = task.spawn(nosLoop)
+    end
+end)
+
+nosSection:CreateDropdown("Mode", {"Normal", "Teleport"}, function(v)
+    nosMode = v
+end, "Normal", false)
+
+nosSection:CreateSlider("Teleport Speed", 0.1, 5, 1, false, function(v)
+    nosTeleportSpeed = v
+end)
+
 local sb1 = tabs.Survivor:CreateSection("Auto Block")
 sb1:CreateToggle("Auto Block", false, function(v)
     BlockSettings.Enabled = v
@@ -2755,6 +2834,10 @@ window:SetCloseCallback(function()
     if RangeVisual then RangeVisual:Destroy() end
     for _, v in pairs(InverseRangeVisuals) do if v then v:Destroy() end end
     if extendAnimConnection then extendAnimConnection:Disconnect() end
+    if nosLoopConnection then
+        task.cancel(nosLoopConnection)
+        nosLoopConnection = nil
+    end
     shared.emergency_stop = true
 end)
 
