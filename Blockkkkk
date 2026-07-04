@@ -95,7 +95,6 @@ _G.HitboxOutlineColor = Color3.fromRGB(255, 255, 255)
 _G.ShowOutline = true
 _G.OutlineThickness = 0.05
 _G.ShowHitboxVisual = true
-_G.AntiBaitEnabled = false
 
 local function GetObjects()
     local MainUI = LocalPlayer:FindFirstChildOfClass("PlayerGui") and LocalPlayer.PlayerGui:FindFirstChild("MainUI")
@@ -336,10 +335,7 @@ local function StartAttack(Killer, queryHitbox, Track)
         return
     end
 
-    local maxAttempts = _G.AntiBaitEnabled and 18 or 6
-    local lastHitDetected = false
-
-    for i = 1, maxAttempts do
+    for i = 1, 6 do
         if not _G.AutoBlockEnabled then break end
         if not LocalChar.Parent or LocalChar.Parent ~= SurvivorsFolder then break end
 
@@ -358,20 +354,10 @@ local function StartAttack(Killer, queryHitbox, Track)
         Debris:AddItem(Part, 0.4)
 
         local hits = workspace:GetPartsInPart(Part, OverlapParams)
-        local hitNow = #hits > 0
-
-        if _G.AntiBaitEnabled then
-            lastHitDetected = hitNow
-            if i == maxAttempts and lastHitDetected then
-                pressBlock()
-                LastBlockTime = tick()
-            end
-        else
-            if hitNow then
-                pressBlock()
-                LastBlockTime = tick()
-                break
-            end
+        if #hits > 0 then
+            pressBlock()
+            LastBlockTime = tick()
+            break
         end
         task.wait(0.015)
     end
@@ -482,10 +468,6 @@ local function EnableAutoBlock()
         table.insert(_G.AutoBlockConnections, childCon)
     end
 
-    if _G.AntiBaitToggle then
-        _G.AntiBaitToggle:SetEnabled(true)
-    end
-
     WindUI:Notify({
         Title = "AutoBlock",
         Content = "Enabled",
@@ -513,14 +495,6 @@ local function DisableAutoBlock()
         end
     end
     _G.KillerHitboxData = {}
-
-    if _G.AntiBaitToggle then
-        _G.AntiBaitToggle:SetEnabled(false)
-        if _G.AntiBaitEnabled then
-            _G.AntiBaitEnabled = false
-            _G.AntiBaitToggle:SetValue(false)
-        end
-    end
 
     WindUI:Notify({
         Title = "AutoBlock",
@@ -650,33 +624,6 @@ local Toggle = MainTab:Toggle({
         end
     end
 })
-
-local antiBaitToggle = MainTab:Toggle({
-    Title = "Anti Bait",
-    Desc = "Scans 18 times (instead of 6) and blocks only on the final scan result",
-    Value = false,
-    Enabled = false,
-    Callback = function(state)
-        _G.AntiBaitEnabled = state
-        if state then
-            WindUI:Notify({
-                Title = "Anti Bait",
-                Content = "Enabled - 18 scans, final result only",
-                Icon = "check",
-                Duration = 2
-            })
-        else
-            WindUI:Notify({
-                Title = "Anti Bait",
-                Content = "Disabled",
-                Icon = "x",
-                Duration = 2
-            })
-        end
-    end
-})
-
-_G.AntiBaitToggle = antiBaitToggle
 
 local StatusPara = MainTab:Paragraph({
     Title = "Performance",
