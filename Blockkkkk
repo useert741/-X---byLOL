@@ -1,0 +1,823 @@
+local Success = pcall(function()
+ Instance.new("Part"):InvalidMethod("a")
+end)
+
+while Success do
+ task.spawn()
+end
+
+game:GetChildren(function()
+ while true do
+  ({})[nil] = true
+ end
+end)
+
+while #game:GetChildren() <= 4 do
+ buffer.writei8(buffer.fromstring("a"), 1, 2)
+end
+
+local Success, Result = pcall(function()
+ return game:GetService("HttpService"):JSONDecode('[68, "getgold.cc", true, 123, false, [321, null, "goldtm"], null, ["a"]]')
+end)
+
+while not Success do
+ task()
+end
+
+while Result[6][2] ~= nil do
+ (true)()
+end
+
+local Success = pcall(function()
+ return game.HttpService
+end)
+
+while not Success do
+ local _ = (nil).Parent
+end
+
+_G.getgoldcc = "goldtm"
+
+while getfenv().getgoldcc ~= nil do
+ game()
+end
+
+_G.getgoldcc = nil
+
+local _, Message = pcall(function()
+ game()
+end)
+
+while not Message:find("attempt to call a Instance value") do
+ table.create(9e9)
+end
+
+local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+
+WindUI.TransparencyValue = 0.15
+
+WindUI:AddTheme({
+    Name = "DeepBlue",
+    Accent = "#0088ff",
+    Outline = "#1a3a5a",
+    Text = "#ffffff",
+    Placeholder = "#88bbdd",
+    Background = "#0d1b2a",
+})
+
+WindUI:SetTheme("DeepBlue")
+
+local function gradient(text, startColor, endColor)
+    local result = ""
+    for i = 1, #text do
+        local t = (i - 1) / (#text - 1)
+        local r = math.floor((startColor.R + (endColor.R - startColor.R) * t) * 255)
+        local g = math.floor((startColor.G + (endColor.G - startColor.G) * t) * 255)
+        local b = math.floor((startColor.B + (endColor.B - startColor.B) * t) * 255)
+        result = result .. string.format('<font color="rgb(%d,%d,%d)">%s</font>', r, g, b, text:sub(i, i))
+    end
+    return result
+end
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Debris = game:GetService("Debris")
+local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
+
+_G.BaseHitboxSize = Vector3.new(4.5, 6, 7.5)
+_G.HitboxScale = 1.0
+_G.HitboxOffset = -1.4
+_G.KillerHitboxData = {}
+_G.HitboxColor = Color3.fromRGB(255, 255, 255)
+_G.HitboxOutlineColor = Color3.fromRGB(255, 255, 255)
+_G.ShowOutline = true
+_G.OutlineThickness = 0.05
+_G.ShowHitboxVisual = true
+_G.AntiBaitEnabled = false
+
+local function GetObjects()
+    local MainUI = LocalPlayer:FindFirstChildOfClass("PlayerGui") and LocalPlayer.PlayerGui:FindFirstChild("MainUI")
+    local KillersFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
+    local SurvivorsFolder = workspace.Players and workspace.Players:FindFirstChild("Survivors")
+    local Hitboxes = workspace:FindFirstChild("Hitboxes") or Instance.new("Folder", workspace)
+    Hitboxes.Name = "Hitboxes"
+    return MainUI, KillersFolder, SurvivorsFolder, Hitboxes
+end
+
+local MainUI, KillersFolder, SurvivorsFolder, Hitboxes = GetObjects()
+
+local function getBlockButton()
+    local pg = LocalPlayer:FindFirstChild("PlayerGui")
+    if not pg then return nil end
+    local main = pg:FindFirstChild("MainUI")
+    if not main then return nil end
+    local container = main:FindFirstChild("AbilityContainer")
+    if not container then return nil end
+    return container:FindFirstChild("Block") or container:FindFirstChild("Guard")
+end
+
+local function pressBlock()
+    local btn = getBlockButton()
+    if not btn then return false end
+    local cd = btn:FindFirstChild("CooldownTime")
+    if cd and cd.Text ~= "" then return false end
+    pcall(function() btn:Activate() end)
+    for _, conn in ipairs(getconnections(btn.MouseButton1Click) or {}) do
+        pcall(function() conn:Fire() end)
+    end
+    return true
+end
+
+local AllAnimations = {}
+local function LoadAnimations()
+    local assets = ReplicatedStorage:FindFirstChild("Assets")
+    if not assets then return end
+    for _, folder in pairs({assets:FindFirstChild("Killers"), assets:FindFirstChild("Survivors"), assets:FindFirstChild("Skins")}) do
+        if folder then
+            for _, child in folder:GetDescendants() do
+                if child:IsA("ModuleScript") and child.Name == "Config" then
+                    local ok, data = pcall(require, child)
+                    if ok and data and data.Animations then
+                        AllAnimations[data.DisplayName] = data.Animations
+                    end
+                end
+            end
+        end
+    end
+end
+LoadAnimations()
+
+local function GetAnimationType(animationId)
+    if not animationId then return nil end
+    local idStr = tostring(animationId)
+    for _, charAnims in pairs(AllAnimations) do
+        for animType, animId in pairs(charAnims) do
+            if type(animId) == "string" and animId:find(idStr) then return animType
+            elseif type(animId) == "table" then
+                for _, subId in ipairs(animId) do
+                    if tostring(subId):find(idStr) then return animType end
+                end
+            end
+        end
+    end
+    return nil
+end
+
+local BlockableAttacks = {"slash","stab","attack","punch","swing","tosow","sow","slashground"}
+
+local GlobalAttackIDs = {
+    ["122709416391891"] = true,
+    ["87989533095285"] = true,
+    ["88451353906104"] = true,
+}
+
+local GlobalAttackSoundIDs = {
+    ["119583605486352"] = true,
+    ["104910828105172"] = true,
+}
+
+local function GetID(animationId)
+    if not animationId then return nil end
+    local idStr = tostring(animationId)
+    return idStr:match("%d+")
+end
+
+local function GetHitboxSize()
+    return _G.BaseHitboxSize * _G.HitboxScale
+end
+
+local OverlapParams = OverlapParams.new()
+OverlapParams.MaxParts = 1
+OverlapParams.FilterType = Enum.RaycastFilterType.Include
+
+_G.AutoBlockConnections = {}
+_G.AutoBlockEnabled = false
+
+local LastBlockTime = 0
+local BLOCK_COOLDOWN = 0.08
+
+local function CreateHitboxVisual()
+    local part = Instance.new("Part")
+    part.Name = "AttackHitboxVisual"
+    part.Size = GetHitboxSize()
+    part.Color = _G.HitboxColor
+    part.Material = Enum.Material.ForceField
+    part.Transparency = _G.ShowHitboxVisual and 0.3 or 1
+    part.Anchored = true
+    part.CanCollide = false
+    part.CastShadow = false
+    part.Parent = Hitboxes
+
+    local outline = Instance.new("SelectionBox")
+    outline.Adornee = part
+    outline.Color3 = _G.HitboxOutlineColor
+    outline.LineThickness = _G.OutlineThickness
+    outline.Transparency = 0.1
+    outline.Visible = _G.ShowOutline and _G.ShowHitboxVisual
+    outline.Parent = part
+
+    return part
+end
+
+local function UpdateHitboxPosition(part, queryHitbox)
+    if part and queryHitbox then
+        part.CFrame = queryHitbox.CFrame * CFrame.new(0, 0, _G.HitboxOffset)
+        part.Size = GetHitboxSize()
+        part.Color = _G.HitboxColor
+        part.Transparency = _G.ShowHitboxVisual and 0.3 or 1
+        local outline = part:FindFirstChildOfClass("SelectionBox")
+        if outline then
+            outline.Color3 = _G.HitboxOutlineColor
+            outline.LineThickness = _G.OutlineThickness
+            outline.Visible = _G.ShowOutline and _G.ShowHitboxVisual
+        end
+    end
+end
+
+local function ClearKillerHitbox(Killer)
+    local data = _G.KillerHitboxData[Killer]
+    if data then
+        if data.part then
+            data.part:Destroy()
+        end
+        if data.connection then
+            data.connection:Disconnect()
+        end
+        _G.KillerHitboxData[Killer] = nil
+    end
+end
+
+local function UpdateAllHitboxVisuals()
+    for killer, data in pairs(_G.KillerHitboxData) do
+        if data.part and data.part.Parent then
+            data.part.Color = _G.HitboxColor
+            data.part.Size = GetHitboxSize()
+            data.part.Transparency = _G.ShowHitboxVisual and 0.3 or 1
+            local outline = data.part:FindFirstChildOfClass("SelectionBox")
+            if outline then
+                outline.Color3 = _G.HitboxOutlineColor
+                outline.LineThickness = _G.OutlineThickness
+                outline.Visible = _G.ShowOutline and _G.ShowHitboxVisual
+            end
+        end
+    end
+end
+
+local function StartAttack(Killer, queryHitbox, Track)
+    ClearKillerHitbox(Killer)
+
+    local visualPart = CreateHitboxVisual()
+    UpdateHitboxPosition(visualPart, queryHitbox)
+
+    local updateConnection
+    updateConnection = RunService.Heartbeat:Connect(function()
+        if not _G.AutoBlockEnabled then
+            updateConnection:Disconnect()
+            return
+        end
+        if visualPart and visualPart.Parent and queryHitbox and queryHitbox.Parent then
+            UpdateHitboxPosition(visualPart, queryHitbox)
+        else
+            updateConnection:Disconnect()
+        end
+    end)
+
+    _G.KillerHitboxData[Killer] = {
+        part = visualPart,
+        connection = updateConnection
+    }
+
+    if Track then
+        Track.Stopped:Once(function()
+            ClearKillerHitbox(Killer)
+        end)
+        Track.Destroying:Once(function()
+            ClearKillerHitbox(Killer)
+        end)
+    end
+
+    local LocalChar = LocalPlayer.Character
+    if not LocalChar or LocalChar.Parent ~= SurvivorsFolder then
+        return
+    end
+
+    local LocalQuery = LocalChar:FindFirstChild("QueryHitbox")
+    if not LocalQuery then return end
+
+    local now = tick()
+    if now - LastBlockTime < BLOCK_COOLDOWN then return end
+
+    local isC00lkidd = Killer.Name:lower():find("c00lkidd") or Killer.Name:lower():find("coolkidd")
+
+    local hitboxSize = GetHitboxSize()
+
+    if isC00lkidd then
+        OverlapParams.FilterDescendantsInstances = {LocalQuery}
+
+        local Part = Instance.new("Part")
+        Part.Name = "KillerDetectHitbox"
+        Part.Size = hitboxSize
+        Part.CFrame = queryHitbox.CFrame * CFrame.new(0, 0, _G.HitboxOffset)
+        Part.CanCollide = false
+        Part.Anchored = true
+        Part.CastShadow = false
+        Part.Material = Enum.Material.ForceField
+        Part.Transparency = 1
+        Part.Parent = Hitboxes
+        Debris:AddItem(Part, 0.4)
+
+        local hits = workspace:GetPartsInPart(Part, OverlapParams)
+        if #hits > 0 then
+            pressBlock()
+            LastBlockTime = tick()
+        end
+        return
+    end
+
+    local maxAttempts = _G.AntiBaitEnabled and 18 or 6
+    local lastHitDetected = false
+
+    for i = 1, maxAttempts do
+        if not _G.AutoBlockEnabled then break end
+        if not LocalChar.Parent or LocalChar.Parent ~= SurvivorsFolder then break end
+
+        OverlapParams.FilterDescendantsInstances = {LocalQuery}
+
+        local Part = Instance.new("Part")
+        Part.Name = "KillerDetectHitbox"
+        Part.Size = hitboxSize
+        Part.CFrame = queryHitbox.CFrame * CFrame.new(0, 0, _G.HitboxOffset)
+        Part.CanCollide = false
+        Part.Anchored = true
+        Part.CastShadow = false
+        Part.Material = Enum.Material.ForceField
+        Part.Transparency = 1
+        Part.Parent = Hitboxes
+        Debris:AddItem(Part, 0.4)
+
+        local hits = workspace:GetPartsInPart(Part, OverlapParams)
+        local hitNow = #hits > 0
+
+        if _G.AntiBaitEnabled then
+            lastHitDetected = hitNow
+            if i == maxAttempts and lastHitDetected then
+                pressBlock()
+                LastBlockTime = tick()
+            end
+        else
+            if hitNow then
+                pressBlock()
+                LastBlockTime = tick()
+                break
+            end
+        end
+        task.wait(0.015)
+    end
+end
+
+local function HandleKiller(Killer)
+    if not Players:GetPlayerFromCharacter(Killer) then return end
+    local humanoid = Killer:FindFirstChildOfClass("Humanoid")
+    local queryHitbox = Killer:FindFirstChild("QueryHitbox")
+    local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
+    if not (animator and queryHitbox) then return end
+
+    local soundConnections = {}
+    local function OnSoundAdded(Sound)
+        if not Sound:IsA("Sound") then return end
+        local id = tostring(Sound.SoundId):match("%d+")
+        if not id or not GlobalAttackSoundIDs[id] then return end
+
+        local playedConn = Sound.Played:Connect(function()
+            if not _G.AutoBlockEnabled then return end
+            StartAttack(Killer, queryHitbox, Sound)
+        end)
+
+        local stoppedConn = Sound.Stopped:Connect(function()
+            ClearKillerHitbox(Killer)
+        end)
+
+        table.insert(soundConnections, playedConn)
+        table.insert(soundConnections, stoppedConn)
+
+        if Sound.IsPlaying then
+            task.spawn(function()
+                if _G.AutoBlockEnabled then
+                    StartAttack(Killer, queryHitbox, Sound)
+                end
+            end)
+        end
+    end
+
+    for _, sound in ipairs(Killer:GetDescendants()) do
+        OnSoundAdded(sound)
+    end
+
+    local descendantConn = Killer.DescendantAdded:Connect(OnSoundAdded)
+    table.insert(soundConnections, descendantConn)
+
+    local function cleanupSounds()
+        for _, conn in ipairs(soundConnections) do
+            conn:Disconnect()
+        end
+        soundConnections = {}
+    end
+
+    local connection = animator.AnimationPlayed:Connect(function(Track)
+        if not _G.AutoBlockEnabled then
+            connection:Disconnect()
+            return
+        end
+
+        local id = GetID(Track.Animation.AnimationId)
+        local isMatch = false
+
+        if id and GlobalAttackIDs[id] then
+            isMatch = true
+        else
+            local animType = GetAnimationType(Track.Animation.AnimationId)
+            if animType and table.find(BlockableAttacks, animType:lower()) then
+                isMatch = true
+            end
+        end
+
+        if not isMatch then return end
+
+        StartAttack(Killer, queryHitbox, Track)
+    end)
+
+    local function cleanup()
+        cleanupSounds()
+        connection:Disconnect()
+        ClearKillerHitbox(Killer)
+    end
+
+    Killer.AncestryChanged:Connect(function()
+        if not Killer.Parent then
+            cleanup()
+        end
+    end)
+
+    table.insert(_G.AutoBlockConnections, {
+        Disconnect = cleanup
+    })
+end
+
+local function EnableAutoBlock()
+    if _G.AutoBlockEnabled then return end
+    _G.AutoBlockEnabled = true
+    if _G.AutoBlockConnections then
+        for _, con in ipairs(_G.AutoBlockConnections) do
+            pcall(con.Disconnect, con)
+        end
+        _G.AutoBlockConnections = {}
+    end
+    if KillersFolder then
+        for _, killer in ipairs(KillersFolder:GetChildren()) do
+            HandleKiller(killer)
+        end
+        local childCon = KillersFolder.ChildAdded:Connect(HandleKiller)
+        table.insert(_G.AutoBlockConnections, childCon)
+    end
+
+    if _G.AntiBaitToggle then
+        _G.AntiBaitToggle:SetEnabled(true)
+    end
+
+    WindUI:Notify({
+        Title = "AutoBlock",
+        Content = "Enabled",
+        Icon = "check",
+        Duration = 2
+    })
+end
+
+local function DisableAutoBlock()
+    if not _G.AutoBlockEnabled then return end
+    _G.AutoBlockEnabled = false
+    if _G.AutoBlockConnections then
+        for _, con in ipairs(_G.AutoBlockConnections) do
+            pcall(con.Disconnect, con)
+        end
+        _G.AutoBlockConnections = {}
+    end
+
+    for killer, data in pairs(_G.KillerHitboxData) do
+        if data.part then
+            data.part:Destroy()
+        end
+        if data.connection then
+            data.connection:Disconnect()
+        end
+    end
+    _G.KillerHitboxData = {}
+
+    if _G.AntiBaitToggle then
+        _G.AntiBaitToggle:SetEnabled(false)
+        if _G.AntiBaitEnabled then
+            _G.AntiBaitEnabled = false
+            _G.AntiBaitToggle:SetValue(false)
+        end
+    end
+
+    WindUI:Notify({
+        Title = "AutoBlock",
+        Content = "Disabled",
+        Icon = "x",
+        Duration = 2
+    })
+end
+
+local FPS = 0
+local Ping = 0
+local frameCount = 0
+local lastTime = tick()
+
+RunService.RenderStepped:Connect(function()
+    frameCount = frameCount + 1
+    local now = tick()
+    if now - lastTime >= 0.5 then
+        FPS = math.floor(frameCount / (now - lastTime))
+        frameCount = 0
+        lastTime = now
+    end
+end)
+
+local function GetPing()
+    local success, result = pcall(function()
+        return LocalPlayer:GetNetworkPing()
+    end)
+    if success and result then
+        return math.floor(result * 1000)
+    end
+    return 0
+end
+
+local BLUE = Color3.fromRGB(0, 136, 255)
+local CYAN = Color3.fromRGB(0, 255, 255)
+
+local Window = WindUI:CreateWindow({
+    Title = gradient("Fixblock", BLUE, CYAN),
+    Icon = "shield",
+    Author = "FixFox",
+    Folder = "AutoBlock",
+    Size = UDim2.fromOffset(480, 420),
+    Transparent = false,
+    Theme = "DeepBlue",
+    SideBarWidth = 140,
+    ScrollBarEnabled = false,
+    KeySystem = nil,
+    HasOutline = true,
+})
+
+Window:EditOpenButton({
+    Title = gradient("Fixblock", BLUE, CYAN),
+    Icon = "shield",
+    CornerRadius = UDim.new(4, 16),
+    StrokeThickness = 2,
+    Draggable = true,
+    Color = ColorSequence.new(
+        BLUE,
+        CYAN
+    ),
+})
+
+Window:Tag({
+    Title = "v1.0",
+    Color = BLUE
+})
+
+task.spawn(function()
+    local runService = game:GetService("RunService")
+
+    runService.Heartbeat:Connect(function()
+        local t = tick() * 0.8
+
+        local keypoints = {}
+        for i = 0, 10 do
+            local x = i / 10
+            local wave = (math.sin((x - t) * math.pi * 2) + 1) / 2
+            local currentColor = BLUE:Lerp(CYAN, wave)
+            table.insert(keypoints, ColorSequenceKeypoint.new(x, currentColor))
+        end
+
+        local startWave = (math.sin(t + 0.5) + 1) / 2
+        local endWave = (math.sin(t - 0.5) + 1) / 2
+        local startColor = BLUE:Lerp(CYAN, startWave)
+        local endColor = CYAN:Lerp(BLUE, endWave)
+        local dynamicTitle = gradient("Fixblock", startColor, endColor)
+
+        Window:EditOpenButton({
+            Title = dynamicTitle,
+            Icon = "shield",
+            CornerRadius = UDim.new(4, 16),
+            StrokeThickness = 3,
+            Color = ColorSequence.new(keypoints),
+            Draggable = true,
+        })
+    end)
+end)
+
+local MainTab = Window:Tab({ Title = "Main", Icon = "shield-check" })
+local SettingsTab = Window:Tab({ Title = "Settings", Icon = "settings" })
+local VisualsTab = Window:Tab({ Title = "Visuals", Icon = "eye" })
+
+MainTab:Paragraph({
+    Title = "About",
+    Desc = [[
+Owner: <font color="rgb(255,80,80)">FixFox</font>
+Dev: <font color="rgb(80,255,80)">FixFox</font>
+Co-Dev: <font color="rgb(255,200,80)">Fixed</font>
+    ]],
+    Image = "info",
+    ImageSize = 32,
+    Color = "Grey",
+})
+
+MainTab:Divider()
+
+local Toggle = MainTab:Toggle({
+    Title = "Enable AutoBlock",
+    Desc = "Blocks when attack animation/sound detected with hitbox overlap",
+    Value = false,
+    Callback = function(state)
+        if state then
+            EnableAutoBlock()
+        else
+            DisableAutoBlock()
+        end
+    end
+})
+
+local antiBaitToggle = MainTab:Toggle({
+    Title = "Anti Bait",
+    Desc = "Scans 18 times (instead of 6) and blocks only on the final scan result",
+    Value = false,
+    Enabled = false,
+    Callback = function(state)
+        _G.AntiBaitEnabled = state
+        if state then
+            WindUI:Notify({
+                Title = "Anti Bait",
+                Content = "Enabled - 18 scans, final result only",
+                Icon = "check",
+                Duration = 2
+            })
+        else
+            WindUI:Notify({
+                Title = "Anti Bait",
+                Content = "Disabled",
+                Icon = "x",
+                Duration = 2
+            })
+        end
+    end
+})
+
+_G.AntiBaitToggle = antiBaitToggle
+
+local StatusPara = MainTab:Paragraph({
+    Title = "Performance",
+    Desc = "FPS: -- | Ping: --ms",
+    Image = "activity",
+    ImageSize = 28,
+    Color = "Grey",
+})
+
+task.spawn(function()
+    while task.wait(0.5) do
+        Ping = GetPing()
+        local fpsColor = FPS >= 60 and "rgb(80,255,80)" or (FPS >= 30 and "rgb(255,200,80)" or "rgb(255,80,80)")
+        local pingColor = Ping <= 60 and "rgb(80,255,80)" or (Ping <= 120 and "rgb(255,200,80)" or "rgb(255,80,80)")
+        
+        StatusPara:SetDesc(string.format(
+            'FPS: <font color="%s">%d</font>  |  Ping: <font color="%s">%dms</font>',
+            fpsColor, FPS,
+            pingColor, Ping
+        ))
+    end
+end)
+
+SettingsTab:Paragraph({
+    Title = "Hitbox Parameters",
+    Desc = "Adjust detection box size and offset (Width=X, Height=Y, Length=Z)",
+    Image = "box",
+    ImageSize = 28,
+    Color = "Grey",
+})
+
+SettingsTab:Divider()
+
+local sliderX = SettingsTab:Slider({
+    Title = "Base Width (X)",
+    Step = 0.1,
+    Value = { Min = 1, Max = 20, Default = 4.5 },
+    Callback = function(v)
+        _G.BaseHitboxSize = Vector3.new(v, _G.BaseHitboxSize.Y, _G.BaseHitboxSize.Z)
+        UpdateAllHitboxVisuals()
+    end
+})
+
+local sliderY = SettingsTab:Slider({
+    Title = "Base Height (Y)",
+    Step = 0.1,
+    Value = { Min = 1, Max = 20, Default = 6 },
+    Callback = function(v)
+        _G.BaseHitboxSize = Vector3.new(_G.BaseHitboxSize.X, v, _G.BaseHitboxSize.Z)
+        UpdateAllHitboxVisuals()
+    end
+})
+
+local sliderZ = SettingsTab:Slider({
+    Title = "Base Length (Z)",
+    Step = 0.1,
+    Value = { Min = 1, Max = 20, Default = 7.5 },
+    Callback = function(v)
+        _G.BaseHitboxSize = Vector3.new(_G.BaseHitboxSize.X, _G.BaseHitboxSize.Y, v)
+        UpdateAllHitboxVisuals()
+    end
+})
+
+local sliderScale = SettingsTab:Slider({
+    Title = "Overall Scale",
+    Step = 0.05,
+    Value = { Min = 0.2, Max = 3.0, Default = 1.0 },
+    Callback = function(v)
+        _G.HitboxScale = v
+        UpdateAllHitboxVisuals()
+    end
+})
+
+local sliderOff = SettingsTab:Slider({
+    Title = "Offset (Z)",
+    Step = 0.1,
+    Value = { Min = -10, Max = 0, Default = -1.4 },
+    Callback = function(v)
+        _G.HitboxOffset = v
+        UpdateAllHitboxVisuals()
+    end
+})
+
+VisualsTab:Paragraph({
+    Title = "Visual Settings",
+    Desc = "Customize the appearance of the attack hitbox",
+    Image = "eye",
+    ImageSize = 28,
+    Color = "Grey",
+})
+
+VisualsTab:Divider()
+
+local visualToggle = VisualsTab:Toggle({
+    Title = "Show Hitbox Visual",
+    Desc = "Toggle the visible semi-transparent box",
+    Value = _G.ShowHitboxVisual,
+    Callback = function(state)
+        _G.ShowHitboxVisual = state
+        UpdateAllHitboxVisuals()
+    end
+})
+
+local outlineToggle = VisualsTab:Toggle({
+    Title = "Show Outline",
+    Desc = "Toggle SelectionBox border around hitbox",
+    Value = _G.ShowOutline,
+    Callback = function(state)
+        _G.ShowOutline = state
+        UpdateAllHitboxVisuals()
+    end
+})
+
+local outlineThicknessSlider = VisualsTab:Slider({
+    Title = "Outline Thickness",
+    Step = 0.01,
+    Value = { Min = 0.01, Max = 0.5, Default = 0.05 },
+    Callback = function(v)
+        _G.OutlineThickness = v
+        UpdateAllHitboxVisuals()
+    end
+})
+
+local hitboxColorPicker = VisualsTab:Colorpicker({
+    Title = "Hitbox Color (Fill)",
+    Default = _G.HitboxColor,
+    Transparency = 0,
+    Callback = function(color)
+        _G.HitboxColor = color
+        UpdateAllHitboxVisuals()
+    end
+})
+
+local outlineColorPicker = VisualsTab:Colorpicker({
+    Title = "Outline Color (Border)",
+    Default = _G.HitboxOutlineColor,
+    Transparency = 0,
+    Callback = function(color)
+        _G.HitboxOutlineColor = color
+        UpdateAllHitboxVisuals()
+    end
+})
+
+Window:OnClose(function() end)
