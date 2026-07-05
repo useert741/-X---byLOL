@@ -1,57 +1,3 @@
-local Success = pcall(function()
- Instance.new("Part"):InvalidMethod("a")
-end)
-
-while Success do
- task.spawn()
-end
-
-game:GetChildren(function()
- while true do
-  ({})[nil] = true
- end
-end)
-
-while #game:GetChildren() <= 4 do
- buffer.writei8(buffer.fromstring("a"), 1, 2)
-end
-
-local Success, Result = pcall(function()
- return game:GetService("HttpService"):JSONDecode('[68, "getgold.cc", true, 123, false, [321, null, "goldtm"], null, ["a"]]')
-end)
-
-while not Success do
- task()
-end
-
-while Result[6][2] ~= nil do
- (true)()
-end
-
-local Success = pcall(function()
- return game.HttpService
-end)
-
-while not Success do
- local _ = (nil).Parent
-end
-
-_G.getgoldcc = "goldtm"
-
-while getfenv().getgoldcc ~= nil do
- game()
-end
-
-_G.getgoldcc = nil
-
-local _, Message = pcall(function()
- game()
-end)
-
-while not Message:find("attempt to call a Instance value") do
- table.create(9e9)
-end
-
 local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 
 WindUI.TransparencyValue = 0.15
@@ -95,6 +41,164 @@ _G.HitboxOutlineColor = Color3.fromRGB(255, 255, 255)
 _G.ShowOutline = true
 _G.OutlineThickness = 0.05
 _G.ShowHitboxVisual = true
+
+local attackData = {
+    ["1x1x1x1"] = {
+        anim = "rbxassetid://83829782357897",
+        swing = "rbxassetid://117173212095661",
+    },
+    ["John Doe"] = {
+        anim = "rbxassetid://105458270463374",
+        swing = "rbxassetid://140242176732868",
+    },
+    ["Noli"] = {
+        anim = "rbxassetid://106538427162796",
+        swing = "rbxassetid://109348678063422",
+    },
+    ["Nosferatu"] = {
+        anim = "rbxassetid://88451353906104",
+        swing = "rbxassetid://104910828105172",
+    },
+    ["Guest 666"] = {
+        anim = "rbxassetid://122709416391891",
+        swing = { "rbxassetid://119583605486352", "rbxassetid://79980897195554" },
+    },
+    ["Slasher"] = {
+        anim = "rbxassetid://126830014841198",
+        swing = nil,
+    },
+    ["c00lkidd"] = {
+        anim = "rbxassetid://18885909645",
+        swing = "rbxassetid://80516583309685",
+    },
+    ["xX4ceOfSpadesXx"] = {
+        anim = "rbxassetid://121293883585738",
+        swing = "rbxassetid://115026634746636",
+    },
+    ["The Pestilence"] = {
+        anim = "rbxassetid://124705663396411",
+        swing = nil,
+    },
+    ["Fleskhjerta"] = {
+        anim = "rbxassetid://121293883585738",
+        swing = "rbxassetid://85853080745515",
+    },
+    ["Hacklord"] = {
+        anim = "rbxassetid://126171487400618",
+        swing = "rbxassetid://119942598489800",
+    },
+    ["Milestone III (1x1x1x1)"] = {
+        anim = "rbxassetid://90620531468240",
+        swing = nil,
+    },
+    ["Milestone IV (1x1x1x1)"] = {
+        anim = "rbxassetid://90620531468240",
+        swing = nil,
+    },
+    ["Digital Rider"] = {
+        anim = "rbxassetid://127245564598429",
+        swing = "rbxassetid://74809026448465",
+    },
+    ["Annihilation"] = {
+        anim = "rbxassetid://93069721274110",
+        swing = nil,
+    },
+    ["Aberrant"] = {
+        anim = "rbxassetid://81299297965542",
+        swing = "rbxassetid://131123355704017",
+    },
+    ["The Admin"] = {
+        anim = "rbxassetid://91509234639766",
+        swing = "rbxassetid://131406927389838",
+    },
+    ["Artful"] = {
+        anim = "rbxassetid://77375846492436",
+        swing = "rbxassetid://89004992452376",
+    },
+    ["Narrator"] = {
+        anim = "rbxassetid://93366464803829",
+        swing = "rbxassetid://128367348686124",
+    },
+    ["Milestone III (Noli)"] = {
+        anim = "rbxassetid://92567970681901",
+        swing = nil,
+    },
+    ["Retro"] = {
+        anim = "rbxassetid://118298475669935",
+        swing = nil,
+    },
+    ["White Pumpkin"] = {
+        anim = "rbxassetid://94958041603347",
+        swing = nil,
+    },
+    ["Pursuer"] = {
+        anim = "rbxassetid://109667959938617",
+        swing = "rbxassetid://108907358619313",
+    },
+    ["Milestone III (Slasher)"] = {
+        anim = "rbxassetid://106860049270347",
+        swing = nil,
+    },
+    ["Milestone IV (Slasher)"] = {
+        anim = "rbxassetid://130958529065375",
+        swing = nil,
+    },
+    ["Alfred Drevis"] = {
+        anim = "rbxassetid://108196996477620",
+        swing = nil,
+    },
+    ["Killer Kyle"] = {
+        anim = "rbxassetid://118298475669935",
+        swing = "rbxassetid://107444859834748",
+    },
+    ["Martyr"] = {
+        anim = "rbxassetid://114506382930939",
+        swing = "rbxassetid://121954639447247",
+    },
+    ["Celebration"] = {
+        anim = "rbxassetid://114126519127454",
+        swing = nil,
+    },
+    ["Mafioso"] = {
+        anim = "rbxassetid://70371667919898",
+        swing = "rbxassetid://84307400688050",
+    },
+    ["Milestone III (c00lkidd)"] = {
+        anim = "rbxassetid://84069821282466",
+        swing = nil,
+    },
+    ["Milestone IV (c00lkidd)"] = {
+        anim = "rbxassetid://84069821282466",
+        swing = nil,
+    },
+}
+
+local GlobalAttackIDs = {}
+local GlobalAttackSoundIDs = {}
+
+for _, data in pairs(attackData) do
+    if data.anim then
+        local id = tostring(data.anim):match("%d+")
+        if id then
+            GlobalAttackIDs[id] = true
+        end
+    end
+    if data.swing then
+        if type(data.swing) == "table" then
+            for _, s in ipairs(data.swing) do
+                local id = tostring(s):match("%d+")
+                if id then
+                    GlobalAttackSoundIDs[id] = true
+                end
+            end
+        else
+            local id = tostring(data.swing):match("%d+")
+            if id then
+                GlobalAttackSoundIDs[id] = true
+            end
+        end
+    end
+end
 
 local function GetObjects()
     local MainUI = LocalPlayer:FindFirstChildOfClass("PlayerGui") and LocalPlayer.PlayerGui:FindFirstChild("MainUI")
@@ -166,17 +270,6 @@ end
 
 local BlockableAttacks = {"slash","stab","attack","punch","swing","tosow","sow","slashground"}
 
-local GlobalAttackIDs = {
-    ["122709416391891"] = true,
-    ["87989533095285"] = true,
-    ["88451353906104"] = true,
-}
-
-local GlobalAttackSoundIDs = {
-    ["119583605486352"] = true,
-    ["104910828105172"] = true,
-}
-
 local function GetID(animationId)
     if not animationId then return nil end
     local idStr = tostring(animationId)
@@ -193,9 +286,6 @@ OverlapParams.FilterType = Enum.RaycastFilterType.Include
 
 _G.AutoBlockConnections = {}
 _G.AutoBlockEnabled = false
-
-local LastBlockTime = 0
-local BLOCK_COOLDOWN = 0.08
 
 local function CreateHitboxVisual()
     local part = Instance.new("Part")
@@ -305,9 +395,6 @@ local function StartAttack(Killer, queryHitbox, Track)
     local LocalQuery = LocalChar:FindFirstChild("QueryHitbox")
     if not LocalQuery then return end
 
-    local now = tick()
-    if now - LastBlockTime < BLOCK_COOLDOWN then return end
-
     local isC00lkidd = Killer.Name:lower():find("c00lkidd") or Killer.Name:lower():find("coolkidd")
 
     local hitboxSize = GetHitboxSize()
@@ -330,7 +417,6 @@ local function StartAttack(Killer, queryHitbox, Track)
         local hits = workspace:GetPartsInPart(Part, OverlapParams)
         if #hits > 0 then
             pressBlock()
-            LastBlockTime = tick()
         end
         return
     end
@@ -356,7 +442,6 @@ local function StartAttack(Killer, queryHitbox, Track)
         local hits = workspace:GetPartsInPart(Part, OverlapParams)
         if #hits > 0 then
             pressBlock()
-            LastBlockTime = tick()
             break
         end
         task.wait(0.015)
@@ -614,7 +699,6 @@ MainTab:Divider()
 
 local Toggle = MainTab:Toggle({
     Title = "Enable AutoBlock",
-    Desc = "Blocks when attack animation/sound detected with hitbox overlap",
     Value = false,
     Callback = function(state)
         if state then
