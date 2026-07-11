@@ -1687,6 +1687,8 @@ _G.ShowOutline = true
 _G.OutlineThickness = 0.01
 _G.ShowHitboxVisual = true
 _G.HitboxTransparency = 0.5
+_G.HitboxDuration = 1.5
+_G.BlockDelay = 0
 
 local MainUI, KillersFolder, SurvivorsFolder, Hitboxes
 local function GetObjects()
@@ -1715,57 +1717,6 @@ local function pressBlock()
         pcall(function() conn:Fire() end)
     end
     return true
-end
-
-local AllAnimations = {}
-local function LoadAnimations()
-    local assets = ReplicatedStorage:FindFirstChild("Assets")
-    if not assets then return end
-    for _, folder in pairs({assets:FindFirstChild("Killers"), assets:FindFirstChild("Survivors"), assets:FindFirstChild("Skins")}) do
-        if folder then
-            for _, child in folder:GetDescendants() do
-                if child:IsA("ModuleScript") and child.Name == "Config" then
-                    local ok, data = pcall(require, child)
-                    if ok and data and data.Animations then
-                        AllAnimations[data.DisplayName] = data.Animations
-                    end
-                end
-            end
-        end
-    end
-end
-LoadAnimations()
-
-local function GetKillerAnimations(killer)
-    local actorName = killer:GetAttribute("ActorDisplayName")
-    if not actorName then return nil end
-    local skinName = killer:GetAttribute("SkinNameDisplay")
-    if skinName and skinName ~= "" then
-        local combined = skinName .. " (" .. actorName .. ")"
-        if AllAnimations[combined] then return AllAnimations[combined] end
-    end
-    return AllAnimations[actorName]
-end
-
-local BlockableAttackTypes = {"slash","stab","attack","punch","swing","tosow","sow","slashground"}
-
-local function IsAttackAnimation(animations, animId)
-    if not animations then return false end
-    local idStr = tostring(animId)
-    for animType, storedId in pairs(animations) do
-        if table.find(BlockableAttackTypes, animType:lower()) then
-            if type(storedId) == "string" and storedId:find(idStr) then
-                return true
-            elseif type(storedId) == "table" then
-                for _, subId in ipairs(storedId) do
-                    if tostring(subId):find(idStr) then
-                        return true
-                    end
-                end
-            end
-        end
-    end
-    return false
 end
 
 local OverlapParams = OverlapParams.new()
@@ -1862,6 +1813,10 @@ local function StartAttack(Killer, queryHitbox, Track)
     if Track then
         Track.Stopped:Once(function() ClearKillerHitbox(Killer) end)
         Track.Destroying:Once(function() ClearKillerHitbox(Killer) end)
+    else
+        task.delay(_G.HitboxDuration, function()
+            ClearKillerHitbox(Killer)
+        end)
     end
 
     local LocalChar = LP.Character
@@ -1871,7 +1826,6 @@ local function StartAttack(Killer, queryHitbox, Track)
     if not LocalQuery then return end
 
     local isC00lkidd = Killer.Name:lower():find("c00lkidd") or Killer.Name:lower():find("coolkidd")
-
     local hitboxSize = _G.BaseHitboxSize * _G.HitboxScale
 
     if isC00lkidd then
@@ -1886,7 +1840,12 @@ local function StartAttack(Killer, queryHitbox, Track)
         Part.Parent = Hitboxes
         Debris:AddItem(Part, 0.4)
         local hits = Workspace:GetPartsInPart(Part, OverlapParams)
-        if #hits > 0 then pressBlock() end
+        if #hits > 0 then
+            if _G.BlockDelay > 0 then
+                task.wait(_G.BlockDelay)
+            end
+            pressBlock()
+        end
         return
     end
 
@@ -1906,6 +1865,9 @@ local function StartAttack(Killer, queryHitbox, Track)
         Debris:AddItem(Part, 0.4)
         local hits = Workspace:GetPartsInPart(Part, OverlapParams)
         if #hits > 0 then
+            if _G.BlockDelay > 0 then
+                task.wait(_G.BlockDelay)
+            end
             pressBlock()
             break
         end
@@ -1917,21 +1879,34 @@ local function HandleKiller(Killer)
     if not Players:GetPlayerFromCharacter(Killer) then return end
     local humanoid = Killer:FindFirstChildOfClass("Humanoid")
     local queryHitbox = Killer:FindFirstChild("QueryHitbox")
-    local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
-    if not (animator and queryHitbox) then return end
+    if not (humanoid and queryHitbox) then return end
 
-    local killerAnims = GetKillerAnimations(Killer)
+    local lastAbility = Killer:GetAttribute("AbilityLastUsed") or 0
+    local lastAbilities = Killer:GetAttribute("AbilitiesUsed") or 0
 
-    local connection = animator.AnimationPlayed:Connect(function(Track)
-        if not _G.AutoBlockEnabled then return end
-        local animId = Track.Animation.AnimationId
-        if IsAttackAnimation(killerAnims, animId) then
-            StartAttack(Killer, queryHitbox, Track)
+    local heartbeatConn
+    heartbeatConn = RunService.Heartbeat:Connect(function()
+        if not _G.AutoBlockEnabled then
+            heartbeatConn:Disconnect()
+            return
         end
+        if not Killer.Parent then
+            heartbeatConn:Disconnect()
+            return
+        end
+        local curAbility = Killer:GetAttribute("AbilityLastUsed") or 0
+        local curAbilities = Killer:GetAttribute("AbilitiesUsed") or 0
+        if curAbility > lastAbility then
+            if not (curAbilities > lastAbilities) then
+                StartAttack(Killer, queryHitbox, nil)
+            end
+        end
+        lastAbility = curAbility
+        lastAbilities = curAbilities
     end)
 
     local function cleanup()
-        if connection then connection:Disconnect() end
+        heartbeatConn:Disconnect()
         ClearKillerHitbox(Killer)
     end
 
@@ -2019,6 +1994,22 @@ BlockRight:AddSlider("HitboxOffset", {
     Callback = function(v)
         _G.HitboxOffset = v
         UpdateAllHitboxVisuals()
+    end,
+})
+BlockRight:AddSlider("HitboxDuration", {
+    Text = "Hitbox Duration",
+    Default = 1.5,
+    Min = 0.5, Max = 5.0, Rounding = 1,
+    Callback = function(v)
+        _G.HitboxDuration = v
+    end,
+})
+BlockRight:AddSlider("BlockDelay", {
+    Text = "Block Delay",
+    Default = 0,
+    Min = 0, Max = 1, Rounding = 2,
+    Callback = function(v)
+        _G.BlockDelay = v
     end,
 })
 
@@ -2620,7 +2611,6 @@ CameraGroup:AddToggle("FreeZoom", {
         LP.CameraMaxZoomDistance = v and math.huge or 12
     end,
 })
-
 CameraGroup:AddToggle("CameraNoclip", {
     Text = "Camera Noclip",
     Default = false,
@@ -2628,7 +2618,6 @@ CameraGroup:AddToggle("CameraNoclip", {
         LP.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode[v and "Invisicam" or "Zoom"]
     end,
 })
-
 local fovValue = 70
 CameraGroup:AddSlider("FOVSlider", {
     Text = "Field of View",
@@ -2643,7 +2632,6 @@ CameraGroup:AddSlider("FOVSlider", {
         end
     end,
 })
-
 CameraGroup:AddToggle("FOVToggle", {
     Text = "Enable FOV",
     Default = false,
@@ -2656,7 +2644,6 @@ CameraGroup:AddToggle("FOVToggle", {
         end
     end,
 })
-
 task.spawn(function()
     while true do
         if _G.FOV then
@@ -2679,7 +2666,6 @@ LightingGroup:AddSlider("Brightness", {
         end
     end,
 })
-
 LightingGroup:AddToggle("NoShadows", {
     Text = "No Shadows",
     Default = false,
@@ -2690,7 +2676,6 @@ LightingGroup:AddToggle("NoShadows", {
         end
     end,
 })
-
 LightingGroup:AddToggle("NoFog", {
     Text = "No Fog",
     Default = false,
@@ -2698,7 +2683,6 @@ LightingGroup:AddToggle("NoFog", {
         _G.NoFog = v
     end,
 })
-
 LightingGroup:AddToggle("EnableLighting", {
     Text = "Enable Lighting",
     Default = false,
@@ -2717,7 +2701,6 @@ LightingGroup:AddToggle("EnableLighting", {
         end
     end,
 })
-
 task.spawn(function()
     while true do
         if _G.Fullbright then
