@@ -27,16 +27,54 @@ local Window = Library:CreateWindow({
     ShowCustomCursor = true,
 })
 
+local FIXED_CORNER_RADIUS = 8
+local cornerConnection = nil
+
+local function applyFixedCornerRadius(radius)
+	local gui = Library.ScreenGui
+	if not gui then
+		gui = game:GetService("CoreGui"):FindFirstChild("mspaint")
+	end
+	if not gui then return end
+
+	for _, child in ipairs(gui:GetDescendants()) do
+		if child:IsA("UICorner") then
+			pcall(function()
+				child.CornerRadius = UDim.new(0, radius)
+			end)
+		end
+	end
+
+	if cornerConnection then
+		cornerConnection:Disconnect()
+		cornerConnection = nil
+	end
+
+	cornerConnection = gui.DescendantAdded:Connect(function(desc)
+		if desc:IsA("UICorner") then
+			task.wait()
+			pcall(function()
+				desc.CornerRadius = UDim.new(0, radius)
+			end)
+		end
+	end)
+end
+
+task.spawn(function()
+	task.wait(0.5)
+	applyFixedCornerRadius(FIXED_CORNER_RADIUS)
+end)
+
 local Tabs = {
-    ["Player Info"] = Window:AddTab("Player Info", "user"),
-    ["ESP"] = Window:AddTab("ESP", "eye"),
-    ["Generator"] = Window:AddTab("Generator", "zap"),
-    ["Player"] = Window:AddTab("Player", "user"),
-    ["Aimbot"] = Window:AddTab("Aimbot", "crosshair"),
-    ["Block"] = Window:AddTab("Block", "shield"),
-    ["Action"] = Window:AddTab("Action", "smile"),
-    ["Misc"] = Window:AddTab("Misc", "paperclip"),
-    ["UI Settings"] = Window:AddTab("UI Settings", "settings"),
+    ["Player Info"] = Window:AddTab("Player Info", "user", "Player and developer information"),
+    ["ESP"] = Window:AddTab("ESP", "eye", "See everything!"),
+    ["Generator"] = Window:AddTab("Generator", "zap", "Auto complete puzzles"),
+    ["Player"] = Window:AddTab("Player", "user", "Basic features and extensions"),
+    ["Aimbot"] = Window:AddTab("Aimbot", "crosshair", "Improve your aim accuracy!"),
+    ["Block"] = Window:AddTab("Block", "shield", "Auto block attacks!"),
+    ["Action"] = Window:AddTab("Action", "smile", "Make you look cooler!"),
+    ["Misc"] = Window:AddTab("Misc", "paperclip", "Miscellaneous features"),
+    ["UI Settings"] = Window:AddTab("UI Settings", "settings", "UI interface settings"),
 }
 
 local information = Tabs["Player Info"]:AddLeftGroupbox("Player", "user")
@@ -1719,6 +1757,57 @@ local function pressBlock()
     return true
 end
 
+local AllAnimations = {}
+local function LoadAnimations()
+    local assets = ReplicatedStorage:FindFirstChild("Assets")
+    if not assets then return end
+    for _, folder in pairs({assets:FindFirstChild("Killers"), assets:FindFirstChild("Survivors"), assets:FindFirstChild("Skins")}) do
+        if folder then
+            for _, child in folder:GetDescendants() do
+                if child:IsA("ModuleScript") and child.Name == "Config" then
+                    local ok, data = pcall(require, child)
+                    if ok and data and data.Animations then
+                        AllAnimations[data.DisplayName] = data.Animations
+                    end
+                end
+            end
+        end
+    end
+end
+LoadAnimations()
+
+local function GetKillerAnimations(killer)
+    local actorName = killer:GetAttribute("ActorDisplayName")
+    if not actorName then return nil end
+    local skinName = killer:GetAttribute("SkinNameDisplay")
+    if skinName and skinName ~= "" then
+        local combined = skinName .. " (" .. actorName .. ")"
+        if AllAnimations[combined] then return AllAnimations[combined] end
+    end
+    return AllAnimations[actorName]
+end
+
+local BlockableAttackTypes = {"slash","stab","attack","punch","swing","tosow","sow","slashground"}
+
+local function IsAttackAnimation(animations, animId)
+    if not animations then return false end
+    local idStr = tostring(animId)
+    for animType, storedId in pairs(animations) do
+        if table.find(BlockableAttackTypes, animType:lower()) then
+            if type(storedId) == "string" and storedId:find(idStr) then
+                return true
+            elseif type(storedId) == "table" then
+                for _, subId in ipairs(storedId) do
+                    if tostring(subId):find(idStr) then
+                        return true
+                    end
+                end
+            end
+        end
+    end
+    return false
+end
+
 local OverlapParams = OverlapParams.new()
 OverlapParams.MaxParts = 1
 OverlapParams.FilterType = Enum.RaycastFilterType.Include
@@ -1879,7 +1968,21 @@ local function HandleKiller(Killer)
     if not Players:GetPlayerFromCharacter(Killer) then return end
     local humanoid = Killer:FindFirstChildOfClass("Humanoid")
     local queryHitbox = Killer:FindFirstChild("QueryHitbox")
+    local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
     if not (humanoid and queryHitbox) then return end
+
+    local killerAnims = GetKillerAnimations(Killer)
+
+    local animationConn
+    if animator then
+        animationConn = animator.AnimationPlayed:Connect(function(Track)
+            if not _G.AutoBlockEnabled then return end
+            local animId = Track.Animation.AnimationId
+            if IsAttackAnimation(killerAnims, animId) then
+                StartAttack(Killer, queryHitbox, Track)
+            end
+        end)
+    end
 
     local lastAbility = Killer:GetAttribute("AbilityLastUsed") or 0
     local lastAbilities = Killer:GetAttribute("AbilitiesUsed") or 0
@@ -1906,7 +2009,8 @@ local function HandleKiller(Killer)
     end)
 
     local function cleanup()
-        heartbeatConn:Disconnect()
+        if animationConn then animationConn:Disconnect() end
+        if heartbeatConn then heartbeatConn:Disconnect() end
         ClearKillerHitbox(Killer)
     end
 
