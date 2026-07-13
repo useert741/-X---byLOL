@@ -29,6 +29,7 @@ local Tabs = {
     ["Player"] = Window:AddTab("Player", "user"),
     ["Aimbot"] = Window:AddTab("Aimbot", "crosshair"),
     ["Block"] = Window:AddTab("Block", "shield"),
+    ["Stab"] = Window:AddTab("Stab", "sword"),
     ["Action"] = Window:AddTab("Action", "smile"),
     ["Misc"] = Window:AddTab("Misc", "paperclip"),
     ["UI Settings"] = Window:AddTab("UI Settings", "settings"),
@@ -38,7 +39,7 @@ local avatarImage = Instance.new("ImageLabel")
 avatarImage.Name = "AvatarThumbnail"
 avatarImage.Size = UDim2.new(0, 220, 0, 220)
 avatarImage.Position = UDim2.new(0.5, -90, 0, 10)
-avatarImage.Image = "rbxassetid://0" 
+avatarImage.Image = "rbxassetid://0"
 avatarImage.BackgroundTransparency = 1
 avatarImage.BorderSizePixel = 0
 avatarImage.ScaleType = Enum.ScaleType.Fit
@@ -47,7 +48,7 @@ if information.Container then
 elseif information.Frame then
     avatarImage.Parent = information.Frame
 else
-    avatarImage.Parent = information 
+    avatarImage.Parent = information
 end
 spawn(function()
     local player = LP
@@ -79,7 +80,7 @@ task.spawn(function()
     while true do
         task.wait(0.1)
         local accentColor = ThemeManager.ThemeData.AccentColor or Color3.fromRGB(137, 180, 250)
-        local fullText = 'Welcome to <font color="#' .. string.format("%02x%02x%02x", 
+        local fullText = 'Welcome to <font color="#' .. string.format("%02x%02x%02x",
             math.floor(accentColor.R * 255), math.floor(accentColor.G * 255), math.floor(accentColor.B * 255)) .. '">Fixsaken</font>'
         welcomeLabel:SetText(fullText)
         if Library.Unloaded then break end
@@ -1447,6 +1448,414 @@ BlockRight:AddSlider("HitboxSize", { Text = "Hitbox Size", Default = 1.0, Min = 
 BlockRight:AddSlider("HitboxOffset", { Text = "Offset (Z)", Default = -1.4, Min = -10, Max = 0, Rounding = 1, Callback = function(v) _G.HitboxOffset = v; UpdateAllHitboxVisuals() end })
 BlockRight:AddSlider("HitboxDuration", { Text = "Hitbox Duration", Default = 1.5, Min = 0.5, Max = 5.0, Rounding = 1, Callback = function(v) _G.HitboxDuration = v end })
 BlockRight:AddSlider("BlockDelay", { Text = "Block Delay", Default = 0, Min = 0, Max = 1, Rounding = 2, Callback = function(v) _G.BlockDelay = v end })
+
+local BackstabSettings = {
+    Enabled = false,
+    Mode = "Blatant",
+    Distance = 15,
+    Offset = 2.0,
+    ShowRange = false,
+    RangeColor = Color3.fromRGB(255, 100, 100),
+    RangeTransparency = 0.5,
+    TeleportSmoothness = 8,
+    TeleportDuration = 0.15,
+    RangeVisuals = {},
+    Active = false,
+    ActiveKiller = nil,
+    ActiveTrack = nil,
+    LoopConnection = nil,
+    LastBackstab = 0,
+    StrictInitialCheck = true,
+    _blocked = false,
+    Debug = false,
+}
+
+local BackstabLeft = Tabs.Stab:AddLeftGroupbox("Auto Backstab", "target")
+
+BackstabLeft:AddToggle("EnableBackstab", {
+    Text = "Enable Backstab",
+    Default = false,
+    Callback = function(state)
+        BackstabSettings.Enabled = state
+        if not state then
+            for k,v in pairs(BackstabSettings.RangeVisuals) do pcall(function() v:Destroy() end) end
+            BackstabSettings.RangeVisuals = {}
+            if BackstabSettings.Active then stopBackstab() end
+        end
+        Library:Notify({Title="Backstab Assist", Description=state and "Enabled" or "Disabled", Time=1})
+    end
+})
+
+BackstabLeft:AddDropdown("BackstabMode", {
+    Text = "Backstab Mode",
+    Values = {"Blatant", "Teleport"},
+    Default = "Blatant",
+    Callback = function(sel) BackstabSettings.Mode = sel end
+})
+
+BackstabLeft:AddSlider("BackstabDistance", {
+    Text = "Backstab Distance",
+    Default = 15,
+    Min = 5,
+    Max = 30,
+    Rounding = 1,
+    Callback = function(v)
+        BackstabSettings.Distance = v
+        if BackstabSettings.ShowRange then
+            for k,part in pairs(BackstabSettings.RangeVisuals) do
+                if part and part.Parent then
+                    part.Size = Vector3.new(v * 2, 1, v * 2)
+                end
+            end
+        end
+    end
+})
+
+BackstabLeft:AddSlider("BackstabOffset", {
+    Text = "Backstab Offset",
+    Default = 2.0,
+    Min = 1,
+    Max = 5,
+    Rounding = 1,
+    Callback = function(v) BackstabSettings.Offset = v end
+})
+
+BackstabLeft:AddToggle("StrictInitialCheck", {
+    Text = "Strict Initial Check",
+    Default = true,
+    Callback = function(v) BackstabSettings.StrictInitialCheck = v end
+})
+
+local BackstabRight = Tabs.Stab:AddRightGroupbox("Visualization", "eye")
+
+BackstabRight:AddToggle("ShowBackstabRange", {
+    Text = "Show Backstab Range",
+    Default = false,
+    Callback = function(state)
+        BackstabSettings.ShowRange = state
+        if state then
+            local kf = getKillersFolder()
+            if kf then
+                for _,k in ipairs(kf:GetChildren()) do
+                    if k:IsA("Model") then createBackstabRangeVisual(k) end
+                end
+            end
+        else
+            for _,part in pairs(BackstabSettings.RangeVisuals) do pcall(function() part:Destroy() end) end
+            BackstabSettings.RangeVisuals = {}
+        end
+    end
+})
+
+BackstabRight:AddLabel("Range Color"):AddColorPicker("BackstabRangeColor", {
+    Default = BackstabSettings.RangeColor,
+    Title = "Range Color",
+    Callback = function(v)
+        BackstabSettings.RangeColor = v
+        for _,part in pairs(BackstabSettings.RangeVisuals) do
+            if part then part.Color = v end
+        end
+    end
+})
+
+BackstabRight:AddSlider("RangeTransparency", {
+    Text = "Range Transparency",
+    Default = 0.5,
+    Min = 0,
+    Max = 1,
+    Rounding = 2,
+    Callback = function(v)
+        BackstabSettings.RangeTransparency = v
+        for _,part in pairs(BackstabSettings.RangeVisuals) do
+            if part then part.Transparency = v end
+        end
+    end
+})
+
+local BackstabWarning = Tabs.Stab:AddRightGroupbox("Warning", "alert")
+BackstabWarning:AddLabel({
+    Text = "WARNING: This feature is still in testing, use with caution. It may even get you banned.",
+    DoesWrap = true
+})
+
+local function debugLog(msg)
+    if BackstabSettings.Debug then print("[Backstab] "..msg) end
+end
+
+local function getKillersFolder()
+    local playersFolder = Workspace:FindFirstChild("Players")
+    return playersFolder and playersFolder:FindFirstChild("Killers")
+end
+
+local function createBackstabRangeVisual(killerModel)
+    if not killerModel or not killerModel:IsA("Model") then return nil end
+    if BackstabSettings.RangeVisuals[killerModel] then return end
+    local root = killerModel:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+
+    local part = Instance.new("Part")
+    part.Name = "BackstabRangeVisual"
+    part.Shape = Enum.PartType.Ball
+    part.Size = Vector3.new(BackstabSettings.Distance * 2, 1, BackstabSettings.Distance * 2)
+    part.Color = BackstabSettings.RangeColor
+    part.Material = Enum.Material.ForceField
+    part.Transparency = BackstabSettings.RangeTransparency
+    part.Anchored = false
+    part.CanCollide = false
+    part.CFrame = root.CFrame
+
+    local weld = Instance.new("WeldConstraint")
+    weld.Part0 = root
+    weld.Part1 = part
+    weld.Parent = part
+    part.Parent = root
+
+    BackstabSettings.RangeVisuals[killerModel] = part
+    return part
+end
+
+local function updateBackstabRangeVisuals()
+    if not BackstabSettings.ShowRange then return end
+    local killersFolder = getKillersFolder()
+    if not killersFolder then return end
+
+    for _, killer in ipairs(killersFolder:GetChildren()) do
+        if killer:IsA("Model") and not BackstabSettings.RangeVisuals[killer] then
+            createBackstabRangeVisual(killer)
+        end
+    end
+
+    for killer, part in pairs(BackstabSettings.RangeVisuals) do
+        if not killer or not killer.Parent then
+            pcall(function() part:Destroy() end)
+            BackstabSettings.RangeVisuals[killer] = nil
+        end
+    end
+end
+
+local function stopBackstab()
+    if BackstabSettings.LoopConnection then
+        BackstabSettings.LoopConnection:Disconnect()
+        BackstabSettings.LoopConnection = nil
+    end
+    BackstabSettings.Active = false
+    BackstabSettings.ActiveKiller = nil
+    BackstabSettings.ActiveTrack = nil
+
+    local char = LP.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then hum.AutoRotate = true end
+    end
+end
+
+local function startBackstabLoop(killerModel, track)
+    if BackstabSettings.LoopConnection then
+        BackstabSettings.LoopConnection:Disconnect()
+    end
+
+    local char = LP.Character
+    if not char then stopBackstab(); return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hum then hum.AutoRotate = false end
+
+    BackstabSettings.LoopConnection = RunService.RenderStepped:Connect(function()
+        if not BackstabSettings.Active then stopBackstab(); return end
+        if not killerModel or not killerModel.Parent then stopBackstab(); return end
+
+        local myChar = LP.Character
+        if not myChar or not myChar.Parent then stopBackstab(); return end
+        local root = myChar:FindFirstChild("HumanoidRootPart")
+        local killerRoot = killerModel:FindFirstChild("HumanoidRootPart")
+        if not root or not killerRoot then stopBackstab(); return end
+
+        local behindOffset = -killerRoot.CFrame.LookVector * BackstabSettings.Offset
+        local targetPos = killerRoot.Position + behindOffset + Vector3.new(0, 0.5, 0)
+        root.CFrame = CFrame.new(targetPos, killerRoot.Position)
+    end)
+
+    if track and track.Parent then
+        local conn
+        conn = track.Stopped:Connect(function()
+            conn:Disconnect()
+            stopBackstab()
+        end)
+        local ancConn
+        ancConn = track.AncestryChanged:Connect(function()
+            if not track.Parent then
+                ancConn:Disconnect()
+                stopBackstab()
+            end
+        end)
+    else
+        task.delay(BackstabSettings.TeleportDuration + 0.5, function()
+            if BackstabSettings.Active and BackstabSettings.ActiveTrack == track then
+                stopBackstab()
+            end
+        end)
+    end
+end
+
+local function performBackstab(killerModel, track, shouldLock)
+    if not killerModel or not killerModel.Parent then return false end
+    local myChar = LP.Character
+    if not myChar then return false end
+    local root = myChar:FindFirstChild("HumanoidRootPart")
+    local killerRoot = killerModel:FindFirstChild("HumanoidRootPart")
+    if not root or not killerRoot then return false end
+
+    local behindOffset = -killerRoot.CFrame.LookVector * BackstabSettings.Offset
+    local targetPos = killerRoot.Position + behindOffset + Vector3.new(0, 0.5, 0)
+    local targetCF = CFrame.new(targetPos, killerRoot.Position)
+
+    if BackstabSettings.Mode == "Teleport" then
+        local startPos = root.CFrame
+        root.CFrame = targetCF
+
+        if track then
+            local conn
+            conn = track.Stopped:Connect(function()
+                conn:Disconnect()
+                local charNow = LP.Character
+                if charNow and charNow:FindFirstChild("HumanoidRootPart") then
+                    charNow.HumanoidRootPart.CFrame = startPos
+                end
+            end)
+            track.Destroying:Once(function()
+                conn:Disconnect()
+            end)
+        else
+            task.delay(0.5, function()
+                local charNow = LP.Character
+                if charNow and charNow:FindFirstChild("HumanoidRootPart") then
+                    charNow.HumanoidRootPart.CFrame = startPos
+                end
+            end)
+        end
+        return true
+    end
+
+    local startCF = root.CFrame
+    local steps = BackstabSettings.TeleportSmoothness
+    local stepTime = BackstabSettings.TeleportDuration / steps
+
+    for i = 1, steps do
+        root.CFrame = startCF:Lerp(targetCF, i / steps)
+        task.wait(stepTime)
+    end
+    root.CFrame = targetCF
+
+    if shouldLock then
+        BackstabSettings.Active = true
+        BackstabSettings.ActiveKiller = killerModel
+        BackstabSettings.ActiveTrack = track
+        startBackstabLoop(killerModel, track)
+    end
+    return true
+end
+
+local function getNearestKillerForBackstab()
+    local killers = getKillersFolder()
+    if not killers then return nil end
+    local myChar = LP.Character
+    if not myChar then return nil end
+    local myRoot = myChar:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return nil end
+
+    local nearest, nearestDist = nil, math.huge
+    for _, killer in ipairs(killers:GetChildren()) do
+        if killer:IsA("Model") and killer:FindFirstChild("HumanoidRootPart") and killer:GetAttribute("IsFakeNoli") ~= true then
+            local dist = (killer.HumanoidRootPart.Position - myRoot.Position).Magnitude
+            if dist <= BackstabSettings.Distance and dist < nearestDist then
+                nearestDist = dist
+                nearest = killer
+            end
+        end
+    end
+    return nearest
+end
+
+local ANIM_DASH  = "100725497418533"
+local ANIM_STAB  = "108018357044094"
+
+local backstabAnimConn = nil
+
+local function hookPlayerAnimationsForBackstab()
+    local char = LP.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    local animator = hum:FindFirstChildOfClass("Animator")
+    if not animator then return end
+
+    if backstabAnimConn then backstabAnimConn:Disconnect() end
+
+    backstabAnimConn = animator.AnimationPlayed:Connect(function(track)
+        if not BackstabSettings.Enabled then return end
+
+        local playersFolder = Workspace:FindFirstChild("Players")
+        if not playersFolder then return end
+        local survivors = playersFolder:FindFirstChild("Survivors")
+        if not survivors then return end
+        if not char:IsDescendantOf(survivors) then return end
+
+        local animId = track.Animation.AnimationId:match("%d+")
+        if not animId then return end
+
+        if animId == ANIM_DASH then
+            local target = getNearestKillerForBackstab()
+            if target then
+                BackstabSettings._blocked = false
+                performBackstab(target, track, false)
+            else
+                if BackstabSettings.StrictInitialCheck then
+                    BackstabSettings._blocked = true
+                    debugLog("Dash missed, blocking subsequent stab.")
+                end
+            end
+        elseif animId == ANIM_STAB then
+            if BackstabSettings.StrictInitialCheck and BackstabSettings._blocked then
+                BackstabSettings._blocked = false
+                debugLog("Stab blocked due to strict check.")
+                return
+            end
+            local target = getNearestKillerForBackstab()
+            if target then
+                performBackstab(target, track, true)
+            end
+        end
+    end)
+end
+
+if LP.Character then
+    hookPlayerAnimationsForBackstab()
+end
+LP.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    hookPlayerAnimationsForBackstab()
+end)
+
+task.spawn(function()
+    while task.wait(1) do
+        if BackstabSettings.ShowRange then
+            updateBackstabRangeVisuals()
+        else
+            for _, part in pairs(BackstabSettings.RangeVisuals) do
+                pcall(function() part:Destroy() end)
+            end
+            BackstabSettings.RangeVisuals = {}
+        end
+    end
+end)
+
+Library:OnUnload(function()
+    if backstabAnimConn then backstabAnimConn:Disconnect() end
+    stopBackstab()
+    for _, part in pairs(BackstabSettings.RangeVisuals) do
+        pcall(function() part:Destroy() end)
+    end
+end)
+
 local EmotesGroup = Tabs.Action:AddLeftGroupbox("Emotes", "smile")
 local svc = { RS = ReplicatedStorage, Run = RunService, TS = game:GetService("TweenService"), Input = UserInputService }
 local lp = LP
