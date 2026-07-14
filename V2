@@ -1454,6 +1454,7 @@ local BackstabSettings = {
     Mode = "Blatant",
     Distance = 15,
     Offset = 2.0,
+    ForwardOffset = 0,
     ShowRange = false,
     RangeColor = Color3.fromRGB(255, 100, 100),
     RangeTransparency = 0.5,
@@ -1465,7 +1466,6 @@ local BackstabSettings = {
     ActiveTrack = nil,
     LoopConnection = nil,
     LastBackstab = 0,
-    StrictInitialCheck = true,
     _blocked = false,
     Debug = false,
 }
@@ -1520,10 +1520,13 @@ BackstabLeft:AddSlider("BackstabOffset", {
     Callback = function(v) BackstabSettings.Offset = v end
 })
 
-BackstabLeft:AddToggle("StrictInitialCheck", {
-    Text = "Strict Initial Check",
-    Default = true,
-    Callback = function(v) BackstabSettings.StrictInitialCheck = v end
+BackstabLeft:AddSlider("ForwardOffset", {
+    Text = "Forward Offset",
+    Default = 0,
+    Min = -3,
+    Max = 3,
+    Rounding = 1,
+    Callback = function(v) BackstabSettings.ForwardOffset = v end
 })
 
 local BackstabRight = Tabs.Stab:AddRightGroupbox("Visualization", "eye")
@@ -1662,6 +1665,11 @@ local function startBackstabLoop(killerModel, track)
     BackstabSettings.LoopConnection = RunService.RenderStepped:Connect(function()
         if not BackstabSettings.Active then stopBackstab(); return end
         if not killerModel or not killerModel.Parent then stopBackstab(); return end
+        if killerModel:GetAttribute("IsFakeNoli") == true then
+            debugLog("Target became fake Noli, stopping.")
+            stopBackstab()
+            return
+        end
 
         local myChar = LP.Character
         if not myChar or not myChar.Parent then stopBackstab(); return end
@@ -1670,16 +1678,18 @@ local function startBackstabLoop(killerModel, track)
         if not root or not killerRoot then stopBackstab(); return end
 
         local behindOffset = -killerRoot.CFrame.LookVector * BackstabSettings.Offset
+            + killerRoot.CFrame.LookVector * BackstabSettings.ForwardOffset
         local targetPos = killerRoot.Position + behindOffset + Vector3.new(0, 0.5, 0)
         root.CFrame = CFrame.new(targetPos, killerRoot.Position)
     end)
 
+    local function onAnimationEnd()
+        stopBackstab()
+    end
+
     if track and track.Parent then
-        local conn
-        conn = track.Stopped:Connect(function()
-            conn:Disconnect()
-            stopBackstab()
-        end)
+        track.Stopped:Connect(onAnimationEnd)
+        track.Ended:Connect(onAnimationEnd)
         local ancConn
         ancConn = track.AncestryChanged:Connect(function()
             if not track.Parent then
@@ -1704,7 +1714,10 @@ local function performBackstab(killerModel, track, shouldLock)
     local killerRoot = killerModel:FindFirstChild("HumanoidRootPart")
     if not root or not killerRoot then return false end
 
+    if killerModel:GetAttribute("IsFakeNoli") == true then return false end
+
     local behindOffset = -killerRoot.CFrame.LookVector * BackstabSettings.Offset
+        + killerRoot.CFrame.LookVector * BackstabSettings.ForwardOffset
     local targetPos = killerRoot.Position + behindOffset + Vector3.new(0, 0.5, 0)
     local targetCF = CFrame.new(targetPos, killerRoot.Position)
 
@@ -1713,17 +1726,14 @@ local function performBackstab(killerModel, track, shouldLock)
         root.CFrame = targetCF
 
         if track then
-            local conn
-            conn = track.Stopped:Connect(function()
-                conn:Disconnect()
+            local function returnToStart()
                 local charNow = LP.Character
                 if charNow and charNow:FindFirstChild("HumanoidRootPart") then
                     charNow.HumanoidRootPart.CFrame = startPos
                 end
-            end)
-            track.Destroying:Once(function()
-                conn:Disconnect()
-            end)
+            end
+            track.Stopped:Connect(returnToStart)
+            track.Ended:Connect(returnToStart)
         else
             task.delay(0.5, function()
                 local charNow = LP.Character
@@ -1808,13 +1818,11 @@ local function hookPlayerAnimationsForBackstab()
                 BackstabSettings._blocked = false
                 performBackstab(target, track, false)
             else
-                if BackstabSettings.StrictInitialCheck then
-                    BackstabSettings._blocked = true
-                    debugLog("Dash missed, blocking subsequent stab.")
-                end
+                BackstabSettings._blocked = true
+                debugLog("Dash missed, blocking subsequent stab.")
             end
         elseif animId == ANIM_STAB then
-            if BackstabSettings.StrictInitialCheck and BackstabSettings._blocked then
+            if BackstabSettings._blocked then
                 BackstabSettings._blocked = false
                 debugLog("Stab blocked due to strict check.")
                 return
