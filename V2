@@ -21,6 +21,7 @@ local Window = Library:CreateWindow({
     Footer = LP.Name .. " | " .. gameName,
     NotifySide = "Right",
     ShowCustomCursor = true,
+    Icon = "rbxassetid://111271260721038"
 })
 local Tabs = {
     ["Player Info"] = Window:AddTab("Player Info", "user"),
