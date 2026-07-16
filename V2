@@ -30,6 +30,7 @@ local Tabs = {
     ["Aimbot"] = Window:AddTab("Aimbot", "crosshair"),
     ["Block"] = Window:AddTab("Block", "shield"),
     ["Stab"] = Window:AddTab("Stab", "sword"),
+    ["Sk8"] = Window:AddTab("Sk8", "zap"),
     ["Action"] = Window:AddTab("Action", "smile"),
     ["Misc"] = Window:AddTab("Misc", "paperclip"),
     ["UI Settings"] = Window:AddTab("UI Settings", "settings"),
@@ -1863,6 +1864,317 @@ Library:OnUnload(function()
         pcall(function() part:Destroy() end)
     end
 end)
+
+do
+    local Sk8Player = LP
+    local Sk8Workspace = Workspace
+    local Sk8RunService = RunService
+    local Sk8ReplicatedStorage = ReplicatedStorage
+    local Sk8UserInputService = UserInputService
+
+    local atEnabled = false
+    local atActiveMonitors = {}
+    local atDescendantAddedConn = nil
+
+    local function atGetBehaviorFolder()
+        return Sk8ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Survivors"):WaitForChild("Veeronica"):WaitForChild("Behavior")
+    end
+
+    local function atGetSprintingButton()
+        return Sk8Player.PlayerGui:WaitForChild("MainUI"):WaitForChild("SprintingButton")
+    end
+
+    local atBehaviorFolder = nil
+    task.spawn(function()
+        local ok, f = pcall(atGetBehaviorFolder)
+        if ok and f then atBehaviorFolder = f end
+    end)
+
+    local function atMonitorHighlight(h)
+        if not h or atActiveMonitors[h] then return end
+        local connections = {}
+        local prevState = false
+        local function cleanup()
+            for _, conn in ipairs(connections) do
+                if conn and conn.Connected then conn:Disconnect() end
+            end
+            atActiveMonitors[h] = nil
+        end
+        local function adorneeIsPlayer(hh)
+            if not hh then return false end
+            local adornee = hh.Adornee
+            local char = Sk8Player.Character
+            if not adornee or not char then return false end
+            return adornee == char or adornee:IsDescendantOf(char)
+        end
+        local function onChanged()
+            if not atEnabled then return end
+            if not h or not h.Parent then cleanup(); return end
+            local currState = adorneeIsPlayer(h)
+            if prevState ~= currState then
+                if currState then
+                    local ok2, btn = pcall(atGetSprintingButton)
+                    if ok2 and btn then
+                        for _, v in pairs(getconnections(btn.MouseButton1Down)) do
+                            pcall(function() v:Fire() end)
+                        end
+                    end
+                end
+            end
+            prevState = currState
+        end
+        local c = h:GetPropertyChangedSignal("Adornee"):Connect(onChanged)
+        if c then table.insert(connections, c) end
+        table.insert(connections, h.AncestryChanged:Connect(function(_, parent)
+            if not parent then cleanup() else onChanged() end
+        end))
+        atActiveMonitors[h] = cleanup
+        task.spawn(onChanged)
+    end
+
+    local function atStartManager()
+        if atDescendantAddedConn or not atBehaviorFolder then return end
+        for _, desc in ipairs(atBehaviorFolder:GetDescendants()) do
+            if desc:IsA("Highlight") then atMonitorHighlight(desc) end
+        end
+        atDescendantAddedConn = atBehaviorFolder.DescendantAdded:Connect(function(child)
+            if child:IsA("Highlight") then atMonitorHighlight(child) end
+        end)
+    end
+
+    local function atStopManager()
+        if atDescendantAddedConn and atDescendantAddedConn.Connected then atDescendantAddedConn:Disconnect() end
+        atDescendantAddedConn = nil
+        for _, cleanup in pairs(atActiveMonitors) do
+            if type(cleanup) == "function" then pcall(cleanup) end
+        end
+        atActiveMonitors = {}
+    end
+
+    local sk8Camera = Sk8Workspace.CurrentCamera
+    local sk8ShiftlockEnabled = false
+    local sk8ShiftConn = nil
+
+    local function sk8SetShiftlock(state)
+        sk8ShiftlockEnabled = state
+        if sk8ShiftConn then sk8ShiftConn:Disconnect(); sk8ShiftConn = nil end
+        if sk8ShiftlockEnabled then
+            Sk8UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+            sk8ShiftConn = Sk8RunService.RenderStepped:Connect(function()
+                local character = Sk8Player.Character
+                local root = character and character:FindFirstChild("HumanoidRootPart")
+                if root then
+                    local camCF = sk8Camera.CFrame
+                    root.CFrame = CFrame.new(root.Position, Vector3.new(camCF.LookVector.X + root.Position.X, root.Position.Y, camCF.LookVector.Z + root.Position.Z))
+                end
+            end)
+        else
+            Sk8UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+        end
+    end
+
+    local sk8ChargeAnimIds = { "117058860640843" }
+    local SK8_DASH_SPEED = 60
+    local sk8ControlEnabled = false
+    local sk8ControlActive = false
+    local sk8OverrideConn = nil
+    local sk8SavedHumState = {}
+
+    local function sk8GetHumanoid()
+        if not Sk8Player or not Sk8Player.Character then return nil end
+        return Sk8Player.Character:FindFirstChildOfClass("Humanoid")
+    end
+
+    local function sk8SaveHumState(hum)
+        if not hum or sk8SavedHumState[hum] then return end
+        local s = {}
+        pcall(function()
+            s.WalkSpeed = hum.WalkSpeed
+            local ok, ar = pcall(function() return hum.AutoRotate end)
+            if ok then s.AutoRotate = ar end
+        end)
+        sk8SavedHumState[hum] = s
+    end
+
+    local function sk8RestoreHumState(hum)
+        if not hum then return end
+        local s = sk8SavedHumState[hum]
+        if not s then return end
+        pcall(function()
+            if s.WalkSpeed ~= nil then hum.WalkSpeed = s.WalkSpeed end
+            if s.AutoRotate ~= nil then pcall(function() hum.AutoRotate = s.AutoRotate end) end
+        end)
+        sk8SavedHumState[hum] = nil
+    end
+
+    local function sk8StartOverride()
+        if sk8ControlActive then return end
+        local hum = sk8GetHumanoid()
+        if not hum then return end
+        sk8ControlActive = true
+        sk8SaveHumState(hum)
+        pcall(function() hum.WalkSpeed = SK8_DASH_SPEED; hum.AutoRotate = false end)
+        sk8SetShiftlock(true)
+        sk8OverrideConn = Sk8RunService.RenderStepped:Connect(function()
+            local humanoid = sk8GetHumanoid()
+            local rootPart = humanoid and humanoid.Parent and humanoid.Parent:FindFirstChild("HumanoidRootPart")
+            if not humanoid or not rootPart then return end
+            pcall(function() humanoid.WalkSpeed = SK8_DASH_SPEED; humanoid.AutoRotate = false end)
+            local direction = rootPart.CFrame.LookVector
+            local horizontal = Vector3.new(direction.X, 0, direction.Z)
+            if horizontal.Magnitude > 0 then humanoid:Move(horizontal.Unit) end
+        end)
+    end
+
+    local function sk8StopOverride()
+        if not sk8ControlActive then return end
+        sk8ControlActive = false
+        if sk8OverrideConn then pcall(function() sk8OverrideConn:Disconnect() end); sk8OverrideConn = nil end
+        sk8SetShiftlock(false)
+        local hum = sk8GetHumanoid()
+        if hum then
+            pcall(function()
+                sk8RestoreHumState(hum)
+                hum.AutoRotate = true
+                hum:Move(Vector3.new(0,0,0))
+            end)
+        end
+    end
+
+    local function sk8DetectChargeAnim()
+        local hum = sk8GetHumanoid()
+        if not hum then return false end
+        for _, track in ipairs(hum:GetPlayingAnimationTracks()) do
+            local ok, animId = pcall(function()
+                return tostring(track.Animation and track.Animation.AnimationId or ""):match("%d+")
+            end)
+            if ok and animId and animId ~= "" then
+                if table.find(sk8ChargeAnimIds, animId) then return true end
+            end
+        end
+        return false
+    end
+
+    Sk8RunService.RenderStepped:Connect(function()
+        if not sk8ControlEnabled then
+            if sk8ControlActive then sk8StopOverride() end
+            return
+        end
+        local hum = sk8GetHumanoid()
+        if not hum then
+            if sk8ControlActive then sk8StopOverride() end
+            return
+        end
+        if sk8DetectChargeAnim() then
+            if not sk8ControlActive then sk8StartOverride() end
+        else
+            if sk8ControlActive then sk8StopOverride() end
+        end
+    end)
+
+    Sk8Player.CharacterAdded:Connect(function()
+        if sk8ShiftConn then sk8ShiftConn:Disconnect(); sk8ShiftConn = nil end
+        sk8SavedHumState = {}
+    end)
+
+    local SPRAY_ANIM_ID = "96618767275101"
+    local veeFastSpray = false
+    local sprayPhase = 0
+    local sprayBaseCF = nil
+    local spraySpeed = 4.5
+
+    local function isSprayPainting()
+        local char = Sk8Player.Character
+        if not char then return false end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hum then return false end
+        for _, track in ipairs(hum:GetPlayingAnimationTracks()) do
+            local ok, id = pcall(function()
+                return tostring(track.Animation and track.Animation.AnimationId or ""):match("%d+")
+            end)
+            if ok and id == SPRAY_ANIM_ID then return true end
+        end
+        return false
+    end
+
+    Sk8RunService.RenderStepped:Connect(function(dt)
+        if not veeFastSpray then
+            sprayPhase = 0
+            sprayBaseCF = nil
+            return
+        end
+        if not isSprayPainting() then
+            sprayPhase = 0
+            sprayBaseCF = nil
+            return
+        end
+        local char = Sk8Player.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+
+        if not sprayBaseCF or math.abs(math.sin(sprayPhase)) < 0.05 then
+            sprayBaseCF = hrp.CFrame
+        end
+
+        sprayPhase = sprayPhase + dt * (math.pi * spraySpeed)
+        local offset = math.sin(sprayPhase) * 2
+        hrp.CFrame = sprayBaseCF + (sprayBaseCF.LookVector * (-offset))
+    end)
+
+    Sk8Player.CharacterAdded:Connect(function()
+        sprayPhase = 0
+        sprayBaseCF = nil
+    end)
+
+    local Sk8Tab = Tabs["Sk8"]
+    local Sk8Left = Sk8Tab:AddLeftGroupbox("Main", "zap")
+    local Sk8Right = Sk8Tab:AddRightGroupbox("Fast Spray", "brush")
+
+    Sk8Left:AddToggle("AutoTrick", {
+        Text = "Auto Trick",
+        Default = false,
+        Callback = function(state)
+            atEnabled = state
+            if state then
+                if not atBehaviorFolder then
+                    local ok, f = pcall(atGetBehaviorFolder)
+                    if ok and f then atBehaviorFolder = f end
+                end
+                atStartManager()
+            else
+                atStopManager()
+            end
+        end
+    })
+
+    Sk8Left:AddToggle("Sk8Control", {
+        Text = "Enable SK8 Control",
+        Default = false,
+        Callback = function(state)
+            sk8ControlEnabled = state
+            if not state and sk8ControlActive then sk8StopOverride() end
+        end
+    })
+
+    Sk8Right:AddToggle("FastSpray", {
+        Text = "Enable Fast Spray",
+        Default = false,
+        Callback = function(state)
+            veeFastSpray = state
+            if not state then sprayPhase = 0; sprayBaseCF = nil end
+        end
+    })
+    Sk8Right:AddSlider("SpraySpeed", {
+        Text = "Spray Speed",
+        Default = 4.5,
+        Min = 0.5,
+        Max = 10,
+        Rounding = 1,
+        Callback = function(val)
+            spraySpeed = val
+        end
+    })
+end
 
 local EmotesGroup = Tabs.Action:AddLeftGroupbox("Emotes", "smile")
 local svc = { RS = ReplicatedStorage, Run = RunService, TS = game:GetService("TweenService"), Input = UserInputService }
