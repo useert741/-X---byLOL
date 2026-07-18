@@ -1212,143 +1212,42 @@ registerTriggerModule("SoundTrigger", function() soundTriggerEnabled = true; set
     if globalSoundConn then globalSoundConn:Disconnect(); globalSoundConn = nil end
 end)
 getgenv().AutoBlockSounds = {
-  ["12222216"] = true,
-  ["71805956520207"] = true,
-  ["71834552297085"] = true,
-  ["72425554233832"] = true,
-  ["75330693422988"] = true,
-  ["76467993976301"] = true,
-  ["76959687420003"] = true,
-  ["77245770579014"] = true,
-  ["78298577002481"] = true,
-  ["79391273191671"] = true,
-  ["79980897195554"] = true,
-  ["80516583309685"] = true,
-  ["81702359653578"] = true,
-  ["82221759983649"] = true,
-  ["84116622032112"] = true,
-  ["84307400688050"] = true,
-  ["85810983952228"] = true,
-  ["85853080745515"] = true,
-  ["86174610237192"] = true,
-  ["86494585504534"] = true,
-  ["86833981571073"] = true,
-  ["89004992452376"] = true,
-  ["89315669689903"] = true,
-  ["90878551190839"] = true,
-  ["94043596324983"] = true,
-  ["95079963655241"] = true,
-  ["97894923442490"] = true,
-  ["98675142200448"] = true,
-  ["99829427721752"] = true,
-  ["101199185291628"] = true,
-  ["101553872555606"] = true,
-  ["101698569375359"] = true,
-  ["102228729296384"] = true,
-  ["103684883268194"] = true,
-  ["104910828105172"] = true,
-  ["105200830849301"] = true,
-  ["105840448036441"] = true,
-  ["106300477136129"] = true,
-  ["107444859834748"] = true,
-  ["108610718831698"] = true,
-  ["108907358619313"] = true,
-  ["109348678063422"] = true,
-  ["109431876587852"] = true,
-  ["110115912768379"] = true,
-  ["110372418055226"] = true,
-  ["112395455254818"] = true,
-  ["112809109188560"] = true,
-  ["113037804008732"] = true,
-  ["114742322778642"] = true,
-  ["115026634746636"] = true,
-  ["116581754553533"] = true,
-  ["117173212095661"] = true,
-  ["117231507259853"] = true,
-  ["119089145505438"] = true,
-  ["119583605486352"] = true,
-  ["119942598489800"] = true,
-  ["121954639447247"] = true,
-  ["124330645976935"] = true,
-  ["124397369810639"] = true,
-  ["124903763333174"] = true,
-  ["125213046326879"] = true,
-  ["127793641088496"] = true,
-  ["128856426573270"] = true,
-  ["131123355704017"] = true,
-  ["131406927389838"] = true,
-  ["135448067174226"] = true,
-  ["136323728355613"] = true,
-  ["136841625231863"] = true,
-  ["140242176732868"] = true,
-  ["128367348686124"] = true,
-  ["116527305931161"] = true,
-  ["133709029886490"] = true,
-  ["130896140725074"] = true,
-  ["135041815780073"] = true,
-  ["82843272472677"] = true
+  ["12222216"] = true, ["71805956520207"] = true, ["71834552297085"] = true, ["72425554233832"] = true,
+  ["75330693422988"] = true, ["76467993976301"] = true, ["76959687420003"] = true, ["77245770579014"] = true,
+  ["78298577002481"] = true, ["79391273191671"] = true, ["79980897195554"] = true, ["80516583309685"] = true,
+  ["81702359653578"] = true, ["82221759983649"] = true, ["84116622032112"] = true, ["84307400688050"] = true,
+  ["85810983952228"] = true, ["85853080745515"] = true, ["86174610237192"] = true, ["86494585504534"] = true,
+  ["86833981571073"] = true, ["89004992452376"] = true, ["89315669689903"] = true, ["90878551190839"] = true,
+  ["94043596324983"] = true, ["95079963655241"] = true, ["97894923442490"] = true, ["98675142200448"] = true,
+  ["99829427721752"] = true, ["101199185291628"] = true, ["101553872555606"] = true, ["101698569375359"] = true,
+  ["102228729296384"] = true, ["103684883268194"] = true, ["104910828105172"] = true, ["105200830849301"] = true,
+  ["105840448036441"] = true, ["106300477136129"] = true, ["107444859834748"] = true, ["108610718831698"] = true,
+  ["108907358619313"] = true, ["109348678063422"] = true, ["109431876587852"] = true, ["110115912768379"] = true,
+  ["110372418055226"] = true, ["112395455254818"] = true, ["112809109188560"] = true, ["113037804008732"] = true,
+  ["114742322778642"] = true, ["115026634746636"] = true, ["116581754553533"] = true, ["117173212095661"] = true,
+  ["117231507259853"] = true, ["119089145505438"] = true, ["119583605486352"] = true, ["119942598489800"] = true,
+  ["121954639447247"] = true, ["124330645976935"] = true, ["124397369810639"] = true, ["124903763333174"] = true,
+  ["125213046326879"] = true, ["127793641088496"] = true, ["128856426573270"] = true, ["131123355704017"] = true,
+  ["131406927389838"] = true, ["135448067174226"] = true, ["136323728355613"] = true, ["136841625231863"] = true,
+  ["140242176732868"] = true, ["128367348686124"] = true, ["116527305931161"] = true, ["133709029886490"] = true,
+  ["130896140725074"] = true, ["135041815780073"] = true, ["82843272472677"] = true
 }
 getgenv().AutoBlockAnims = {
-  ["18885909645"] = true,
-  ["70371667919898"] = true,
-  ["70447634862911"] = true,
-  ["99135633258223"] = true,
-  ["74707328554358"] = true,
-  ["81299297965542"] = true,
-  ["81639435858902"] = true,
-  ["82113744478546"] = true,
-  ["83251433279852"] = true,
-  ["83685305553364"] = true,
-  ["83829782357897"] = true,
-  ["86204001129974"] = true,
-  ["87989533095285"] = true,
-  ["88451353906104"] = true,
-  ["88970503168421"] = true,
-  ["92173139187970"] = true,
-  ["93069721274110"] = true,
-  ["94162446513587"] = true,
-  ["96571077893813"] = true,
-  ["97167027849946"] = true,
-  ["97433060861952"] = true,
-  ["98456918873918"] = true,
-  ["99135633258223"] = true,
-  ["99829427721752"] = true,
-  ["100592913030351"] = true,
-  ["105458270463374"] = true,
-  ["106538427162796"] = true,
-  ["106776364623742"] = true,
-  ["106847695270773"] = true,
-  ["109230267448394"] = true,
-  ["109667959938617"] = true,
-  ["114356208094580"] = true,
-  ["114506382930939"] = true,
-  ["118298475669935"] = true,
-  ["120112897026015"] = true,
-  ["121086746534252"] = true,
-  ["121293883585738"] = true,
-  ["122709416391891"] = true,
-  ["124705663396411"] = true,
-  ["125403313786645"] = true,
-  ["126171487400618"] = true,
-  ["126355327951215"] = true,
-  ["126681776859538"] = true,
-  ["126830014841198"] = true,
-  ["126896426760253"] = true,
-  ["128414736976503"] = true,
-  ["129976080405072"] = true,
-  ["131430497821198"] = true,
-  ["131543461321709"] = true,
-  ["133336594357903"] = true,
-  ["133363345661032"] = true,
-  ["137314737492715"] = true,
-  ["138938529389204"] = true,
-  ["139309647473555"] = true,
-  ["139835501033932"] = true,
-  ["109700476007435"] = true,
-  ["93366464803829"] = true,
-  ["123172382755876"] = true,
-  ["112366541922769"] = true,
-  ["98590570796574"] = true
+  ["18885909645"] = true, ["70371667919898"] = true, ["70447634862911"] = true, ["99135633258223"] = true,
+  ["74707328554358"] = true, ["81299297965542"] = true, ["81639435858902"] = true, ["82113744478546"] = true,
+  ["83251433279852"] = true, ["83685305553364"] = true, ["83829782357897"] = true, ["86204001129974"] = true,
+  ["87989533095285"] = true, ["88451353906104"] = true, ["88970503168421"] = true, ["92173139187970"] = true,
+  ["93069721274110"] = true, ["94162446513587"] = true, ["96571077893813"] = true, ["97167027849946"] = true,
+  ["97433060861952"] = true, ["98456918873918"] = true, ["99135633258223"] = true, ["99829427721752"] = true,
+  ["100592913030351"] = true, ["105458270463374"] = true, ["106538427162796"] = true, ["106776364623742"] = true,
+  ["106847695270773"] = true, ["109230267448394"] = true, ["109667959938617"] = true, ["114356208094580"] = true,
+  ["114506382930939"] = true, ["118298475669935"] = true, ["120112897026015"] = true, ["121086746534252"] = true,
+  ["121293883585738"] = true, ["122709416391891"] = true, ["124705663396411"] = true, ["125403313786645"] = true,
+  ["126171487400618"] = true, ["126355327951215"] = true, ["126681776859538"] = true, ["126830014841198"] = true,
+  ["126896426760253"] = true, ["128414736976503"] = true, ["129976080405072"] = true, ["131430497821198"] = true,
+  ["131543461321709"] = true, ["133336594357903"] = true, ["133363345661032"] = true, ["137314737492715"] = true,
+  ["138938529389204"] = true, ["139309647473555"] = true, ["139835501033932"] = true, ["109700476007435"] = true,
+  ["93366464803829"] = true, ["123172382755876"] = true, ["112366541922769"] = true, ["98590570796574"] = true
 }
 _G.BaseHitboxSize = Vector3.new(4.5, 6, 7.5)
 _G.HitboxScale = 1.0
@@ -1562,6 +1461,7 @@ local function HandleKiller_ID(killer)
     local connections = {}
     local lastAttackTime = 0
     local ATTACK_COOLDOWN = 0.3
+    local boundSounds = {}
     local function tryStartAttack()
         local now = tick()
         if now - lastAttackTime < ATTACK_COOLDOWN then return end
@@ -1573,23 +1473,28 @@ local function HandleKiller_ID(killer)
             if not _G.AutoBlockEnabled then return end
             local animId = tostring(track.Animation.AnimationId):match("%d+")
             if animId and getgenv().AutoBlockAnims[animId] then
-                tryStartAttack()
+                task.wait(0.05)
+                if track.IsPlaying and track.TimePosition > 0 then
+                    tryStartAttack()
+                end
             end
         end)
         table.insert(connections, animConn)
     end
     local function bindSound(sound)
-        if sound:IsA("Sound") and not sound:GetAttribute("IDBlockBound") then
-            sound:SetAttribute("IDBlockBound", true)
-            local soundConn = sound.Played:Connect(function()
-                if not _G.AutoBlockEnabled then return end
-                local soundId = tostring(sound.SoundId):match("%d+")
-                if soundId and getgenv().AutoBlockSounds[soundId] then
+        if not sound:IsA("Sound") then return end
+        if boundSounds[sound] then return end
+        boundSounds[sound] = true
+        local soundConn = sound.Played:Connect(function()
+            if not _G.AutoBlockEnabled then return end
+            local soundId = tostring(sound.SoundId):match("%d+")
+            if soundId and getgenv().AutoBlockSounds[soundId] then
+                if sound.TimePosition < 0.1 then
                     tryStartAttack()
                 end
-            end)
-            table.insert(connections, soundConn)
-        end
+            end
+        end)
+        table.insert(connections, soundConn)
     end
     for _, sound in ipairs(killer:GetDescendants()) do
         bindSound(sound)
@@ -1602,6 +1507,7 @@ local function HandleKiller_ID(killer)
         for _, conn in ipairs(connections) do
             conn:Disconnect()
         end
+        boundSounds = {}
     end
     table.insert(_G.AutoBlockConnections, { Disconnect = cleanup })
     killer.AncestryChanged:Connect(function()
@@ -1620,21 +1526,15 @@ local function EnableAutoBlock()
     GetObjects()
     if KillersFolder then
         if _G.DetectionMode == "Config" then
-            for _, killer in ipairs(KillersFolder:GetChildren()) do
-                HandleKiller_Config(killer)
-            end
+            for _, killer in ipairs(KillersFolder:GetChildren()) do HandleKiller_Config(killer) end
             local childCon = KillersFolder.ChildAdded:Connect(HandleKiller_Config)
             table.insert(_G.AutoBlockConnections, childCon)
         elseif _G.DetectionMode == "Attribute" then
-            for _, killer in ipairs(KillersFolder:GetChildren()) do
-                HandleKiller_Attribute(killer)
-            end
+            for _, killer in ipairs(KillersFolder:GetChildren()) do HandleKiller_Attribute(killer) end
             local childCon = KillersFolder.ChildAdded:Connect(HandleKiller_Attribute)
             table.insert(_G.AutoBlockConnections, childCon)
         elseif _G.DetectionMode == "ID" then
-            for _, killer in ipairs(KillersFolder:GetChildren()) do
-                HandleKiller_ID(killer)
-            end
+            for _, killer in ipairs(KillersFolder:GetChildren()) do HandleKiller_ID(killer) end
             local childCon = KillersFolder.ChildAdded:Connect(HandleKiller_ID)
             table.insert(_G.AutoBlockConnections, childCon)
         end
@@ -1661,6 +1561,7 @@ BlockRight:AddSlider("HitboxSize", { Text = "Hitbox Size", Default = 1.0, Min = 
 BlockRight:AddSlider("HitboxOffset", { Text = "Offset (Z)", Default = -1.4, Min = -10, Max = 0, Rounding = 1, Callback = function(v) _G.HitboxOffset = v; UpdateAllHitboxVisuals() end })
 BlockRight:AddSlider("HitboxDuration", { Text = "Hitbox Duration", Default = 1.5, Min = 0.5, Max = 5.0, Rounding = 1, Callback = function(v) _G.HitboxDuration = v end })
 BlockRight:AddSlider("BlockDelay", { Text = "Block Delay", Default = 0, Min = 0, Max = 1, Rounding = 2, Callback = function(v) _G.BlockDelay = v end })
+
 local BackstabSettings = {
     Enabled = false,
     Mode = "Blatant",
@@ -2024,7 +1925,9 @@ Library:OnUnload(function()
     for _, part in pairs(BackstabSettings.RangeVisuals) do
         pcall(function() part:Destroy() end)
     end
+    print("Unloaded!")
 end)
+
 do
     local Sk8Player = LP
     local Sk8Workspace = Workspace
@@ -2307,6 +2210,7 @@ do
         end
     })
 end
+
 local EmotesGroup = Tabs.Action:AddLeftGroupbox("Emotes", "smile")
 local svc = { RS = ReplicatedStorage, Run = RunService, TS = game:GetService("TweenService"), Input = UserInputService }
 local lp = LP
@@ -2688,4 +2592,11 @@ SaveManager:SetSubFolder("specific-place")
 SaveManager:BuildConfigSection(Tabs["UI Settings"])
 ThemeManager:ApplyToTab(Tabs["UI Settings"])
 SaveManager:LoadAutoloadConfig()
-Library:OnUnload(function() print("Unloaded!") end)
+Library:OnUnload(function()
+    if backstabAnimConn then backstabAnimConn:Disconnect() end
+    stopBackstab()
+    for _, part in pairs(BackstabSettings.RangeVisuals) do
+        pcall(function() part:Destroy() end)
+    end
+    print("Unloaded!")
+end)
