@@ -1211,44 +1211,6 @@ registerTriggerModule("SoundTrigger", function() soundTriggerEnabled = true; set
     soundConnections = {}
     if globalSoundConn then globalSoundConn:Disconnect(); globalSoundConn = nil end
 end)
-getgenv().AutoBlockSounds = {
-  ["12222216"] = true, ["71805956520207"] = true, ["71834552297085"] = true, ["72425554233832"] = true,
-  ["75330693422988"] = true, ["76467993976301"] = true, ["76959687420003"] = true, ["77245770579014"] = true,
-  ["78298577002481"] = true, ["79391273191671"] = true, ["79980897195554"] = true, ["80516583309685"] = true,
-  ["81702359653578"] = true, ["82221759983649"] = true, ["84116622032112"] = true, ["84307400688050"] = true,
-  ["85810983952228"] = true, ["85853080745515"] = true, ["86174610237192"] = true, ["86494585504534"] = true,
-  ["86833981571073"] = true, ["89004992452376"] = true, ["89315669689903"] = true, ["90878551190839"] = true,
-  ["94043596324983"] = true, ["95079963655241"] = true, ["97894923442490"] = true, ["98675142200448"] = true,
-  ["99829427721752"] = true, ["101199185291628"] = true, ["101553872555606"] = true, ["101698569375359"] = true,
-  ["102228729296384"] = true, ["103684883268194"] = true, ["104910828105172"] = true, ["105200830849301"] = true,
-  ["105840448036441"] = true, ["106300477136129"] = true, ["107444859834748"] = true, ["108610718831698"] = true,
-  ["108907358619313"] = true, ["109348678063422"] = true, ["109431876587852"] = true, ["110115912768379"] = true,
-  ["110372418055226"] = true, ["112395455254818"] = true, ["112809109188560"] = true, ["113037804008732"] = true,
-  ["114742322778642"] = true, ["115026634746636"] = true, ["116581754553533"] = true, ["117173212095661"] = true,
-  ["117231507259853"] = true, ["119089145505438"] = true, ["119583605486352"] = true, ["119942598489800"] = true,
-  ["121954639447247"] = true, ["124330645976935"] = true, ["124397369810639"] = true, ["124903763333174"] = true,
-  ["125213046326879"] = true, ["127793641088496"] = true, ["128856426573270"] = true, ["131123355704017"] = true,
-  ["131406927389838"] = true, ["135448067174226"] = true, ["136323728355613"] = true, ["136841625231863"] = true,
-  ["140242176732868"] = true, ["128367348686124"] = true, ["116527305931161"] = true, ["133709029886490"] = true,
-  ["130896140725074"] = true, ["135041815780073"] = true, ["82843272472677"] = true
-}
-getgenv().AutoBlockAnims = {
-  ["18885909645"] = true, ["70371667919898"] = true, ["70447634862911"] = true, ["99135633258223"] = true,
-  ["74707328554358"] = true, ["81299297965542"] = true, ["81639435858902"] = true, ["82113744478546"] = true,
-  ["83251433279852"] = true, ["83685305553364"] = true, ["83829782357897"] = true, ["86204001129974"] = true,
-  ["87989533095285"] = true, ["88451353906104"] = true, ["88970503168421"] = true, ["92173139187970"] = true,
-  ["93069721274110"] = true, ["94162446513587"] = true, ["96571077893813"] = true, ["97167027849946"] = true,
-  ["97433060861952"] = true, ["98456918873918"] = true, ["99135633258223"] = true, ["99829427721752"] = true,
-  ["100592913030351"] = true, ["105458270463374"] = true, ["106538427162796"] = true, ["106776364623742"] = true,
-  ["106847695270773"] = true, ["109230267448394"] = true, ["109667959938617"] = true, ["114356208094580"] = true,
-  ["114506382930939"] = true, ["118298475669935"] = true, ["120112897026015"] = true, ["121086746534252"] = true,
-  ["121293883585738"] = true, ["122709416391891"] = true, ["124705663396411"] = true, ["125403313786645"] = true,
-  ["126171487400618"] = true, ["126355327951215"] = true, ["126681776859538"] = true, ["126830014841198"] = true,
-  ["126896426760253"] = true, ["128414736976503"] = true, ["129976080405072"] = true, ["131430497821198"] = true,
-  ["131543461321709"] = true, ["133336594357903"] = true, ["133363345661032"] = true, ["137314737492715"] = true,
-  ["138938529389204"] = true, ["139309647473555"] = true, ["139835501033932"] = true, ["109700476007435"] = true,
-  ["93366464803829"] = true, ["123172382755876"] = true, ["112366541922769"] = true, ["98590570796574"] = true
-}
 _G.BaseHitboxSize = Vector3.new(4.5, 6, 7.5)
 _G.HitboxScale = 1.0
 _G.HitboxOffset = -1.4
@@ -1451,71 +1413,6 @@ local function HandleKiller_Attribute(Killer)
     Killer.AncestryChanged:Connect(function() if not Killer.Parent then cleanup() end end)
     table.insert(_G.AutoBlockConnections, { Disconnect = cleanup })
 end
-local function HandleKiller_ID(killer)
-    if not killer:IsA("Model") then return end
-    local humanoid = killer:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return end
-    local animator = humanoid:FindFirstChildOfClass("Animator")
-    local queryHitbox = killer:FindFirstChild("QueryHitbox")
-    if not queryHitbox then return end
-    local connections = {}
-    local lastAttackTime = 0
-    local ATTACK_COOLDOWN = 0.3
-    local boundSounds = {}
-    local function tryStartAttack()
-        local now = tick()
-        if now - lastAttackTime < ATTACK_COOLDOWN then return end
-        lastAttackTime = now
-        StartAttack(killer, queryHitbox, nil)
-    end
-    if animator then
-        local animConn = animator.AnimationPlayed:Connect(function(track)
-            if not _G.AutoBlockEnabled then return end
-            local animId = tostring(track.Animation.AnimationId):match("%d+")
-            if animId and getgenv().AutoBlockAnims[animId] then
-                task.wait(0.05)
-                if track.IsPlaying and track.TimePosition > 0 then
-                    tryStartAttack()
-                end
-            end
-        end)
-        table.insert(connections, animConn)
-    end
-    local function bindSound(sound)
-        if not sound:IsA("Sound") then return end
-        if boundSounds[sound] then return end
-        boundSounds[sound] = true
-        local soundConn = sound.Played:Connect(function()
-            if not _G.AutoBlockEnabled then return end
-            local soundId = tostring(sound.SoundId):match("%d+")
-            if soundId and getgenv().AutoBlockSounds[soundId] then
-                if sound.TimePosition < 0.1 then
-                    tryStartAttack()
-                end
-            end
-        end)
-        table.insert(connections, soundConn)
-    end
-    for _, sound in ipairs(killer:GetDescendants()) do
-        bindSound(sound)
-    end
-    local descConn = killer.DescendantAdded:Connect(function(child)
-        bindSound(child)
-    end)
-    table.insert(connections, descConn)
-    local function cleanup()
-        for _, conn in ipairs(connections) do
-            conn:Disconnect()
-        end
-        boundSounds = {}
-    end
-    table.insert(_G.AutoBlockConnections, { Disconnect = cleanup })
-    killer.AncestryChanged:Connect(function()
-        if not killer.Parent then
-            cleanup()
-        end
-    end)
-end
 _G.AutoBlockConnections = {}
 _G.AutoBlockEnabled = false
 local function EnableAutoBlock()
@@ -1525,19 +1422,11 @@ local function EnableAutoBlock()
     _G.AutoBlockConnections = {}
     GetObjects()
     if KillersFolder then
-        if _G.DetectionMode == "Config" then
-            for _, killer in ipairs(KillersFolder:GetChildren()) do HandleKiller_Config(killer) end
-            local childCon = KillersFolder.ChildAdded:Connect(HandleKiller_Config)
-            table.insert(_G.AutoBlockConnections, childCon)
-        elseif _G.DetectionMode == "Attribute" then
-            for _, killer in ipairs(KillersFolder:GetChildren()) do HandleKiller_Attribute(killer) end
-            local childCon = KillersFolder.ChildAdded:Connect(HandleKiller_Attribute)
-            table.insert(_G.AutoBlockConnections, childCon)
-        elseif _G.DetectionMode == "ID" then
-            for _, killer in ipairs(KillersFolder:GetChildren()) do HandleKiller_ID(killer) end
-            local childCon = KillersFolder.ChildAdded:Connect(HandleKiller_ID)
-            table.insert(_G.AutoBlockConnections, childCon)
+        for _, killer in ipairs(KillersFolder:GetChildren()) do
+            if _G.DetectionMode == "Config" then HandleKiller_Config(killer) else HandleKiller_Attribute(killer) end
         end
+        local childCon = _G.DetectionMode == "Config" and KillersFolder.ChildAdded:Connect(HandleKiller_Config) or KillersFolder.ChildAdded:Connect(HandleKiller_Attribute)
+        table.insert(_G.AutoBlockConnections, childCon)
     end
 end
 local function DisableAutoBlock()
@@ -1550,7 +1439,7 @@ local function DisableAutoBlock()
 end
 local BlockLeft = Tabs.Block:AddLeftGroupbox("Auto Block", "shield")
 BlockLeft:AddToggle("AutoBlockToggle", { Text = "Enable AutoBlock", Default = false, Callback = function(state) if state then EnableAutoBlock() else DisableAutoBlock() end end })
-BlockLeft:AddDropdown("DetectionMode", { Text = "Detection Mode", Values = {"Config", "Attribute", "ID"}, Default = "Attribute", Callback = function(v)
+BlockLeft:AddDropdown("DetectionMode", { Text = "Detection Mode", Values = {"Config", "Attribute"}, Default = "Attribute", Callback = function(v)
     local prev = _G.DetectionMode; _G.DetectionMode = v
     if _G.AutoBlockEnabled and prev ~= v then DisableAutoBlock(); EnableAutoBlock() end
 end })
@@ -1582,7 +1471,9 @@ local BackstabSettings = {
     _blocked = false,
     Debug = false,
 }
+
 local BackstabLeft = Tabs.Stab:AddLeftGroupbox("Auto Backstab", "target")
+
 BackstabLeft:AddToggle("EnableBackstab", {
     Text = "Enable Backstab",
     Default = false,
@@ -1596,12 +1487,14 @@ BackstabLeft:AddToggle("EnableBackstab", {
         Library:Notify({Title="Backstab Assist", Description=state and "Enabled" or "Disabled", Time=1})
     end
 })
+
 BackstabLeft:AddDropdown("BackstabMode", {
     Text = "Backstab Mode",
     Values = {"Blatant", "Teleport"},
     Default = "Blatant",
     Callback = function(sel) BackstabSettings.Mode = sel end
 })
+
 BackstabLeft:AddSlider("BackstabDistance", {
     Text = "Backstab Distance",
     Default = 15,
@@ -1619,6 +1512,7 @@ BackstabLeft:AddSlider("BackstabDistance", {
         end
     end
 })
+
 BackstabLeft:AddSlider("BackstabOffset", {
     Text = "Backstab Offset",
     Default = 2.0,
@@ -1627,6 +1521,7 @@ BackstabLeft:AddSlider("BackstabOffset", {
     Rounding = 1,
     Callback = function(v) BackstabSettings.Offset = v end
 })
+
 BackstabLeft:AddSlider("ForwardOffset", {
     Text = "Forward Offset",
     Default = 0,
@@ -1635,7 +1530,9 @@ BackstabLeft:AddSlider("ForwardOffset", {
     Rounding = 1,
     Callback = function(v) BackstabSettings.ForwardOffset = v end
 })
+
 local BackstabRight = Tabs.Stab:AddRightGroupbox("Visualization", "eye")
+
 BackstabRight:AddToggle("ShowBackstabRange", {
     Text = "Show Backstab Range",
     Default = false,
@@ -1654,6 +1551,7 @@ BackstabRight:AddToggle("ShowBackstabRange", {
         end
     end
 })
+
 BackstabRight:AddLabel("Range Color"):AddColorPicker("BackstabRangeColor", {
     Default = BackstabSettings.RangeColor,
     Title = "Range Color",
@@ -1664,6 +1562,7 @@ BackstabRight:AddLabel("Range Color"):AddColorPicker("BackstabRangeColor", {
         end
     end
 })
+
 BackstabRight:AddSlider("RangeTransparency", {
     Text = "Range Transparency",
     Default = 0.5,
@@ -1677,23 +1576,28 @@ BackstabRight:AddSlider("RangeTransparency", {
         end
     end
 })
+
 local BackstabWarning = Tabs.Stab:AddRightGroupbox("Warning", "alert")
 BackstabWarning:AddLabel({
     Text = "WARNING: This feature is still in testing, use with caution. It may even get you banned.",
     DoesWrap = true
 })
+
 local function debugLog(msg)
     if BackstabSettings.Debug then print("[Backstab] "..msg) end
 end
+
 local function getKillersFolder()
     local playersFolder = Workspace:FindFirstChild("Players")
     return playersFolder and playersFolder:FindFirstChild("Killers")
 end
+
 local function createBackstabRangeVisual(killerModel)
     if not killerModel or not killerModel:IsA("Model") then return nil end
     if BackstabSettings.RangeVisuals[killerModel] then return end
     local root = killerModel:FindFirstChild("HumanoidRootPart")
     if not root then return nil end
+
     local part = Instance.new("Part")
     part.Name = "BackstabRangeVisual"
     part.Shape = Enum.PartType.Ball
@@ -1704,23 +1608,28 @@ local function createBackstabRangeVisual(killerModel)
     part.Anchored = false
     part.CanCollide = false
     part.CFrame = root.CFrame
+
     local weld = Instance.new("WeldConstraint")
     weld.Part0 = root
     weld.Part1 = part
     weld.Parent = part
     part.Parent = root
+
     BackstabSettings.RangeVisuals[killerModel] = part
     return part
 end
+
 local function updateBackstabRangeVisuals()
     if not BackstabSettings.ShowRange then return end
     local killersFolder = getKillersFolder()
     if not killersFolder then return end
+
     for _, killer in ipairs(killersFolder:GetChildren()) do
         if killer:IsA("Model") and not BackstabSettings.RangeVisuals[killer] then
             createBackstabRangeVisual(killer)
         end
     end
+
     for killer, part in pairs(BackstabSettings.RangeVisuals) do
         if not killer or not killer.Parent then
             pcall(function() part:Destroy() end)
@@ -1728,6 +1637,7 @@ local function updateBackstabRangeVisuals()
         end
     end
 end
+
 local function stopBackstab()
     if BackstabSettings.LoopConnection then
         BackstabSettings.LoopConnection:Disconnect()
@@ -1736,20 +1646,24 @@ local function stopBackstab()
     BackstabSettings.Active = false
     BackstabSettings.ActiveKiller = nil
     BackstabSettings.ActiveTrack = nil
+
     local char = LP.Character
     if char then
         local hum = char:FindFirstChildOfClass("Humanoid")
         if hum then hum.AutoRotate = true end
     end
 end
+
 local function startBackstabLoop(killerModel, track)
     if BackstabSettings.LoopConnection then
         BackstabSettings.LoopConnection:Disconnect()
     end
+
     local char = LP.Character
     if not char then stopBackstab(); return end
     local hum = char:FindFirstChildOfClass("Humanoid")
     if hum then hum.AutoRotate = false end
+
     BackstabSettings.LoopConnection = RunService.RenderStepped:Connect(function()
         if not BackstabSettings.Active then stopBackstab(); return end
         if not killerModel or not killerModel.Parent then stopBackstab(); return end
@@ -1758,19 +1672,23 @@ local function startBackstabLoop(killerModel, track)
             stopBackstab()
             return
         end
+
         local myChar = LP.Character
         if not myChar or not myChar.Parent then stopBackstab(); return end
         local root = myChar:FindFirstChild("HumanoidRootPart")
         local killerRoot = killerModel:FindFirstChild("HumanoidRootPart")
         if not root or not killerRoot then stopBackstab(); return end
+
         local behindOffset = -killerRoot.CFrame.LookVector * BackstabSettings.Offset
             + killerRoot.CFrame.LookVector * BackstabSettings.ForwardOffset
         local targetPos = killerRoot.Position + behindOffset + Vector3.new(0, 0.5, 0)
         root.CFrame = CFrame.new(targetPos, killerRoot.Position)
     end)
+
     local function onAnimationEnd()
         stopBackstab()
     end
+
     if track and track.Parent then
         track.Stopped:Connect(onAnimationEnd)
         track.Ended:Connect(onAnimationEnd)
@@ -1789,6 +1707,7 @@ local function startBackstabLoop(killerModel, track)
         end)
     end
 end
+
 local function performBackstab(killerModel, track, shouldLock)
     if not killerModel or not killerModel.Parent then return false end
     local myChar = LP.Character
@@ -1796,14 +1715,18 @@ local function performBackstab(killerModel, track, shouldLock)
     local root = myChar:FindFirstChild("HumanoidRootPart")
     local killerRoot = killerModel:FindFirstChild("HumanoidRootPart")
     if not root or not killerRoot then return false end
+
     if killerModel:GetAttribute("IsFakeNoli") == true then return false end
+
     local behindOffset = -killerRoot.CFrame.LookVector * BackstabSettings.Offset
         + killerRoot.CFrame.LookVector * BackstabSettings.ForwardOffset
     local targetPos = killerRoot.Position + behindOffset + Vector3.new(0, 0.5, 0)
     local targetCF = CFrame.new(targetPos, killerRoot.Position)
+
     if BackstabSettings.Mode == "Teleport" then
         local startPos = root.CFrame
         root.CFrame = targetCF
+
         if track then
             local function returnToStart()
                 local charNow = LP.Character
@@ -1823,14 +1746,17 @@ local function performBackstab(killerModel, track, shouldLock)
         end
         return true
     end
+
     local startCF = root.CFrame
     local steps = BackstabSettings.TeleportSmoothness
     local stepTime = BackstabSettings.TeleportDuration / steps
+
     for i = 1, steps do
         root.CFrame = startCF:Lerp(targetCF, i / steps)
         task.wait(stepTime)
     end
     root.CFrame = targetCF
+
     if shouldLock then
         BackstabSettings.Active = true
         BackstabSettings.ActiveKiller = killerModel
@@ -1839,6 +1765,7 @@ local function performBackstab(killerModel, track, shouldLock)
     end
     return true
 end
+
 local function getNearestKillerForBackstab()
     local killers = getKillersFolder()
     if not killers then return nil end
@@ -1846,6 +1773,7 @@ local function getNearestKillerForBackstab()
     if not myChar then return nil end
     local myRoot = myChar:FindFirstChild("HumanoidRootPart")
     if not myRoot then return nil end
+
     local nearest, nearestDist = nil, math.huge
     for _, killer in ipairs(killers:GetChildren()) do
         if killer:IsA("Model") and killer:FindFirstChild("HumanoidRootPart") and killer:GetAttribute("IsFakeNoli") ~= true then
@@ -1858,9 +1786,12 @@ local function getNearestKillerForBackstab()
     end
     return nearest
 end
+
 local ANIM_DASH  = "100725497418533"
 local ANIM_STAB  = "108018357044094"
+
 local backstabAnimConn = nil
+
 local function hookPlayerAnimationsForBackstab()
     local char = LP.Character
     if not char then return end
@@ -1868,16 +1799,21 @@ local function hookPlayerAnimationsForBackstab()
     if not hum then return end
     local animator = hum:FindFirstChildOfClass("Animator")
     if not animator then return end
+
     if backstabAnimConn then backstabAnimConn:Disconnect() end
+
     backstabAnimConn = animator.AnimationPlayed:Connect(function(track)
         if not BackstabSettings.Enabled then return end
+
         local playersFolder = Workspace:FindFirstChild("Players")
         if not playersFolder then return end
         local survivors = playersFolder:FindFirstChild("Survivors")
         if not survivors then return end
         if not char:IsDescendantOf(survivors) then return end
+
         local animId = track.Animation.AnimationId:match("%d+")
         if not animId then return end
+
         if animId == ANIM_DASH then
             local target = getNearestKillerForBackstab()
             if target then
@@ -1900,6 +1836,7 @@ local function hookPlayerAnimationsForBackstab()
         end
     end)
 end
+
 if LP.Character then
     hookPlayerAnimationsForBackstab()
 end
@@ -1907,6 +1844,7 @@ LP.CharacterAdded:Connect(function()
     task.wait(0.5)
     hookPlayerAnimationsForBackstab()
 end)
+
 task.spawn(function()
     while task.wait(1) do
         if BackstabSettings.ShowRange then
@@ -1919,13 +1857,13 @@ task.spawn(function()
         end
     end
 end)
+
 Library:OnUnload(function()
     if backstabAnimConn then backstabAnimConn:Disconnect() end
     stopBackstab()
     for _, part in pairs(BackstabSettings.RangeVisuals) do
         pcall(function() part:Destroy() end)
     end
-    print("Unloaded!")
 end)
 
 do
@@ -1934,20 +1872,25 @@ do
     local Sk8RunService = RunService
     local Sk8ReplicatedStorage = ReplicatedStorage
     local Sk8UserInputService = UserInputService
+
     local atEnabled = false
     local atActiveMonitors = {}
     local atDescendantAddedConn = nil
+
     local function atGetBehaviorFolder()
         return Sk8ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Survivors"):WaitForChild("Veeronica"):WaitForChild("Behavior")
     end
+
     local function atGetSprintingButton()
         return Sk8Player.PlayerGui:WaitForChild("MainUI"):WaitForChild("SprintingButton")
     end
+
     local atBehaviorFolder = nil
     task.spawn(function()
         local ok, f = pcall(atGetBehaviorFolder)
         if ok and f then atBehaviorFolder = f end
     end)
+
     local function atMonitorHighlight(h)
         if not h or atActiveMonitors[h] then return end
         local connections = {}
@@ -1989,6 +1932,7 @@ do
         atActiveMonitors[h] = cleanup
         task.spawn(onChanged)
     end
+
     local function atStartManager()
         if atDescendantAddedConn or not atBehaviorFolder then return end
         for _, desc in ipairs(atBehaviorFolder:GetDescendants()) do
@@ -1998,6 +1942,7 @@ do
             if child:IsA("Highlight") then atMonitorHighlight(child) end
         end)
     end
+
     local function atStopManager()
         if atDescendantAddedConn and atDescendantAddedConn.Connected then atDescendantAddedConn:Disconnect() end
         atDescendantAddedConn = nil
@@ -2006,9 +1951,11 @@ do
         end
         atActiveMonitors = {}
     end
+
     local sk8Camera = Sk8Workspace.CurrentCamera
     local sk8ShiftlockEnabled = false
     local sk8ShiftConn = nil
+
     local function sk8SetShiftlock(state)
         sk8ShiftlockEnabled = state
         if sk8ShiftConn then sk8ShiftConn:Disconnect(); sk8ShiftConn = nil end
@@ -2026,16 +1973,19 @@ do
             Sk8UserInputService.MouseBehavior = Enum.MouseBehavior.Default
         end
     end
+
     local sk8ChargeAnimIds = { "117058860640843" }
     local SK8_DASH_SPEED = 60
     local sk8ControlEnabled = false
     local sk8ControlActive = false
     local sk8OverrideConn = nil
     local sk8SavedHumState = {}
+
     local function sk8GetHumanoid()
         if not Sk8Player or not Sk8Player.Character then return nil end
         return Sk8Player.Character:FindFirstChildOfClass("Humanoid")
     end
+
     local function sk8SaveHumState(hum)
         if not hum or sk8SavedHumState[hum] then return end
         local s = {}
@@ -2046,6 +1996,7 @@ do
         end)
         sk8SavedHumState[hum] = s
     end
+
     local function sk8RestoreHumState(hum)
         if not hum then return end
         local s = sk8SavedHumState[hum]
@@ -2056,6 +2007,7 @@ do
         end)
         sk8SavedHumState[hum] = nil
     end
+
     local function sk8StartOverride()
         if sk8ControlActive then return end
         local hum = sk8GetHumanoid()
@@ -2074,6 +2026,7 @@ do
             if horizontal.Magnitude > 0 then humanoid:Move(horizontal.Unit) end
         end)
     end
+
     local function sk8StopOverride()
         if not sk8ControlActive then return end
         sk8ControlActive = false
@@ -2088,6 +2041,7 @@ do
             end)
         end
     end
+
     local function sk8DetectChargeAnim()
         local hum = sk8GetHumanoid()
         if not hum then return false end
@@ -2101,6 +2055,7 @@ do
         end
         return false
     end
+
     Sk8RunService.RenderStepped:Connect(function()
         if not sk8ControlEnabled then
             if sk8ControlActive then sk8StopOverride() end
@@ -2117,15 +2072,18 @@ do
             if sk8ControlActive then sk8StopOverride() end
         end
     end)
+
     Sk8Player.CharacterAdded:Connect(function()
         if sk8ShiftConn then sk8ShiftConn:Disconnect(); sk8ShiftConn = nil end
         sk8SavedHumState = {}
     end)
+
     local SPRAY_ANIM_ID = "96618767275101"
     local veeFastSpray = false
     local sprayPhase = 0
     local sprayBaseCF = nil
     local spraySpeed = 4.5
+
     local function isSprayPainting()
         local char = Sk8Player.Character
         if not char then return false end
@@ -2139,6 +2097,7 @@ do
         end
         return false
     end
+
     Sk8RunService.RenderStepped:Connect(function(dt)
         if not veeFastSpray then
             sprayPhase = 0
@@ -2153,20 +2112,25 @@ do
         local char = Sk8Player.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
+
         if not sprayBaseCF or math.abs(math.sin(sprayPhase)) < 0.05 then
             sprayBaseCF = hrp.CFrame
         end
+
         sprayPhase = sprayPhase + dt * (math.pi * spraySpeed)
         local offset = math.sin(sprayPhase) * 2
         hrp.CFrame = sprayBaseCF + (sprayBaseCF.LookVector * (-offset))
     end)
+
     Sk8Player.CharacterAdded:Connect(function()
         sprayPhase = 0
         sprayBaseCF = nil
     end)
+
     local Sk8Tab = Tabs["Sk8"]
     local Sk8Left = Sk8Tab:AddLeftGroupbox("Main", "zap")
     local Sk8Right = Sk8Tab:AddRightGroupbox("Fast Spray", "brush")
+
     Sk8Left:AddToggle("AutoTrick", {
         Text = "Auto Trick",
         Default = false,
@@ -2183,6 +2147,7 @@ do
             end
         end
     })
+
     Sk8Left:AddToggle("Sk8Control", {
         Text = "Enable SK8 Control",
         Default = false,
@@ -2191,6 +2156,7 @@ do
             if not state and sk8ControlActive then sk8StopOverride() end
         end
     })
+
     Sk8Right:AddToggle("FastSpray", {
         Text = "Enable Fast Spray",
         Default = false,
@@ -2592,11 +2558,4 @@ SaveManager:SetSubFolder("specific-place")
 SaveManager:BuildConfigSection(Tabs["UI Settings"])
 ThemeManager:ApplyToTab(Tabs["UI Settings"])
 SaveManager:LoadAutoloadConfig()
-Library:OnUnload(function()
-    if backstabAnimConn then backstabAnimConn:Disconnect() end
-    stopBackstab()
-    for _, part in pairs(BackstabSettings.RangeVisuals) do
-        pcall(function() part:Destroy() end)
-    end
-    print("Unloaded!")
-end)
+Library:OnUnload(function() print("Unloaded!") end)
