@@ -33,6 +33,7 @@ local Tabs = {
     ["Stab"] = Window:AddTab("Stab", "sword"),
     ["Sk8"] = Window:AddTab("Sk8", "zap"),
     ["Action"] = Window:AddTab("Action", "smile"),
+    ["Music"]  = Window:AddTab("Music", "music"),
     ["Misc"] = Window:AddTab("Misc", "paperclip"),
     ["UI Settings"] = Window:AddTab("UI Settings", "settings"),
 }
@@ -465,6 +466,7 @@ NameToggleGroup:AddToggle("ShowTaphTripwireName", { Text = "Show Tripwire Name",
 NameToggleGroup:AddToggle("ShowTripMineName", { Text = "Show Mine Name", Default = true, Callback = function(Value) ESPSettings.showTripMineName = Value end })
 NameToggleGroup:AddToggle("ShowTwoTimeRespawnName", { Text = "Show Respawn Name", Default = true, Callback = function(Value) ESPSettings.showTwoTimeRespawnName = Value end })
 NameToggleGroup:AddToggle("ShowGraffitiName", { Text = "Show Graffiti Name", Default = true, Callback = function(Value) ESPSettings.showGraffitiName = Value end })
+
 local flow = { on = false, nodeDelay = 0.04 }
 local function flowKey(n) return n.row .. "-" .. n.col end
 local function flowNeighbour(r1, c1, r2, c2)
@@ -1450,7 +1452,6 @@ BlockRight:AddSlider("HitboxSize", { Text = "Hitbox Size", Default = 1.0, Min = 
 BlockRight:AddSlider("HitboxOffset", { Text = "Offset (Z)", Default = -1.4, Min = -10, Max = 0, Rounding = 1, Callback = function(v) _G.HitboxOffset = v; UpdateAllHitboxVisuals() end })
 BlockRight:AddSlider("HitboxDuration", { Text = "Hitbox Duration", Default = 1.5, Min = 0.5, Max = 5.0, Rounding = 1, Callback = function(v) _G.HitboxDuration = v end })
 BlockRight:AddSlider("BlockDelay", { Text = "Block Delay", Default = 0, Min = 0, Max = 1, Rounding = 2, Callback = function(v) _G.BlockDelay = v end })
-
 local BackstabSettings = {
     Enabled = false,
     Mode = "Blatant",
@@ -1471,9 +1472,7 @@ local BackstabSettings = {
     _blocked = false,
     Debug = false,
 }
-
 local BackstabLeft = Tabs.Stab:AddLeftGroupbox("Auto Backstab", "target")
-
 BackstabLeft:AddToggle("EnableBackstab", {
     Text = "Enable Backstab",
     Default = false,
@@ -1487,14 +1486,12 @@ BackstabLeft:AddToggle("EnableBackstab", {
         Library:Notify({Title="Backstab Assist", Description=state and "Enabled" or "Disabled", Time=1})
     end
 })
-
 BackstabLeft:AddDropdown("BackstabMode", {
     Text = "Backstab Mode",
     Values = {"Blatant", "Teleport"},
     Default = "Blatant",
     Callback = function(sel) BackstabSettings.Mode = sel end
 })
-
 BackstabLeft:AddSlider("BackstabDistance", {
     Text = "Backstab Distance",
     Default = 15,
@@ -1512,7 +1509,6 @@ BackstabLeft:AddSlider("BackstabDistance", {
         end
     end
 })
-
 BackstabLeft:AddSlider("BackstabOffset", {
     Text = "Backstab Offset",
     Default = 2.0,
@@ -1521,7 +1517,6 @@ BackstabLeft:AddSlider("BackstabOffset", {
     Rounding = 1,
     Callback = function(v) BackstabSettings.Offset = v end
 })
-
 BackstabLeft:AddSlider("ForwardOffset", {
     Text = "Forward Offset",
     Default = 0,
@@ -1530,9 +1525,7 @@ BackstabLeft:AddSlider("ForwardOffset", {
     Rounding = 1,
     Callback = function(v) BackstabSettings.ForwardOffset = v end
 })
-
 local BackstabRight = Tabs.Stab:AddRightGroupbox("Visualization", "eye")
-
 BackstabRight:AddToggle("ShowBackstabRange", {
     Text = "Show Backstab Range",
     Default = false,
@@ -1551,7 +1544,6 @@ BackstabRight:AddToggle("ShowBackstabRange", {
         end
     end
 })
-
 BackstabRight:AddLabel("Range Color"):AddColorPicker("BackstabRangeColor", {
     Default = BackstabSettings.RangeColor,
     Title = "Range Color",
@@ -1562,7 +1554,6 @@ BackstabRight:AddLabel("Range Color"):AddColorPicker("BackstabRangeColor", {
         end
     end
 })
-
 BackstabRight:AddSlider("RangeTransparency", {
     Text = "Range Transparency",
     Default = 0.5,
@@ -1576,28 +1567,23 @@ BackstabRight:AddSlider("RangeTransparency", {
         end
     end
 })
-
 local BackstabWarning = Tabs.Stab:AddRightGroupbox("Warning", "alert")
 BackstabWarning:AddLabel({
     Text = "WARNING: This feature is still in testing, use with caution. It may even get you banned.",
     DoesWrap = true
 })
-
 local function debugLog(msg)
     if BackstabSettings.Debug then print("[Backstab] "..msg) end
 end
-
 local function getKillersFolder()
     local playersFolder = Workspace:FindFirstChild("Players")
     return playersFolder and playersFolder:FindFirstChild("Killers")
 end
-
 local function createBackstabRangeVisual(killerModel)
     if not killerModel or not killerModel:IsA("Model") then return nil end
     if BackstabSettings.RangeVisuals[killerModel] then return end
     local root = killerModel:FindFirstChild("HumanoidRootPart")
     if not root then return nil end
-
     local part = Instance.new("Part")
     part.Name = "BackstabRangeVisual"
     part.Shape = Enum.PartType.Ball
@@ -1608,28 +1594,23 @@ local function createBackstabRangeVisual(killerModel)
     part.Anchored = false
     part.CanCollide = false
     part.CFrame = root.CFrame
-
     local weld = Instance.new("WeldConstraint")
     weld.Part0 = root
     weld.Part1 = part
     weld.Parent = part
     part.Parent = root
-
     BackstabSettings.RangeVisuals[killerModel] = part
     return part
 end
-
 local function updateBackstabRangeVisuals()
     if not BackstabSettings.ShowRange then return end
     local killersFolder = getKillersFolder()
     if not killersFolder then return end
-
     for _, killer in ipairs(killersFolder:GetChildren()) do
         if killer:IsA("Model") and not BackstabSettings.RangeVisuals[killer] then
             createBackstabRangeVisual(killer)
         end
     end
-
     for killer, part in pairs(BackstabSettings.RangeVisuals) do
         if not killer or not killer.Parent then
             pcall(function() part:Destroy() end)
@@ -1637,7 +1618,6 @@ local function updateBackstabRangeVisuals()
         end
     end
 end
-
 local function stopBackstab()
     if BackstabSettings.LoopConnection then
         BackstabSettings.LoopConnection:Disconnect()
@@ -1646,24 +1626,20 @@ local function stopBackstab()
     BackstabSettings.Active = false
     BackstabSettings.ActiveKiller = nil
     BackstabSettings.ActiveTrack = nil
-
     local char = LP.Character
     if char then
         local hum = char:FindFirstChildOfClass("Humanoid")
         if hum then hum.AutoRotate = true end
     end
 end
-
 local function startBackstabLoop(killerModel, track)
     if BackstabSettings.LoopConnection then
         BackstabSettings.LoopConnection:Disconnect()
     end
-
     local char = LP.Character
     if not char then stopBackstab(); return end
     local hum = char:FindFirstChildOfClass("Humanoid")
     if hum then hum.AutoRotate = false end
-
     BackstabSettings.LoopConnection = RunService.RenderStepped:Connect(function()
         if not BackstabSettings.Active then stopBackstab(); return end
         if not killerModel or not killerModel.Parent then stopBackstab(); return end
@@ -1672,23 +1648,19 @@ local function startBackstabLoop(killerModel, track)
             stopBackstab()
             return
         end
-
         local myChar = LP.Character
         if not myChar or not myChar.Parent then stopBackstab(); return end
         local root = myChar:FindFirstChild("HumanoidRootPart")
         local killerRoot = killerModel:FindFirstChild("HumanoidRootPart")
         if not root or not killerRoot then stopBackstab(); return end
-
         local behindOffset = -killerRoot.CFrame.LookVector * BackstabSettings.Offset
             + killerRoot.CFrame.LookVector * BackstabSettings.ForwardOffset
         local targetPos = killerRoot.Position + behindOffset + Vector3.new(0, 0.5, 0)
         root.CFrame = CFrame.new(targetPos, killerRoot.Position)
     end)
-
     local function onAnimationEnd()
         stopBackstab()
     end
-
     if track and track.Parent then
         track.Stopped:Connect(onAnimationEnd)
         track.Ended:Connect(onAnimationEnd)
@@ -1707,7 +1679,6 @@ local function startBackstabLoop(killerModel, track)
         end)
     end
 end
-
 local function performBackstab(killerModel, track, shouldLock)
     if not killerModel or not killerModel.Parent then return false end
     local myChar = LP.Character
@@ -1715,18 +1686,14 @@ local function performBackstab(killerModel, track, shouldLock)
     local root = myChar:FindFirstChild("HumanoidRootPart")
     local killerRoot = killerModel:FindFirstChild("HumanoidRootPart")
     if not root or not killerRoot then return false end
-
     if killerModel:GetAttribute("IsFakeNoli") == true then return false end
-
     local behindOffset = -killerRoot.CFrame.LookVector * BackstabSettings.Offset
         + killerRoot.CFrame.LookVector * BackstabSettings.ForwardOffset
     local targetPos = killerRoot.Position + behindOffset + Vector3.new(0, 0.5, 0)
     local targetCF = CFrame.new(targetPos, killerRoot.Position)
-
     if BackstabSettings.Mode == "Teleport" then
         local startPos = root.CFrame
         root.CFrame = targetCF
-
         if track then
             local function returnToStart()
                 local charNow = LP.Character
@@ -1746,17 +1713,14 @@ local function performBackstab(killerModel, track, shouldLock)
         end
         return true
     end
-
     local startCF = root.CFrame
     local steps = BackstabSettings.TeleportSmoothness
     local stepTime = BackstabSettings.TeleportDuration / steps
-
     for i = 1, steps do
         root.CFrame = startCF:Lerp(targetCF, i / steps)
         task.wait(stepTime)
     end
     root.CFrame = targetCF
-
     if shouldLock then
         BackstabSettings.Active = true
         BackstabSettings.ActiveKiller = killerModel
@@ -1765,7 +1729,6 @@ local function performBackstab(killerModel, track, shouldLock)
     end
     return true
 end
-
 local function getNearestKillerForBackstab()
     local killers = getKillersFolder()
     if not killers then return nil end
@@ -1773,7 +1736,6 @@ local function getNearestKillerForBackstab()
     if not myChar then return nil end
     local myRoot = myChar:FindFirstChild("HumanoidRootPart")
     if not myRoot then return nil end
-
     local nearest, nearestDist = nil, math.huge
     for _, killer in ipairs(killers:GetChildren()) do
         if killer:IsA("Model") and killer:FindFirstChild("HumanoidRootPart") and killer:GetAttribute("IsFakeNoli") ~= true then
@@ -1786,12 +1748,9 @@ local function getNearestKillerForBackstab()
     end
     return nearest
 end
-
 local ANIM_DASH  = "100725497418533"
 local ANIM_STAB  = "108018357044094"
-
 local backstabAnimConn = nil
-
 local function hookPlayerAnimationsForBackstab()
     local char = LP.Character
     if not char then return end
@@ -1799,21 +1758,16 @@ local function hookPlayerAnimationsForBackstab()
     if not hum then return end
     local animator = hum:FindFirstChildOfClass("Animator")
     if not animator then return end
-
     if backstabAnimConn then backstabAnimConn:Disconnect() end
-
     backstabAnimConn = animator.AnimationPlayed:Connect(function(track)
         if not BackstabSettings.Enabled then return end
-
         local playersFolder = Workspace:FindFirstChild("Players")
         if not playersFolder then return end
         local survivors = playersFolder:FindFirstChild("Survivors")
         if not survivors then return end
         if not char:IsDescendantOf(survivors) then return end
-
         local animId = track.Animation.AnimationId:match("%d+")
         if not animId then return end
-
         if animId == ANIM_DASH then
             local target = getNearestKillerForBackstab()
             if target then
@@ -1836,7 +1790,6 @@ local function hookPlayerAnimationsForBackstab()
         end
     end)
 end
-
 if LP.Character then
     hookPlayerAnimationsForBackstab()
 end
@@ -1844,7 +1797,6 @@ LP.CharacterAdded:Connect(function()
     task.wait(0.5)
     hookPlayerAnimationsForBackstab()
 end)
-
 task.spawn(function()
     while task.wait(1) do
         if BackstabSettings.ShowRange then
@@ -1857,7 +1809,6 @@ task.spawn(function()
         end
     end
 end)
-
 Library:OnUnload(function()
     if backstabAnimConn then backstabAnimConn:Disconnect() end
     stopBackstab()
@@ -2176,7 +2127,6 @@ do
         end
     })
 end
-
 local EmotesGroup = Tabs.Action:AddLeftGroupbox("Emotes", "smile")
 local svc = { RS = ReplicatedStorage, Run = RunService, TS = game:GetService("TweenService"), Input = UserInputService }
 local lp = LP
@@ -2366,14 +2316,249 @@ PlayerAnimGroup:AddButton("Apply Animation", applyAnimation)
 PlayerAnimGroup:AddButton("Stop Animation", function() stopAnimations() end)
 PlayerAnimGroup:AddButton("Refresh List", function() collectBaseAnimations(); buildUniqueList() end)
 lp.CharacterAdded:Connect(function() task.wait(0.5); if next(currentTracks) then stopAnimations() end end)
+do
+    local tabMusic = Tabs["Music"]
+    local leftGroup = tabMusic:AddLeftGroupbox("LMS Music", "music")
+    local rightGroup = tabMusic:AddRightGroupbox("Preview", "headphones")
+
+    local musicTracks = {
+        ["MADE JUST 4 U"] = "https://raw.githubusercontent.com/FixFox550/FixFox/refs/heads/main/IMG_7277.mp3",
+        ["Hello"] = "https://raw.githubusercontent.com/FixFox550/FixFox/refs/heads/main/IMG_7280.mp3",
+        ["APOCOOLYPSE"] = "https://raw.githubusercontent.com/FixFox550/FixFox/refs/heads/main/IMG_7282.mp3",
+        ["A BRAVE SOUL"] = "https://raw.githubusercontent.com/FixFox550/FixFox/refs/heads/main/IMG_7283.mp3",
+        ["Profitable Passion"] = "https://raw.githubusercontent.com/FixFox550/FixFox/refs/heads/main/IMG_7287.mp3",
+        ["ARTIST BLOCK:Reprise"] = "https://raw.githubusercontent.com/FixFox550/FixFox/refs/heads/main/IMG_7290.mp3",
+        ["Faith's Answer"] = "https://raw.githubusercontent.com/FixFox550/FixFox/refs/heads/main/IMG_7292.mp3",
+        ["Teapot Palace"] = "https://raw.githubusercontent.com/FixFox550/FixFox/refs/heads/main/IMG_7295.mp3",
+    }
+
+    local musicList = {}
+    for k in pairs(musicTracks) do table.insert(musicList, k) end
+    table.sort(musicList)
+
+    local musicDir = "FixsakenMusic"
+    if not isfolder(musicDir) then makefolder(musicDir) end
+
+    local music = {
+        on = false,
+        selected = musicList[1] or "",
+        cached = {},
+        origId = nil,
+        thread = nil,
+        lastSoundCheck = 0,
+        cachedSound = nil,
+        previewSound = nil,
+    }
+
+    local function musicTrackPath(name)
+        return musicDir .. "/" .. name .. ".mp3"
+    end
+
+    local function musicHttpGet(url)
+        local ok, data = pcall(function() return game:HttpGet(url) end)
+        return ok and data or nil
+    end
+
+    local function musicFetch(name)
+        if music.cached[name] then return music.cached[name] end
+        local url = musicTracks[name]
+        if not url then return nil end
+
+        local path = musicTrackPath(name)
+        if not isfile(path) then
+            local data = musicHttpGet(url)
+            if not data then return nil end
+            writefile(path, data)
+        end
+
+        local ok, asset = pcall(function() return getcustomasset(path) end)
+        if ok and asset then
+            music.cached[name] = asset
+            return asset
+        end
+        return nil
+    end
+
+    local musicFetchInFlight = {}
+    local function musicFetchAsync(name, cb)
+        if music.cached[name] then
+            if cb then cb(music.cached[name]) end
+            return
+        end
+        if musicFetchInFlight[name] then return end
+        musicFetchInFlight[name] = true
+        task.spawn(function()
+            local asset = musicFetch(name)
+            musicFetchInFlight[name] = nil
+            if asset and cb then cb(asset) end
+        end)
+    end
+
+    local function musicGetSound()
+        local now = tick()
+        if music.cachedSound and music.cachedSound.Parent and (now - music.lastSoundCheck) < 0.5 then
+            return music.cachedSound
+        end
+        music.lastSoundCheck = now
+
+        local snd = Workspace:FindFirstChild("Themes") and Workspace.Themes:FindFirstChild("LastSurvivor")
+            or Workspace:FindFirstChild("LastSurvivor", true)
+            or game:GetService("SoundService"):FindFirstChild("LastSurvivor", true)
+
+        if snd and snd:IsA("Sound") then
+            music.cachedSound = snd
+            return snd
+        end
+        music.cachedSound = nil
+        return nil
+    end
+
+    local function applyMusic(name)
+        pcall(function()
+            local snd = musicGetSound()
+            if not snd then return end
+            if not music.origId then music.origId = snd.SoundId end
+            local asset = musicFetch(name)
+            if not asset then return end
+            if snd.SoundId ~= asset then
+                snd.SoundId = asset
+                snd:Stop()
+                task.wait(0.05)
+                snd:Play()
+            elseif not snd.IsPlaying then
+                snd:Play()
+            end
+        end)
+    end
+
+    local function musicReset()
+        pcall(function()
+            local snd = musicGetSound()
+            if snd and music.origId then
+                snd.SoundId = music.origId
+                snd:Stop()
+                task.wait(0.05)
+                snd:Play()
+            end
+        end)
+    end
+
+    local function musicMonitor()
+        while music.on do
+            pcall(function()
+                local snd = musicGetSound()
+                if snd then
+                    local asset = music.cached[music.selected]
+                    if asset then
+                        if snd.SoundId ~= asset then
+                            if not music.origId then music.origId = snd.SoundId end
+                            snd.SoundId = asset
+                            snd:Stop()
+                            task.wait(0.05)
+                            snd:Play()
+                        elseif not snd.IsPlaying then
+                            snd:Play()
+                        end
+                    else
+                        musicFetchAsync(music.selected, function(a)
+                            applyMusic(music.selected)
+                        end)
+                    end
+                end
+            end)
+            task.wait(1)
+        end
+    end
+
+    local function previewStart(name)
+        pcall(function()
+            local asset = musicFetch(name)
+            if not asset then
+                Library:Notify({Title = "Preview", Description = "Failed to load song", Time = 3})
+                return
+            end
+
+            if music.previewSound then
+                music.previewSound:Stop()
+                music.previewSound:Destroy()
+            end
+
+            local sound = Instance.new("Sound")
+            sound.Name = "FixsakenPreview"
+            sound.SoundId = asset
+            sound.Volume = 1
+            sound.Parent = game:GetService("SoundService")
+            sound:Play()
+            music.previewSound = sound
+
+            Library:Notify({Title = "Preview", Description = "Playing: " .. name, Time = 2})
+        end)
+    end
+
+    local function previewStop()
+        if music.previewSound then
+            music.previewSound:Stop()
+            music.previewSound:Destroy()
+            music.previewSound = nil
+            Library:Notify({Title = "Preview", Description = "Preview stopped", Time = 2})
+        end
+    end
+
+    leftGroup:AddToggle("ApplyLMS", {
+        Text = "Apply LMS",
+        Default = false,
+        Callback = function(on)
+            pcall(function()
+                music.on = on
+                if on then
+                    musicFetchAsync(music.selected)
+                    music.thread = task.spawn(musicMonitor)
+                else
+                    if music.thread then task.cancel(music.thread); music.thread = nil end
+                    musicReset()
+                end
+            end)
+        end
+    })
+
+    leftGroup:AddDropdown("TrackSelect", {
+        Text = "Track",
+        Values = musicList,
+        Default = music.selected,
+        Callback = function(sel)
+            pcall(function()
+                music.selected = type(sel) == "table" and sel[1] or sel
+                task.spawn(function() musicFetchAsync(music.selected) end)
+            end)
+        end
+    })
+
+    leftGroup:AddButton("Preload LMS", function()
+        pcall(function()
+            for name in pairs(musicTracks) do
+                musicFetchAsync(name)
+                task.wait(0.05)
+            end
+            Library:Notify({Title = "Music", Description = "Preload complete", Time = 2})
+        end)
+    end)
+
+    rightGroup:AddButton("Preview", function()
+        pcall(function() previewStart(music.selected) end)
+    end)
+
+    rightGroup:AddButton("Stop Preview", function()
+        pcall(function() previewStop() end)
+    end)
+end
 local ImpersonateGroup = Tabs.Misc:AddLeftGroupbox("Impersonate", "user")
 local FlipGroupMisc = Tabs.Misc:AddLeftGroupbox("Front Flip", "flip")
 local ChatGroupMisc = Tabs.Misc:AddLeftGroupbox("Chat", "message")
 local AntiHiddenGroup = Tabs.Misc:AddRightGroupbox("Anti Hidden Stats", "eye-off")
 local KillerWallGroup = Tabs.Misc:AddRightGroupbox("Killer Walls", "door")
 local TimerPosGroup = Tabs.Misc:AddRightGroupbox("Timer Position", "clock")
-local CameraGroup = Tabs.Misc:AddRightGroupbox("Camera", "camera")
-local LightingGroup = Tabs.Misc:AddRightGroupbox("Lighting", "sun")
+local CameraGroupMisc = Tabs.Misc:AddRightGroupbox("Camera", "camera")
+local LightingGroupMisc = Tabs.Misc:AddRightGroupbox("Lighting", "sun")
 local victimName = "Roblox"
 ImpersonateGroup:AddInput("VictimInput", { Default = victimName, Numeric = false, Finished = false, ClearTextOnFocus = true, Text = "Player Username", Tooltip = "Enter the name of the victim to impersonate", Placeholder = "Enter victim name...", Callback = function(Value) victimName = Value end })
 ImpersonateGroup:AddButton({ Text = "Impersonate Player", Func = function()
@@ -2508,16 +2693,16 @@ end
 applyTimerPos()
 TimerPosGroup:AddSlider("TimerX", { Text = "Timer X Position", Default = 0.5, Min = 0, Max = 1, Rounding = 2, Callback = function(v) timerX = v; applyTimerPos() end })
 LP.CharacterAdded:Connect(function() task.delay(1, applyTimerPos) end)
-CameraGroup:AddToggle("FreeZoom", { Text = "Free Zoom", Default = false, Callback = function(v) LP.CameraMaxZoomDistance = v and math.huge or 12 end })
-CameraGroup:AddToggle("CameraNoclip", { Text = "Camera Noclip", Default = false, Callback = function(v) LP.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode[v and "Invisicam" or "Zoom"] end })
+CameraGroupMisc:AddToggle("FreeZoom", { Text = "Free Zoom", Default = false, Callback = function(v) LP.CameraMaxZoomDistance = v and math.huge or 12 end })
+CameraGroupMisc:AddToggle("CameraNoclip", { Text = "Camera Noclip", Default = false, Callback = function(v) LP.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode[v and "Invisicam" or "Zoom"] end })
 local fovValueMisc = 70
-CameraGroup:AddSlider("FOVSlider", { Text = "Field of View", Default = 70, Min = 70, Max = 120, Rounding = 0, Callback = function(v) fovValueMisc = v; if _G.FOV then Workspace.CurrentCamera.FieldOfView = v end end })
-CameraGroup:AddToggle("FOVToggle", { Text = "Enable FOV", Default = false, Callback = function(v) _G.FOV = v; if v then Workspace.CurrentCamera.FieldOfView = fovValueMisc else Workspace.CurrentCamera.FieldOfView = 70 end end })
+CameraGroupMisc:AddSlider("FOVSlider", { Text = "Field of View", Default = 70, Min = 70, Max = 120, Rounding = 0, Callback = function(v) fovValueMisc = v; if _G.FOV then Workspace.CurrentCamera.FieldOfView = v end end })
+CameraGroupMisc:AddToggle("FOVToggle", { Text = "Enable FOV", Default = false, Callback = function(v) _G.FOV = v; if v then Workspace.CurrentCamera.FieldOfView = fovValueMisc else Workspace.CurrentCamera.FieldOfView = 70 end end })
 task.spawn(function() while true do if _G.FOV then Workspace.CurrentCamera.FieldOfView = fovValueMisc end task.wait() end end)
-LightingGroup:AddSlider("Brightness", { Text = "Brightness", Default = 0, Min = 0, Max = 3, Rounding = 1, Callback = function(v) _G.Brightness = v; if _G.Fullbright then Lighting.Brightness = v end end })
-LightingGroup:AddToggle("NoShadows", { Text = "No Shadows", Default = false, Callback = function(v) _G.GlobalShadows = v; if _G.Fullbright then Lighting.GlobalShadows = not v end end })
-LightingGroup:AddToggle("NoFog", { Text = "No Fog", Default = false, Callback = function(v) _G.NoFog = v end })
-LightingGroup:AddToggle("EnableLighting", { Text = "Enable Lighting", Default = false, Callback = function(v)
+LightingGroupMisc:AddSlider("Brightness", { Text = "Brightness", Default = 0, Min = 0, Max = 3, Rounding = 1, Callback = function(v) _G.Brightness = v; if _G.Fullbright then Lighting.Brightness = v end end })
+LightingGroupMisc:AddToggle("NoShadows", { Text = "No Shadows", Default = false, Callback = function(v) _G.GlobalShadows = v; if _G.Fullbright then Lighting.GlobalShadows = not v end end })
+LightingGroupMisc:AddToggle("NoFog", { Text = "No Fog", Default = false, Callback = function(v) _G.NoFog = v end })
+LightingGroupMisc:AddToggle("EnableLighting", { Text = "Enable Lighting", Default = false, Callback = function(v)
     _G.Fullbright = v
     if not v then
         Lighting.OutdoorAmbient = Color3.fromRGB(55, 55, 55); Lighting.Brightness = 0; Lighting.GlobalShadows = true
