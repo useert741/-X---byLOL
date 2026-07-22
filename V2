@@ -37,6 +37,8 @@ local Tabs = {
     ["Misc"] = Window:AddTab("Misc", "paperclip"),
     ["UI Settings"] = Window:AddTab("UI Settings", "settings"),
 }
+
+-- ==================== Player Info ====================
 local information = Tabs["Player Info"]:AddLeftGroupbox("Player", "user")
 local avatarImage = Instance.new("ImageLabel")
 avatarImage.Name = "AvatarThumbnail"
@@ -94,6 +96,8 @@ DevGroup:AddLabel("[FixFox] - Owner And Developer")
 local ContributorGroup = Tabs["Player Info"]:AddRightGroupbox("Contributor", "users")
 ContributorGroup:AddLabel("[Fixed] - Tester")
 ContributorGroup:AddLabel("[777] - Tester")
+
+-- ==================== ESP ====================
 local EspLib = {}
 local Camera = Workspace.CurrentCamera
 local MapFolder = nil
@@ -466,6 +470,8 @@ NameToggleGroup:AddToggle("ShowTaphTripwireName", { Text = "Show Tripwire Name",
 NameToggleGroup:AddToggle("ShowTripMineName", { Text = "Show Mine Name", Default = true, Callback = function(Value) ESPSettings.showTripMineName = Value end })
 NameToggleGroup:AddToggle("ShowTwoTimeRespawnName", { Text = "Show Respawn Name", Default = true, Callback = function(Value) ESPSettings.showTwoTimeRespawnName = Value end })
 NameToggleGroup:AddToggle("ShowGraffitiName", { Text = "Show Graffiti Name", Default = true, Callback = function(Value) ESPSettings.showGraffitiName = Value end })
+
+-- ==================== Generator ====================
 local flow = { on = false, nodeDelay = 0.04 }
 local function flowKey(n) return n.row .. "-" .. n.col end
 local function flowNeighbour(r1, c1, r2, c2)
@@ -555,6 +561,8 @@ local genLeft = Tabs.Generator:AddLeftGroupbox("Auto Solve", "zap")
 genLeft:AddToggle("FlowAutoSolve", { Text = "Auto Solve", Default = flow.on, Callback = function(Value) flow.on = Value end })
 local genRight = Tabs.Generator:AddRightGroupbox("Settings", "sliders")
 genRight:AddSlider("FlowSpeed", { Text = "Auto Solve Speed", Default = flow.nodeDelay, Min = 0.01, Max = 0.50, Rounding = 2, Compact = false, Callback = function(Value) flow.nodeDelay = Value end })
+
+-- ==================== Player ====================
 local SpeedGroup = Tabs.Player:AddLeftGroupbox("Speed", "bolt")
 local FlightGroup = Tabs.Player:AddLeftGroupbox("Flight", "plane")
 local speedEnabled = false
@@ -803,58 +811,8 @@ ExtraGroup:AddToggle("AutoPullRope", { Text = "Auto Pull Rope", Default = false,
     anti_pullRope = v
     if v then startPullRope() else stopPullRope() end
 end })
-local CameraGroup = Tabs.Player:AddRightGroupbox("Camera", "camera")
-CameraGroup:AddToggle("FreeZoom", { Text = "Free Zoom", Default = false, Callback = function(v) LP.CameraMaxZoomDistance = v and math.huge or 12 end })
-CameraGroup:AddToggle("CameraNoclip", { Text = "Camera Noclip", Default = false, Callback = function(v) LP.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode[v and "Invisicam" or "Zoom"] end })
-local fovValue = 70
-CameraGroup:AddSlider("FOVSlider", { Text = "Field of View", Default = 70, Min = 70, Max = 120, Rounding = 0, Callback = function(v)
-    fovValue = v
-    if _G.FOV then Workspace.CurrentCamera.FieldOfView = v end
-end })
-CameraGroup:AddToggle("FOVToggle", { Text = "Enable FOV", Default = false, Callback = function(v)
-    _G.FOV = v
-    if v then Workspace.CurrentCamera.FieldOfView = fovValue else Workspace.CurrentCamera.FieldOfView = 70 end
-end })
-task.spawn(function() while true do if _G.FOV then Workspace.CurrentCamera.FieldOfView = fovValue end task.wait() end end)
-local LightingGroup = Tabs.Player:AddRightGroupbox("Lighting", "sun")
-LightingGroup:AddSlider("Brightness", { Text = "Brightness", Default = 0, Min = 0, Max = 3, Rounding = 1, Callback = function(v)
-    _G.Brightness = v
-    if _G.Fullbright then Lighting.Brightness = v end
-end })
-LightingGroup:AddToggle("NoShadows", { Text = "No Shadows", Default = false, Callback = function(v)
-    _G.GlobalShadows = v
-    if _G.Fullbright then Lighting.GlobalShadows = not v end
-end })
-LightingGroup:AddToggle("NoFog", { Text = "No Fog", Default = false, Callback = function(v) _G.NoFog = v end })
-LightingGroup:AddToggle("EnableLighting", { Text = "Enable Lighting", Default = false, Callback = function(v)
-    _G.Fullbright = v
-    if not v then
-        Lighting.OutdoorAmbient = Color3.fromRGB(55, 55, 55)
-        Lighting.Brightness = 0
-        Lighting.GlobalShadows = true
-        local fog = Lighting:FindFirstChildOfClass("Atmosphere")
-        if fog and fog:GetAttribute("Density") then fog.Density = fog:GetAttribute("Density") end
-        Lighting.FogStart = Lighting:GetAttribute("FogStart") or 0
-        Lighting.FogEnd = Lighting:GetAttribute("FogEnd") or 10000
-    end
-end })
-task.spawn(function()
-    while true do
-        if _G.Fullbright then
-            if not Lighting:GetAttribute("FogStart") then Lighting:SetAttribute("FogStart", Lighting.FogStart) end
-            if not Lighting:GetAttribute("FogEnd") then Lighting:SetAttribute("FogEnd", Lighting.FogEnd) end
-            local fog = Lighting:FindFirstChildOfClass("Atmosphere")
-            if fog and not fog:GetAttribute("Density") then fog:SetAttribute("Density", fog.Density) end
-            Lighting.FogStart = _G.NoFog and 0 or Lighting:GetAttribute("FogStart")
-            Lighting.FogEnd = _G.NoFog and math.huge or Lighting:GetAttribute("FogEnd")
-            if fog then fog.Density = _G.NoFog and 0 or fog:GetAttribute("Density") end
-            Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
-            Lighting.Brightness = _G.Brightness or 0
-            Lighting.GlobalShadows = not (_G.GlobalShadows or false)
-        end
-        task.wait()
-    end
-end)
+
+-- ==================== Aimbot ====================
 local generalGroup = Tabs.Aimbot:AddLeftGroupbox("General Aim")
 local survivorGroup = Tabs.Aimbot:AddLeftGroupbox("Killer Aim")
 local killerGroup = Tabs.Aimbot:AddRightGroupbox("Survivor Aim")
@@ -1212,6 +1170,8 @@ registerTriggerModule("SoundTrigger", function() soundTriggerEnabled = true; set
     soundConnections = {}
     if globalSoundConn then globalSoundConn:Disconnect(); globalSoundConn = nil end
 end)
+
+-- ==================== BLOCK ====================
 _G.BaseHitboxSize = Vector3.new(4.5, 6, 7.5)
 _G.HitboxScale = 1.0
 _G.HitboxOffset = -1.4
@@ -1226,16 +1186,12 @@ _G.AutoBlockEnabled = false
 _G.AutoBlockConnections = {}
 _G.AttrFilterAbilities = true
 _G.DragEnabled = false
-_G.DragDistance = 5
-_G.DragHitboxSize = Vector3.new(4.5, 6, 7.5)
 _G.DragHitboxScale = 1.0
 _G.DragHitboxOffset = -1.4
+_G.DragHitboxDuration = 1.5
 _G.DragHitboxColor = Color3.fromRGB(100, 255, 100)
 _G.DragHitboxTransparency = 0.5
-_G.DragHitboxDuration = 1.5
-_G.DragHitboxOutline = true
-_G.DragHitboxOutlineThickness = 0.01
-_G.DragHitboxShowVisual = true
+
 local MainUI, KillersFolder, SurvivorsFolder, Hitboxes
 local function GetObjects()
     MainUI = LP.PlayerGui:FindFirstChild("MainUI")
@@ -1293,7 +1249,7 @@ end
 local function CreateDragHitboxVisual()
     local part = Instance.new("Part")
     part.Name = "DragHitboxVisual"
-    part.Size = _G.DragHitboxSize * _G.DragHitboxScale
+    part.Size = _G.BaseHitboxSize * _G.DragHitboxScale
     part.Color = _G.DragHitboxColor
     part.Material = Enum.Material.ForceField
     part.Transparency = 1 - _G.DragHitboxTransparency
@@ -1301,22 +1257,22 @@ local function CreateDragHitboxVisual()
     part.CanCollide = false
     part.CastShadow = false
     part.Parent = Hitboxes
-    if _G.DragHitboxOutline then
+    if _G.ShowOutline then
         local outline = Instance.new("SelectionBox")
-        outline.Adornee = part; outline.Color3 = _G.DragHitboxColor; outline.LineThickness = _G.DragHitboxOutlineThickness; outline.Transparency = 0.1
-        outline.Visible = _G.DragHitboxShowVisual; outline.Parent = part
+        outline.Adornee = part; outline.Color3 = _G.DragHitboxColor; outline.LineThickness = _G.OutlineThickness; outline.Transparency = 0.1
+        outline.Visible = _G.ShowHitboxVisual; outline.Parent = part
     end
     return part
 end
 local function UpdateDragHitboxPosition(part, queryHitbox)
     if part and queryHitbox then
         part.CFrame = queryHitbox.CFrame * CFrame.new(0, 0, _G.DragHitboxOffset)
-        part.Size = _G.DragHitboxSize * _G.DragHitboxScale
+        part.Size = _G.BaseHitboxSize * _G.DragHitboxScale
         part.Color = _G.DragHitboxColor
         part.Transparency = 1 - _G.DragHitboxTransparency
         local outline = part:FindFirstChildOfClass("SelectionBox")
         if outline then
-            outline.Color3 = _G.DragHitboxColor; outline.LineThickness = _G.DragHitboxOutlineThickness; outline.Visible = _G.DragHitboxOutline and _G.DragHitboxShowVisual
+            outline.Color3 = _G.DragHitboxColor; outline.LineThickness = _G.OutlineThickness; outline.Visible = _G.ShowOutline and _G.ShowHitboxVisual
         end
     end
 end
@@ -1403,7 +1359,7 @@ local function StartDragDetection(Killer, queryHitbox)
     if not localChar or not SurvivorsFolder or localChar.Parent ~= SurvivorsFolder then return end
     local localQuery = localChar:FindFirstChild("QueryHitbox")
     if not localQuery then return end
-    local hitboxSize = _G.DragHitboxSize * _G.DragHitboxScale
+    local dragHitboxSize = _G.BaseHitboxSize * _G.DragHitboxScale
     task.spawn(function()
         local startTime = tick()
         while tick() - startTime < _G.DragHitboxDuration do
@@ -1412,7 +1368,7 @@ local function StartDragDetection(Killer, queryHitbox)
             if not queryHitbox or not queryHitbox.Parent then break end
             OverlapParams.FilterDescendantsInstances = {localQuery}
             local part = Instance.new("Part")
-            part.Size = hitboxSize
+            part.Size = dragHitboxSize
             part.CFrame = queryHitbox.CFrame * CFrame.new(0, 0, _G.DragHitboxOffset)
             part.CanCollide = false
             part.Anchored = true
@@ -1421,11 +1377,15 @@ local function StartDragDetection(Killer, queryHitbox)
             Debris:AddItem(part, 0.1)
             local hits = Workspace:GetPartsInPart(part, OverlapParams)
             if #hits > 0 then
-                local killerRoot = Killer:FindFirstChild("HumanoidRootPart")
                 local myRoot = localChar:FindFirstChild("HumanoidRootPart")
-                if killerRoot and myRoot then
-                    local targetPos = killerRoot.CFrame * CFrame.new(0, 0, -2).Position
-                    myRoot.CFrame = CFrame.new(targetPos) * myRoot.CFrame.Rotation
+                local targetPos = queryHitbox.CFrame * CFrame.new(0, 0, _G.HitboxOffset).Position
+                if myRoot then
+                    local stepTime = _G.DragHitboxDuration / 20
+                    for i = 1, 20 do
+                        if not myRoot.Parent then break end
+                        myRoot.CFrame = myRoot.CFrame:Lerp(CFrame.new(targetPos) * myRoot.CFrame.Rotation, i/20)
+                        task.wait(stepTime)
+                    end
                 end
                 break
             end
@@ -1513,6 +1473,7 @@ end })
 BlockRight:AddSlider("HitboxOffset", { Text = "Offset (Z)", Default = -1.4, Min = -10, Max = 0, Rounding = 1, Callback = function(v) _G.HitboxOffset = v end })
 BlockRight:AddSlider("HitboxDuration", { Text = "Duration", Default = 1.5, Min = 0.5, Max = 5.0, Rounding = 1, Callback = function(v) _G.HitboxDuration = v end })
 BlockRight:AddSlider("BlockDelay", { Text = "Block Delay", Default = 0, Min = 0, Max = 1, Rounding = 2, Callback = function(v) _G.BlockDelay = v end })
+
 local DragLeft = Tabs.Block:AddLeftGroupbox("Hitbox Drag", "move")
 DragLeft:AddToggle("EnableDrag", { Text = "Enable Drag", Default = false, Callback = function(state)
     _G.DragEnabled = state
@@ -1526,13 +1487,16 @@ DragLeft:AddLabel("Drag Hitbox Color"):AddColorPicker("DragHitboxColor", { Defau
     _G.DragHitboxColor = color
     for _, data in pairs(_G.DragHitboxData) do if data.part and data.part.Parent then data.part.Color = color end end
 end })
+
 local DragRight = Tabs.Block:AddRightGroupbox("Hitbox Drag Settings", "sliders")
 DragRight:AddSlider("DragHitboxSize", { Text = "Size", Default = 1.0, Min = 0.2, Max = 3.0, Rounding = 2, Callback = function(v)
     _G.DragHitboxScale = v
-    for _, data in pairs(_G.DragHitboxData) do if data.part and data.part.Parent then data.part.Size = _G.DragHitboxSize * v end end
+    for _, data in pairs(_G.DragHitboxData) do if data.part and data.part.Parent then data.part.Size = _G.BaseHitboxSize * v end end
 end })
 DragRight:AddSlider("DragHitboxOffset", { Text = "Offset (Z)", Default = -1.4, Min = -10, Max = 0, Rounding = 1, Callback = function(v) _G.DragHitboxOffset = v end })
 DragRight:AddSlider("DragHitboxDuration", { Text = "Duration", Default = 1.5, Min = 0.5, Max = 5.0, Rounding = 1, Callback = function(v) _G.DragHitboxDuration = v end })
+
+-- ==================== STAB ====================
 local TARGET_ANIMATION_ID = "100725497418533"
 local DASHSTAB_ANIM_ID = "89448354637442"
 local stabEnabledBackstab = false
@@ -1628,6 +1592,8 @@ StabRight:AddSlider("BehindStuds", { Text = "Behind Studs", Default = 4, Min = 1
 StabRight:AddSlider("BackstabDelay", { Text = "Backstab Start Delay", Default = 0.05, Min = 0, Max = 0.5, Rounding = 2, Callback = function(v) backstabDelay = v end })
 StabRight:AddSlider("BackstabDuration", { Text = "Backstab Duration", Default = 0.5, Min = 0.1, Max = 2, Rounding = 2, Callback = function(v) backstabDuration = v end })
 StabRight:AddSlider("DashstabDelay", { Text = "Dashstab Start Delay", Default = 0.25, Min = 0, Max = 0.5, Rounding = 2, Callback = function(v) dashstabDelay = v end })
+
+-- ==================== Sk8 ====================
 do
     local Sk8Player = LP
     local Sk8Workspace = Workspace
@@ -1867,49 +1833,30 @@ do
     local Sk8Tab = Tabs["Sk8"]
     local Sk8Left = Sk8Tab:AddLeftGroupbox("Main", "zap")
     local Sk8Right = Sk8Tab:AddRightGroupbox("Fast Spray", "brush")
-    Sk8Left:AddToggle("AutoTrick", {
-        Text = "Auto Trick",
-        Default = false,
-        Callback = function(state)
-            atEnabled = state
-            if state then
-                if not atBehaviorFolder then
-                    local ok, f = pcall(atGetBehaviorFolder)
-                    if ok and f then atBehaviorFolder = f end
-                end
-                atStartManager()
-            else
-                atStopManager()
+    Sk8Left:AddToggle("AutoTrick", { Text = "Auto Trick", Default = false, Callback = function(state)
+        atEnabled = state
+        if state then
+            if not atBehaviorFolder then
+                local ok, f = pcall(atGetBehaviorFolder)
+                if ok and f then atBehaviorFolder = f end
             end
+            atStartManager()
+        else
+            atStopManager()
         end
-    })
-    Sk8Left:AddToggle("Sk8Control", {
-        Text = "Enable SK8 Control",
-        Default = false,
-        Callback = function(state)
-            sk8ControlEnabled = state
-            if not state and sk8ControlActive then sk8StopOverride() end
-        end
-    })
-    Sk8Right:AddToggle("FastSpray", {
-        Text = "Enable Fast Spray",
-        Default = false,
-        Callback = function(state)
-            veeFastSpray = state
-            if not state then sprayPhase = 0; sprayBaseCF = nil end
-        end
-    })
-    Sk8Right:AddSlider("SpraySpeed", {
-        Text = "Spray Speed",
-        Default = 4.5,
-        Min = 0.5,
-        Max = 10,
-        Rounding = 1,
-        Callback = function(val)
-            spraySpeed = val
-        end
-    })
+    end })
+    Sk8Left:AddToggle("Sk8Control", { Text = "Enable SK8 Control", Default = false, Callback = function(state)
+        sk8ControlEnabled = state
+        if not state and sk8ControlActive then sk8StopOverride() end
+    end })
+    Sk8Right:AddToggle("FastSpray", { Text = "Enable Fast Spray", Default = false, Callback = function(state)
+        veeFastSpray = state
+        if not state then sprayPhase = 0; sprayBaseCF = nil end
+    end })
+    Sk8Right:AddSlider("SpraySpeed", { Text = "Spray Speed", Default = 4.5, Min = 0.5, Max = 10, Rounding = 1, Callback = function(val) spraySpeed = val end })
 end
+
+-- ==================== Action ====================
 local EmotesGroup = Tabs.Action:AddLeftGroupbox("Emotes", "smile")
 local svc = { RS = ReplicatedStorage, Run = RunService, TS = game:GetService("TweenService"), Input = UserInputService }
 local lp = LP
@@ -2099,6 +2046,8 @@ PlayerAnimGroup:AddButton("Apply Animation", applyAnimation)
 PlayerAnimGroup:AddButton("Stop Animation", function() stopAnimations() end)
 PlayerAnimGroup:AddButton("Refresh List", function() collectBaseAnimations(); buildUniqueList() end)
 lp.CharacterAdded:Connect(function() task.wait(0.5); if next(currentTracks) then stopAnimations() end end)
+
+-- ==================== Music ====================
 do
     local tabMusic = Tabs["Music"]
     local leftGroup = tabMusic:AddLeftGroupbox("LMS Music", "music")
@@ -2266,33 +2215,24 @@ do
             Library:Notify({Title = "Preview", Description = "Preview stopped", Time = 2})
         end
     end
-    leftGroup:AddToggle("ApplyLMS", {
-        Text = "Apply LMS",
-        Default = false,
-        Callback = function(on)
-            pcall(function()
-                music.on = on
-                if on then
-                    musicFetchAsync(music.selected)
-                    music.thread = task.spawn(musicMonitor)
-                else
-                    if music.thread then task.cancel(music.thread); music.thread = nil end
-                    musicReset()
-                end
-            end)
-        end
-    })
-    leftGroup:AddDropdown("TrackSelect", {
-        Text = "Track",
-        Values = musicList,
-        Default = music.selected,
-        Callback = function(sel)
-            pcall(function()
-                music.selected = type(sel) == "table" and sel[1] or sel
-                task.spawn(function() musicFetchAsync(music.selected) end)
-            end)
-        end
-    })
+    leftGroup:AddToggle("ApplyLMS", { Text = "Apply LMS", Default = false, Callback = function(on)
+        pcall(function()
+            music.on = on
+            if on then
+                musicFetchAsync(music.selected)
+                music.thread = task.spawn(musicMonitor)
+            else
+                if music.thread then task.cancel(music.thread); music.thread = nil end
+                musicReset()
+            end
+        end)
+    end })
+    leftGroup:AddDropdown("TrackSelect", { Text = "Track", Values = musicList, Default = music.selected, Callback = function(sel)
+        pcall(function()
+            music.selected = type(sel) == "table" and sel[1] or sel
+            task.spawn(function() musicFetchAsync(music.selected) end)
+        end)
+    end })
     leftGroup:AddButton("Preload LMS", function()
         pcall(function()
             for name in pairs(musicTracks) do
@@ -2302,13 +2242,11 @@ do
             Library:Notify({Title = "Music", Description = "Preload complete", Time = 2})
         end)
     end)
-    rightGroup:AddButton("Preview", function()
-        pcall(function() previewStart(music.selected) end)
-    end)
-    rightGroup:AddButton("Stop Preview", function()
-        pcall(function() previewStop() end)
-    end)
+    rightGroup:AddButton("Preview", function() pcall(function() previewStart(music.selected) end) end)
+    rightGroup:AddButton("Stop Preview", function() pcall(function() previewStop() end) end)
 end
+
+-- ==================== Misc ====================
 local ImpersonateGroup = Tabs.Misc:AddLeftGroupbox("Impersonate", "user")
 local FlipGroupMisc = Tabs.Misc:AddLeftGroupbox("Front Flip", "flip")
 local ChatGroupMisc = Tabs.Misc:AddLeftGroupbox("Chat", "message")
@@ -2481,6 +2419,8 @@ task.spawn(function()
         task.wait()
     end
 end)
+
+-- ==================== UI Settings ====================
 local MenuGroup = Tabs["UI Settings"]:AddLeftGroupbox("Menu", "wrench")
 MenuGroup:AddToggle("KeybindMenuOpen", { Default = Library.KeybindFrame.Visible, Text = "Open Keybind Menu", Callback = function(value) Library.KeybindFrame.Visible = value end })
 MenuGroup:AddToggle("ShowCustomCursor", { Text = "Custom Cursor", Default = true, Callback = function(Value) Library.ShowCustomCursor = Value end })
