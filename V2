@@ -37,8 +37,6 @@ local Tabs = {
     ["Misc"] = Window:AddTab("Misc", "paperclip"),
     ["UI Settings"] = Window:AddTab("UI Settings", "settings"),
 }
-
--- ==================== Player Info ====================
 local information = Tabs["Player Info"]:AddLeftGroupbox("Player", "user")
 local avatarImage = Instance.new("ImageLabel")
 avatarImage.Name = "AvatarThumbnail"
@@ -96,8 +94,6 @@ DevGroup:AddLabel("[FixFox] - Owner And Developer")
 local ContributorGroup = Tabs["Player Info"]:AddRightGroupbox("Contributor", "users")
 ContributorGroup:AddLabel("[Fixed] - Tester")
 ContributorGroup:AddLabel("[777] - Tester")
-
--- ==================== ESP ====================
 local EspLib = {}
 local Camera = Workspace.CurrentCamera
 local MapFolder = nil
@@ -133,6 +129,10 @@ local ESPSettings = {
     showGeneratorName = true, showItemName = true, showPizzaName = true, showPizzaDeliveryName = true,
     showZombieName = true, showTaphTripwireName = true, showTripMineName = true, showTwoTimeRespawnName = true,
     showGraffitiName = true,
+    azureGroundBulbESP = false,
+    azureVineESP = false,
+    azureGroundBulbColor = Color3.fromRGB(0, 255, 200),
+    azureVineColor = Color3.fromRGB(200, 0, 255),
 }
 local function IsRagdoll(model)
     local ragdolls = Workspace:FindFirstChild("Ragdolls")
@@ -244,7 +244,7 @@ local function removePlayerESP(model)
         if model:FindFirstChild("Fixsaken_Billboard") then model.Fixsaken_Billboard:Destroy() end
     end)
 end
-local function CreateObjectESP(model, color, isGenerator, isItem, isPizza, isPizzaDelivery, isZombie, isTaph, isTripMine, isRespawn, isGraffiti)
+local function CreateObjectESP(model, color, isGenerator, isItem, isPizza, isPizzaDelivery, isZombie, isTaph, isTripMine, isRespawn, isGraffiti, displayText)
     if not model then return end
     if model:FindFirstChild("TAOWARE_Highlight") then return end
     if isGenerator and model:FindFirstChild("Progress") and model.Progress.Value == 100 then return end
@@ -286,7 +286,16 @@ local function CreateObjectESP(model, color, isGenerator, isItem, isPizza, isPiz
     local textLabel = Instance.new("TextLabel")
     textLabel.Size = UDim2.new(1, 0, 1, 0)
     textLabel.BackgroundTransparency = 1
-    textLabel.Text = model.Name
+    if displayText then
+        textLabel.Text = displayText
+    else
+        local typeAttr = model:GetAttribute("Type")
+        if typeAttr then
+            textLabel.Text = typeAttr
+        else
+            textLabel.Text = model.Name
+        end
+    end
     textLabel.Font = Enum.Font.GothamBlack
     textLabel.TextColor3 = color
     textLabel.TextSize = 8
@@ -403,6 +412,30 @@ local function UpdateESP()
             elseif not ESPSettings.twoTimeRespawnEsp then RemoveObjectESP(target) end
         end
     end
+    if MapFolder then
+        for _, obj in ipairs(MapFolder:GetDescendants()) do
+            if obj:IsA("Model") then
+                local nameLower = obj.Name:lower()
+                if nameLower == "groundbulbmodel" then
+                    if ESPSettings.azureGroundBulbESP then
+                        if not obj:FindFirstChild("TAOWARE_Highlight") then
+                            CreateObjectESP(obj, ESPSettings.azureGroundBulbColor, false, false, false, false, false, false, false, false, true, "GroundBulb")
+                        end
+                    else
+                        RemoveObjectESP(obj)
+                    end
+                elseif nameLower == "vinemodel" then
+                    if ESPSettings.azureVineESP then
+                        if not obj:FindFirstChild("TAOWARE_Highlight") then
+                            CreateObjectESP(obj, ESPSettings.azureVineColor, false, false, false, false, false, false, false, false, true, "Vine")
+                        end
+                    else
+                        RemoveObjectESP(obj)
+                    end
+                end
+            end
+        end
+    end
 end
 task.spawn(function() while task.wait(0.5) do pcall(UpdateESP) end end)
 function EspLib:GetSettings() return ESPSettings end
@@ -453,6 +486,24 @@ ItemGroup:AddToggle("TwoTimeRespawnESP", { Text = "Respawn ESP", Default = false
 ItemGroup:AddToggle("GraffitiESP", { Text = "Graffiti ESP", Default = false, Callback = function(Value) ESPSettings.graffitiEsp = Value end }):AddColorPicker("GraffitiColor", { Default = ESPSettings.graffitiColor, Title = "Graffiti Color", Callback = function(Value) ESPSettings.graffitiColor = Value end })
 SpecialGroup:AddToggle("PizzaDeliveryESP", { Text = "Pizza Delivery ESP", Default = false, Callback = function(Value) ESPSettings.pizzaDeliveryEsp = Value end }):AddColorPicker("PizzaDeliveryColor", { Default = ESPSettings.pizzaDeliveryColor, Title = "Delivery Color", Callback = function(Value) ESPSettings.pizzaDeliveryColor = Value end })
 SpecialGroup:AddToggle("ZombieESP", { Text = "Zombie ESP", Default = false, Callback = function(Value) ESPSettings.zombieEsp = Value end }):AddColorPicker("ZombieColor", { Default = ESPSettings.zombieColor, Title = "Zombie Color", Callback = function(Value) ESPSettings.zombieColor = Value end })
+SpecialGroup:AddToggle("AzureGroundBulbESP", {
+    Text = "GroundBulb ESP",
+    Default = false,
+    Callback = function(Value) ESPSettings.azureGroundBulbESP = Value end
+}):AddColorPicker("AzureGroundBulbColor", {
+    Default = ESPSettings.azureGroundBulbColor,
+    Title = "GroundBulb Color",
+    Callback = function(Value) ESPSettings.azureGroundBulbColor = Value end
+})
+SpecialGroup:AddToggle("AzureVineESP", {
+    Text = "Vine ESP",
+    Default = false,
+    Callback = function(Value) ESPSettings.azureVineESP = Value end
+}):AddColorPicker("AzureVineColor", {
+    Default = ESPSettings.azureVineColor,
+    Title = "Vine Color",
+    Callback = function(Value) ESPSettings.azureVineColor = Value end
+})
 TracerGroup:AddToggle("GeneratorTracers", { Text = "Generator Tracers", Default = false, Callback = function(Value) ESPSettings.generatorTracers = Value end })
 TracerGroup:AddToggle("ItemTracers", { Text = "Item Tracers", Default = false, Callback = function(Value) ESPSettings.itemTracers = Value end })
 TracerGroup:AddToggle("PizzaTracers", { Text = "Pizza Tracers", Default = false, Callback = function(Value) ESPSettings.pizzaTracers = Value end })
@@ -470,8 +521,6 @@ NameToggleGroup:AddToggle("ShowTaphTripwireName", { Text = "Show Tripwire Name",
 NameToggleGroup:AddToggle("ShowTripMineName", { Text = "Show Mine Name", Default = true, Callback = function(Value) ESPSettings.showTripMineName = Value end })
 NameToggleGroup:AddToggle("ShowTwoTimeRespawnName", { Text = "Show Respawn Name", Default = true, Callback = function(Value) ESPSettings.showTwoTimeRespawnName = Value end })
 NameToggleGroup:AddToggle("ShowGraffitiName", { Text = "Show Graffiti Name", Default = true, Callback = function(Value) ESPSettings.showGraffitiName = Value end })
-
--- ==================== Generator ====================
 local flow = { on = false, nodeDelay = 0.04 }
 local function flowKey(n) return n.row .. "-" .. n.col end
 local function flowNeighbour(r1, c1, r2, c2)
@@ -561,8 +610,6 @@ local genLeft = Tabs.Generator:AddLeftGroupbox("Auto Solve", "zap")
 genLeft:AddToggle("FlowAutoSolve", { Text = "Auto Solve", Default = flow.on, Callback = function(Value) flow.on = Value end })
 local genRight = Tabs.Generator:AddRightGroupbox("Settings", "sliders")
 genRight:AddSlider("FlowSpeed", { Text = "Auto Solve Speed", Default = flow.nodeDelay, Min = 0.01, Max = 0.50, Rounding = 2, Compact = false, Callback = function(Value) flow.nodeDelay = Value end })
-
--- ==================== Player ====================
 local SpeedGroup = Tabs.Player:AddLeftGroupbox("Speed", "bolt")
 local FlightGroup = Tabs.Player:AddLeftGroupbox("Flight", "plane")
 local speedEnabled = false
@@ -811,8 +858,72 @@ ExtraGroup:AddToggle("AutoPullRope", { Text = "Auto Pull Rope", Default = false,
     anti_pullRope = v
     if v then startPullRope() else stopPullRope() end
 end })
-
--- ==================== Aimbot ====================
+local azureQTEEnabled = false
+local originalGetHitZoneIndex = nil
+local hookSlot = nil
+local function enableQTE()
+    if azureQTEEnabled then return end
+    azureQTEEnabled = true
+    local BehaviorModule = ReplicatedStorage:FindFirstChild("Assets")
+        and ReplicatedStorage.Assets:FindFirstChild("Killers")
+        and ReplicatedStorage.Assets.Killers:FindFirstChild("Azure")
+        and ReplicatedStorage.Assets.Killers.Azure:FindFirstChild("Config")
+        and ReplicatedStorage.Assets.Killers.Azure.Config:FindFirstChild("cl_WorkaroundModules")
+        and ReplicatedStorage.Assets.Killers.Azure.Config.cl_WorkaroundModules:FindFirstChild("cl_ConstructQTE")
+    if not BehaviorModule then
+        Library:Notify({ Title = "QTE Error", Description = "QTE module not found", Time = 3 })
+        return
+    end
+    local Behavior
+    pcall(function() Behavior = require(BehaviorModule) end)
+    if not Behavior or not Behavior.new then return end
+    local function cheatGetHitZoneIndex(currentValue, qteBounds, completedZones)
+        if type(completedZones) == "table" then
+            for i = 1, 3 do
+                if not completedZones[i] then return i end
+            end
+        end
+        return 1
+    end
+    local upvalues = debug.getupvalues(Behavior.new)
+    for slot, value in pairs(upvalues) do
+        if type(value) == "function" and debug.info(value, "a") == 3 then
+            originalGetHitZoneIndex = value
+            hookSlot = slot
+            debug.setupvalue(Behavior.new, slot, cheatGetHitZoneIndex)
+            Library:Notify({ Title = "QTE", Description = "Auto QTE hooked", Time = 2 })
+            return
+        end
+    end
+    Library:Notify({ Title = "QTE Error", Description = "No 3-param func in upvalues", Time = 3 })
+end
+local function disableQTE()
+    azureQTEEnabled = false
+    if hookSlot and originalGetHitZoneIndex then
+        local BehaviorModule = ReplicatedStorage:FindFirstChild("Assets")
+            and ReplicatedStorage.Assets:FindFirstChild("Killers")
+            and ReplicatedStorage.Assets.Killers:FindFirstChild("Azure")
+            and ReplicatedStorage.Assets.Killers.Azure:FindFirstChild("Config")
+            and ReplicatedStorage.Assets.Killers.Azure.Config:FindFirstChild("cl_WorkaroundModules")
+            and ReplicatedStorage.Assets.Killers.Azure.Config.cl_WorkaroundModules:FindFirstChild("cl_ConstructQTE")
+        if BehaviorModule then
+            local Behavior
+            pcall(function() Behavior = require(BehaviorModule) end)
+            if Behavior and Behavior.new then
+                debug.setupvalue(Behavior.new, hookSlot, originalGetHitZoneIndex)
+            end
+        end
+        hookSlot = nil
+        originalGetHitZoneIndex = nil
+    end
+end
+ExtraGroup:AddToggle("AzureAutoQTE", {
+    Text = "Auto Azure QTE",
+    Default = false,
+    Callback = function(val)
+        if val then enableQTE() else disableQTE() end
+    end
+})
 local generalGroup = Tabs.Aimbot:AddLeftGroupbox("General Aim")
 local survivorGroup = Tabs.Aimbot:AddLeftGroupbox("Killer Aim")
 local killerGroup = Tabs.Aimbot:AddRightGroupbox("Survivor Aim")
@@ -1170,8 +1281,6 @@ registerTriggerModule("SoundTrigger", function() soundTriggerEnabled = true; set
     soundConnections = {}
     if globalSoundConn then globalSoundConn:Disconnect(); globalSoundConn = nil end
 end)
-
--- ==================== BLOCK ====================
 _G.BaseHitboxSize = Vector3.new(4.5, 6, 7.5)
 _G.HitboxScale = 1.0
 _G.HitboxOffset = -1.4
@@ -1191,7 +1300,6 @@ _G.DragHitboxOffset = -1.4
 _G.DragHitboxDuration = 1.5
 _G.DragHitboxColor = Color3.fromRGB(100, 255, 100)
 _G.DragHitboxTransparency = 0.5
-
 local MainUI, KillersFolder, SurvivorsFolder, Hitboxes
 local function GetObjects()
     MainUI = LP.PlayerGui:FindFirstChild("MainUI")
@@ -1473,7 +1581,6 @@ end })
 BlockRight:AddSlider("HitboxOffset", { Text = "Offset (Z)", Default = -1.4, Min = -10, Max = 0, Rounding = 1, Callback = function(v) _G.HitboxOffset = v end })
 BlockRight:AddSlider("HitboxDuration", { Text = "Duration", Default = 1.5, Min = 0.5, Max = 5.0, Rounding = 1, Callback = function(v) _G.HitboxDuration = v end })
 BlockRight:AddSlider("BlockDelay", { Text = "Block Delay", Default = 0, Min = 0, Max = 1, Rounding = 2, Callback = function(v) _G.BlockDelay = v end })
-
 local DragLeft = Tabs.Block:AddLeftGroupbox("Hitbox Drag", "move")
 DragLeft:AddToggle("EnableDrag", { Text = "Enable Drag", Default = false, Callback = function(state)
     _G.DragEnabled = state
@@ -1487,7 +1594,6 @@ DragLeft:AddLabel("Drag Hitbox Color"):AddColorPicker("DragHitboxColor", { Defau
     _G.DragHitboxColor = color
     for _, data in pairs(_G.DragHitboxData) do if data.part and data.part.Parent then data.part.Color = color end end
 end })
-
 local DragRight = Tabs.Block:AddRightGroupbox("Hitbox Drag Settings", "sliders")
 DragRight:AddSlider("DragHitboxSize", { Text = "Size", Default = 1.0, Min = 0.2, Max = 3.0, Rounding = 2, Callback = function(v)
     _G.DragHitboxScale = v
@@ -1495,8 +1601,6 @@ DragRight:AddSlider("DragHitboxSize", { Text = "Size", Default = 1.0, Min = 0.2,
 end })
 DragRight:AddSlider("DragHitboxOffset", { Text = "Offset (Z)", Default = -1.4, Min = -10, Max = 0, Rounding = 1, Callback = function(v) _G.DragHitboxOffset = v end })
 DragRight:AddSlider("DragHitboxDuration", { Text = "Duration", Default = 1.5, Min = 0.5, Max = 5.0, Rounding = 1, Callback = function(v) _G.DragHitboxDuration = v end })
-
--- ==================== STAB ====================
 local TARGET_ANIMATION_ID = "100725497418533"
 local DASHSTAB_ANIM_ID = "89448354637442"
 local stabEnabledBackstab = false
@@ -1592,8 +1696,6 @@ StabRight:AddSlider("BehindStuds", { Text = "Behind Studs", Default = 4, Min = 1
 StabRight:AddSlider("BackstabDelay", { Text = "Backstab Start Delay", Default = 0.05, Min = 0, Max = 0.5, Rounding = 2, Callback = function(v) backstabDelay = v end })
 StabRight:AddSlider("BackstabDuration", { Text = "Backstab Duration", Default = 0.5, Min = 0.1, Max = 2, Rounding = 2, Callback = function(v) backstabDuration = v end })
 StabRight:AddSlider("DashstabDelay", { Text = "Dashstab Start Delay", Default = 0.25, Min = 0, Max = 0.5, Rounding = 2, Callback = function(v) dashstabDelay = v end })
-
--- ==================== Sk8 ====================
 do
     local Sk8Player = LP
     local Sk8Workspace = Workspace
@@ -1855,8 +1957,6 @@ do
     end })
     Sk8Right:AddSlider("SpraySpeed", { Text = "Spray Speed", Default = 4.5, Min = 0.5, Max = 10, Rounding = 1, Callback = function(val) spraySpeed = val end })
 end
-
--- ==================== Action ====================
 local EmotesGroup = Tabs.Action:AddLeftGroupbox("Emotes", "smile")
 local svc = { RS = ReplicatedStorage, Run = RunService, TS = game:GetService("TweenService"), Input = UserInputService }
 local lp = LP
@@ -2046,8 +2146,6 @@ PlayerAnimGroup:AddButton("Apply Animation", applyAnimation)
 PlayerAnimGroup:AddButton("Stop Animation", function() stopAnimations() end)
 PlayerAnimGroup:AddButton("Refresh List", function() collectBaseAnimations(); buildUniqueList() end)
 lp.CharacterAdded:Connect(function() task.wait(0.5); if next(currentTracks) then stopAnimations() end end)
-
--- ==================== Music ====================
 do
     local tabMusic = Tabs["Music"]
     local leftGroup = tabMusic:AddLeftGroupbox("LMS Music", "music")
@@ -2245,8 +2343,6 @@ do
     rightGroup:AddButton("Preview", function() pcall(function() previewStart(music.selected) end) end)
     rightGroup:AddButton("Stop Preview", function() pcall(function() previewStop() end) end)
 end
-
--- ==================== Misc ====================
 local ImpersonateGroup = Tabs.Misc:AddLeftGroupbox("Impersonate", "user")
 local FlipGroupMisc = Tabs.Misc:AddLeftGroupbox("Front Flip", "flip")
 local ChatGroupMisc = Tabs.Misc:AddLeftGroupbox("Chat", "message")
@@ -2419,8 +2515,6 @@ task.spawn(function()
         task.wait()
     end
 end)
-
--- ==================== UI Settings ====================
 local MenuGroup = Tabs["UI Settings"]:AddLeftGroupbox("Menu", "wrench")
 MenuGroup:AddToggle("KeybindMenuOpen", { Default = Library.KeybindFrame.Visible, Text = "Open Keybind Menu", Callback = function(value) Library.KeybindFrame.Visible = value end })
 MenuGroup:AddToggle("ShowCustomCursor", { Text = "Custom Cursor", Default = true, Callback = function(Value) Library.ShowCustomCursor = Value end })
