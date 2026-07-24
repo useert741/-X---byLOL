@@ -94,6 +94,7 @@ DevGroup:AddLabel("[FixFox] - Owner And Developer")
 local ContributorGroup = Tabs["Player Info"]:AddRightGroupbox("Contributor", "users")
 ContributorGroup:AddLabel("[Fixed] - Tester")
 ContributorGroup:AddLabel("[777] - Tester")
+ContributorGroup:AddLabel("[yeye] - Tester")
 local EspLib = {}
 local Camera = Workspace.CurrentCamera
 local MapFolder = nil
@@ -1505,29 +1506,69 @@ local function HandleKiller_Attribute(Killer)
     if not Players:GetPlayerFromCharacter(Killer) then return end
     local queryHitbox = Killer:FindFirstChild("QueryHitbox")
     if not queryHitbox then return end
-    local lastAbility = nil
-    local lastAbilities = nil
-    local heartbeatConn
-    heartbeatConn = RunService.Heartbeat:Connect(function()
-        if not _G.AutoBlockEnabled and not _G.DragEnabled then heartbeatConn:Disconnect(); return end
-        if not Killer.Parent then heartbeatConn:Disconnect(); return end
-        local curAbility = Killer:GetAttribute("AbilityLastUsed") or 0
-        local curAbilities = Killer:GetAttribute("AbilitiesUsed") or 0
-        if lastAbility ~= nil then
-            if curAbility > lastAbility then
-                local isSkill = (curAbilities > lastAbilities)
-                if _G.AttrFilterAbilities and isSkill then
-                else
-                    if _G.AutoBlockEnabled then StartBlockDetection(Killer, queryHitbox) end
-                    if _G.DragEnabled then StartDragDetection(Killer, queryHitbox) end
-                end
+    local pendingBlock = false
+    local timeoutThread = nil
+    local abilityConn, abilitiessConn
+    local function doBlock()
+        if not _G.AutoBlockEnabled and not _G.DragEnabled then return end
+        task.spawn(function()
+            if _G.AutoBlockEnabled then
+                StartBlockDetection(Killer, queryHitbox)
             end
+            if _G.DragEnabled then
+                StartDragDetection(Killer, queryHitbox)
+            end
+        end)
+    end
+    local function onAbilitiesUsed()
+        if not _G.AutoBlockEnabled and not _G.DragEnabled then return end
+        pendingBlock = true
+        if timeoutThread then task.cancel(timeoutThread) end
+        timeoutThread = task.delay(0.5, function()
+            if pendingBlock then
+                pendingBlock = false
+                doBlock()
+            end
+            timeoutThread = nil
+        end)
+    end
+    local function onAbilityLastUsed()
+        if not _G.AutoBlockEnabled and not _G.DragEnabled then return end
+        if pendingBlock then
+            pendingBlock = false
+            if timeoutThread then
+                task.cancel(timeoutThread)
+                timeoutThread = nil
+            end
+            if not _G.AttrFilterAbilities then
+                doBlock()
+            end
+        else
+            doBlock()
         end
-        lastAbility = curAbility
-        lastAbilities = curAbilities
+    end
+    abilityConn = Killer:GetAttributeChangedSignal("AbilityLastUsed"):Connect(onAbilityLastUsed)
+    abilitiessConn = Killer:GetAttributeChangedSignal("AbilitiesUsed"):Connect(onAbilitiesUsed)
+    Killer.AncestryChanged:Connect(function()
+        if not Killer.Parent then
+            abilityConn:Disconnect()
+            abilitiessConn:Disconnect()
+            if timeoutThread then
+                task.cancel(timeoutThread)
+                timeoutThread = nil
+            end
+            ClearKillerBlockHitbox(Killer)
+            ClearKillerDragHitbox(Killer)
+        end
     end)
-    Killer.AncestryChanged:Connect(function() if not Killer.Parent then heartbeatConn:Disconnect(); ClearKillerBlockHitbox(Killer); ClearKillerDragHitbox(Killer) end end)
-    table.insert(_G.AutoBlockConnections, { Disconnect = function() heartbeatConn:Disconnect() end })
+    table.insert(_G.AutoBlockConnections, { Disconnect = function()
+        abilityConn:Disconnect()
+        abilitiessConn:Disconnect()
+        if timeoutThread then
+            task.cancel(timeoutThread)
+            timeoutThread = nil
+        end
+    end })
 end
 local function EnableAutoBlock()
     if _G.AutoBlockEnabled or _G.DragEnabled then
