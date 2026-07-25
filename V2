@@ -95,6 +95,19 @@ local ContributorGroup = Tabs["Player Info"]:AddRightGroupbox("Contributor", "us
 ContributorGroup:AddLabel("[Fixed] - Tester")
 ContributorGroup:AddLabel("[777] - Tester")
 ContributorGroup:AddLabel("[yeye] - Tester")
+local CommunityGroup = Tabs["Player Info"]:AddRightGroupbox("Community", "users")
+CommunityGroup:AddButton("Copy Discord Link", function()
+    pcall(function()
+        setclipboard("https://discord.gg/F4wrAGnRgF")
+        Library:Notify({Title = "Discord", Description = "Link copied to clipboard", Time = 2})
+    end)
+end)
+CommunityGroup:AddButton("QQ", function()
+    pcall(function()
+        setclipboard("1058111379")
+        Library:Notify({Title = "QQ", Description = "QQ number copied to clipboard", Time = 2})
+    end)
+end)
 local EspLib = {}
 local Camera = Workspace.CurrentCamera
 local MapFolder = nil
@@ -1294,7 +1307,6 @@ _G.HitboxDuration = 1.5
 _G.BlockDelay = 0
 _G.AutoBlockEnabled = false
 _G.AutoBlockConnections = {}
-_G.AttrFilterAbilities = true
 _G.DragEnabled = false
 _G.DragHitboxScale = 1.0
 _G.DragHitboxOffset = -1.4
@@ -1506,7 +1518,7 @@ local function HandleKiller_Attribute(Killer)
     if not Players:GetPlayerFromCharacter(Killer) then return end
     local queryHitbox = Killer:FindFirstChild("QueryHitbox")
     if not queryHitbox then return end
-    local blockLocked = false
+    local isSkill = false
     local abilityConn, abilitiessConn
     local function doBlock()
         if not _G.AutoBlockEnabled and not _G.DragEnabled then return end
@@ -1520,17 +1532,17 @@ local function HandleKiller_Attribute(Killer)
         end)
     end
     local function onAbilitiesUsed()
-        if not _G.AutoBlockEnabled and not _G.DragEnabled then return end
-        if _G.AttrFilterAbilities then
-            blockLocked = true
-        end
+        isSkill = true
+        task.delay(0.5, function()
+            isSkill = false
+        end)
     end
     local function onAbilityLastUsed()
         if not _G.AutoBlockEnabled and not _G.DragEnabled then return end
-        if blockLocked then
-            blockLocked = false
-        else
-            doBlock()
+        if not isSkill then
+            task.delay(0.1, function()
+                doBlock()
+            end)
         end
     end
     abilityConn = Killer:GetAttributeChangedSignal("AbilityLastUsed"):Connect(onAbilityLastUsed)
@@ -1583,7 +1595,6 @@ BlockLeft:AddToggle("AutoBlockToggle", { Text = "Enable AutoBlock", Default = fa
     _G.AutoBlockEnabled = state
     if state then EnableAutoBlock() else DisableAutoBlock() end
 end })
-BlockLeft:AddToggle("BlockSkill", { Text = "Block Skill", Default = false, Callback = function(v) _G.AttrFilterAbilities = not v end })
 BlockLeft:AddSlider("HitboxTransparency", { Text = "Transparency", Default = 0.5, Min = 0, Max = 1, Rounding = 2, Callback = function(v)
     _G.HitboxTransparency = v
     for _, data in pairs(_G.BlockHitboxData) do if data.part and data.part.Parent then data.part.Transparency = 1 - v end end
