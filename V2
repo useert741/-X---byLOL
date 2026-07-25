@@ -1607,7 +1607,7 @@ BlockRight:AddSlider("HitboxSize", { Text = "Size", Default = 1.0, Min = 0.2, Ma
     for _, data in pairs(_G.BlockHitboxData) do if data.part and data.part.Parent then data.part.Size = _G.BaseHitboxSize * v end end
 end })
 BlockRight:AddSlider("HitboxOffset", { Text = "Offset (Z)", Default = -1.4, Min = -10, Max = 0, Rounding = 1, Callback = function(v) _G.HitboxOffset = v end })
-BlockRight:AddSlider("HitboxDuration", { Text = "Duration", Default = 1.5, Min = 0.5, Max = 5.0, Rounding = 1, Callback = function(v) _G.HitboxDuration = v end })
+BlockRight:AddSlider("HitboxDuration", { Text = "Duration", Default = 1.5, Min = 0.1, Max = 5.0, Rounding = 1, Callback = function(v) _G.HitboxDuration = v end })
 BlockRight:AddSlider("BlockDelay", { Text = "Block Delay", Default = 0, Min = 0, Max = 1, Rounding = 2, Callback = function(v) _G.BlockDelay = v end })
 local DragLeft = Tabs.Block:AddLeftGroupbox("Hitbox Drag", "move")
 DragLeft:AddToggle("EnableDrag", { Text = "Enable Drag", Default = false, Callback = function(state)
@@ -1628,7 +1628,7 @@ DragRight:AddSlider("DragHitboxSize", { Text = "Size", Default = 1.0, Min = 0.2,
     for _, data in pairs(_G.DragHitboxData) do if data.part and data.part.Parent then data.part.Size = _G.BaseHitboxSize * v end end
 end })
 DragRight:AddSlider("DragHitboxOffset", { Text = "Offset (Z)", Default = -1.4, Min = -10, Max = 0, Rounding = 1, Callback = function(v) _G.DragHitboxOffset = v end })
-DragRight:AddSlider("DragHitboxDuration", { Text = "Duration", Default = 1.5, Min = 0.5, Max = 5.0, Rounding = 1, Callback = function(v) _G.DragHitboxDuration = v end })
+DragRight:AddSlider("DragHitboxDuration", { Text = "Duration", Default = 1.5, Min = 0.1, Max = 5.0, Rounding = 1, Callback = function(v) _G.DragHitboxDuration = v end })
 local TARGET_ANIMATION_ID = "100725497418533"
 local DASHSTAB_ANIM_ID = "89448354637442"
 local stabEnabledBackstab = false
