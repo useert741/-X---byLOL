@@ -1540,9 +1540,7 @@ local function HandleKiller_Attribute(Killer)
     local function onAbilityLastUsed()
         if not _G.AutoBlockEnabled and not _G.DragEnabled then return end
         if not isSkill then
-            task.delay(0.1, function()
-                doBlock()
-            end)
+            doBlock()
         end
     end
     abilityConn = Killer:GetAttributeChangedSignal("AbilityLastUsed"):Connect(onAbilityLastUsed)
