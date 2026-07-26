@@ -1331,10 +1331,14 @@ end
 local function pressBlock()
     local btn = getBlockButton()
     if not btn then return false end
-    local cd = btn:FindFirstChild("CooldownTime")
-    if cd and cd.Text ~= "" then return false end
-    pcall(function() btn:Activate() end)
-    for _, conn in ipairs(getconnections(btn.MouseButton1Click) or {}) do pcall(function() conn:Fire() end) end
+    pcall(function()
+        btn:Activate()
+    end)
+    for _, conn in ipairs(getconnections(btn.MouseButton1Click) or {}) do
+        pcall(function()
+            conn:Fire()
+        end)
+    end
     return true
 end
 local function CreateBlockHitboxVisual()
@@ -1431,36 +1435,49 @@ local function StartBlockDetection(Killer, queryHitbox)
         end
     end)
     _G.BlockHitboxData[Killer] = { part = visualPart, connection = updateConnection }
-    task.delay(_G.HitboxDuration, function() ClearKillerBlockHitbox(Killer) end)
+    task.delay(_G.HitboxDuration, function()
+        ClearKillerBlockHitbox(Killer)
+    end)
     local localChar = LP.Character
     if not localChar or not SurvivorsFolder or localChar.Parent ~= SurvivorsFolder then return end
     local localQuery = localChar:FindFirstChild("QueryHitbox")
     if not localQuery then return end
     local hitboxSize = _G.BaseHitboxSize * _G.HitboxScale
-    task.spawn(function()
-        local startTime = tick()
-        while tick() - startTime < _G.HitboxDuration do
-            if not _G.AutoBlockEnabled then break end
-            if not localChar.Parent or not SurvivorsFolder or localChar.Parent ~= SurvivorsFolder then break end
-            if not queryHitbox or not queryHitbox.Parent then break end
-            OverlapParams.FilterDescendantsInstances = {localQuery}
-            local part = Instance.new("Part")
-            part.Size = hitboxSize
-            part.CFrame = queryHitbox.CFrame * CFrame.new(0, 0, _G.HitboxOffset)
-            part.CanCollide = false
-            part.Anchored = true
-            part.Transparency = 1
-            part.Parent = Hitboxes
-            Debris:AddItem(part, 0.1)
-            local hits = Workspace:GetPartsInPart(part, OverlapParams)
-            if #hits > 0 then
-                if _G.BlockDelay > 0 then task.wait(_G.BlockDelay) end
-                pressBlock()
-                break
+    local detectionConn
+    detectionConn = RunService.RenderStepped:Connect(function()
+        if not _G.AutoBlockEnabled then
+            detectionConn:Disconnect()
+            return
+        end
+        if not localChar.Parent or not SurvivorsFolder or localChar.Parent ~= SurvivorsFolder then
+            detectionConn:Disconnect()
+            return
+        end
+        if not queryHitbox or not queryHitbox.Parent then
+            detectionConn:Disconnect()
+            return
+        end
+        OverlapParams.FilterDescendantsInstances = {localQuery}
+        local part = Instance.new("Part")
+        part.Size = hitboxSize
+        part.CFrame = queryHitbox.CFrame * CFrame.new(0, 0, _G.HitboxOffset)
+        part.CanCollide = false
+        part.Anchored = true
+        part.Transparency = 1
+        part.Parent = Hitboxes
+        Debris:AddItem(part, 0.1)
+        local hits = Workspace:GetPartsInPart(part, OverlapParams)
+        if #hits > 0 then
+            detectionConn:Disconnect()
+            if _G.BlockDelay > 0 then
+                task.wait(_G.BlockDelay)
             end
-            task.wait(0.015)
+            pressBlock()
         end
     end)
+    table.insert(_G.AutoBlockConnections, { Disconnect = function()
+        detectionConn:Disconnect()
+    end })
 end
 local function StartDragDetection(Killer, queryHitbox)
     ClearKillerDragHitbox(Killer)
@@ -1475,44 +1492,55 @@ local function StartDragDetection(Killer, queryHitbox)
         end
     end)
     _G.DragHitboxData[Killer] = { part = visualPart, connection = updateConnection }
-    task.delay(_G.DragHitboxDuration, function() ClearKillerDragHitbox(Killer) end)
+    task.delay(_G.DragHitboxDuration, function()
+        ClearKillerDragHitbox(Killer)
+    end)
     local localChar = LP.Character
     if not localChar or not SurvivorsFolder or localChar.Parent ~= SurvivorsFolder then return end
     local localQuery = localChar:FindFirstChild("QueryHitbox")
     if not localQuery then return end
     local dragHitboxSize = _G.BaseHitboxSize * _G.DragHitboxScale
-    task.spawn(function()
-        local startTime = tick()
-        while tick() - startTime < _G.DragHitboxDuration do
-            if not _G.DragEnabled then break end
-            if not localChar.Parent or not SurvivorsFolder or localChar.Parent ~= SurvivorsFolder then break end
-            if not queryHitbox or not queryHitbox.Parent then break end
-            OverlapParams.FilterDescendantsInstances = {localQuery}
-            local part = Instance.new("Part")
-            part.Size = dragHitboxSize
-            part.CFrame = queryHitbox.CFrame * CFrame.new(0, 0, _G.DragHitboxOffset)
-            part.CanCollide = false
-            part.Anchored = true
-            part.Transparency = 1
-            part.Parent = Hitboxes
-            Debris:AddItem(part, 0.1)
-            local hits = Workspace:GetPartsInPart(part, OverlapParams)
-            if #hits > 0 then
-                local myRoot = localChar:FindFirstChild("HumanoidRootPart")
-                local targetPos = queryHitbox.CFrame * CFrame.new(0, 0, _G.HitboxOffset).Position
-                if myRoot then
-                    local stepTime = _G.DragHitboxDuration / 20
-                    for i = 1, 20 do
-                        if not myRoot.Parent then break end
-                        myRoot.CFrame = myRoot.CFrame:Lerp(CFrame.new(targetPos) * myRoot.CFrame.Rotation, i/20)
-                        task.wait(stepTime)
-                    end
+    local detectionConn
+    detectionConn = RunService.RenderStepped:Connect(function()
+        if not _G.DragEnabled then
+            detectionConn:Disconnect()
+            return
+        end
+        if not localChar.Parent or not SurvivorsFolder or localChar.Parent ~= SurvivorsFolder then
+            detectionConn:Disconnect()
+            return
+        end
+        if not queryHitbox or not queryHitbox.Parent then
+            detectionConn:Disconnect()
+            return
+        end
+        OverlapParams.FilterDescendantsInstances = {localQuery}
+        local part = Instance.new("Part")
+        part.Size = dragHitboxSize
+        part.CFrame = queryHitbox.CFrame * CFrame.new(0, 0, _G.DragHitboxOffset)
+        part.CanCollide = false
+        part.Anchored = true
+        part.Transparency = 1
+        part.Parent = Hitboxes
+        Debris:AddItem(part, 0.1)
+        local hits = Workspace:GetPartsInPart(part, OverlapParams)
+        if #hits > 0 then
+            detectionConn:Disconnect()
+            local myRoot = localChar:FindFirstChild("HumanoidRootPart")
+            local targetPos = queryHitbox.CFrame * CFrame.new(0, 0, _G.HitboxOffset).Position
+            if myRoot then
+                local stepTime = _G.DragHitboxDuration / 20
+                for i = 1, 20 do
+                    if not myRoot.Parent then break end
+                    myRoot.CFrame = myRoot.CFrame:Lerp(CFrame.new(targetPos) * myRoot.CFrame.Rotation, i / 20)
+                    task.wait(stepTime)
                 end
-                break
             end
-            task.wait(0.015)
         end
     end)
+    table.insert(_G.AutoBlockConnections, { Disconnect = function()
+        detectionConn:Disconnect()
+    end })
 end
 local function HandleKiller_Attribute(Killer)
     if not Players:GetPlayerFromCharacter(Killer) then return end
@@ -1522,14 +1550,12 @@ local function HandleKiller_Attribute(Killer)
     local abilityConn, abilitiessConn
     local function doBlock()
         if not _G.AutoBlockEnabled and not _G.DragEnabled then return end
-        task.spawn(function()
-            if _G.AutoBlockEnabled then
-                StartBlockDetection(Killer, queryHitbox)
-            end
-            if _G.DragEnabled then
-                StartDragDetection(Killer, queryHitbox)
-            end
-        end)
+        if _G.AutoBlockEnabled then
+            StartBlockDetection(Killer, queryHitbox)
+        end
+        if _G.DragEnabled then
+            StartDragDetection(Killer, queryHitbox)
+        end
     end
     local function onAbilitiesUsed()
         isSkill = true
