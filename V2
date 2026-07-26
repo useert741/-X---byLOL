@@ -1331,216 +1331,138 @@ end
 local function pressBlock()
     local btn = getBlockButton()
     if not btn then return false end
-    pcall(function()
-        btn:Activate()
-    end)
-    for _, conn in ipairs(getconnections(btn.MouseButton1Click) or {}) do
-        pcall(function()
-            conn:Fire()
-        end)
-    end
+    local cd = btn:FindFirstChild("CooldownTime")
+    if cd and cd.Text ~= "" then return false end
+    pcall(function() btn:Activate() end)
+    for _, conn in ipairs(getconnections(btn.MouseButton1Click) or {}) do pcall(function() conn:Fire() end) end
     return true
-end
-local function CreateBlockHitboxVisual()
-    local part = Instance.new("Part")
-    part.Name = "AttackHitboxVisual"
-    part.Size = _G.BaseHitboxSize * _G.HitboxScale
-    part.Color = _G.HitboxColor
-    part.Material = Enum.Material.ForceField
-    part.Transparency = 1 - _G.HitboxTransparency
-    part.Anchored = true
-    part.CanCollide = false
-    part.CastShadow = false
-    part.Parent = Hitboxes
-    if _G.ShowOutline then
-        local outline = Instance.new("SelectionBox")
-        outline.Adornee = part; outline.Color3 = _G.HitboxColor; outline.LineThickness = _G.OutlineThickness; outline.Transparency = 0.1
-        outline.Visible = _G.ShowHitboxVisual; outline.Parent = part
-    end
-    return part
-end
-local function UpdateBlockHitboxPosition(part, queryHitbox)
-    if part and queryHitbox then
-        part.CFrame = queryHitbox.CFrame * CFrame.new(0, 0, _G.HitboxOffset)
-        part.Size = _G.BaseHitboxSize * _G.HitboxScale
-        part.Color = _G.HitboxColor
-        part.Transparency = 1 - _G.HitboxTransparency
-        local outline = part:FindFirstChildOfClass("SelectionBox")
-        if outline then
-            outline.Color3 = _G.HitboxColor; outline.LineThickness = _G.OutlineThickness; outline.Visible = _G.ShowOutline and _G.ShowHitboxVisual
-        end
-    end
-end
-local function CreateDragHitboxVisual()
-    local part = Instance.new("Part")
-    part.Name = "DragHitboxVisual"
-    part.Size = _G.BaseHitboxSize * _G.DragHitboxScale
-    part.Color = _G.DragHitboxColor
-    part.Material = Enum.Material.ForceField
-    part.Transparency = 1 - _G.DragHitboxTransparency
-    part.Anchored = true
-    part.CanCollide = false
-    part.CastShadow = false
-    part.Parent = Hitboxes
-    if _G.ShowOutline then
-        local outline = Instance.new("SelectionBox")
-        outline.Adornee = part; outline.Color3 = _G.DragHitboxColor; outline.LineThickness = _G.OutlineThickness; outline.Transparency = 0.1
-        outline.Visible = _G.ShowHitboxVisual; outline.Parent = part
-    end
-    return part
-end
-local function UpdateDragHitboxPosition(part, queryHitbox)
-    if part and queryHitbox then
-        part.CFrame = queryHitbox.CFrame * CFrame.new(0, 0, _G.DragHitboxOffset)
-        part.Size = _G.BaseHitboxSize * _G.DragHitboxScale
-        part.Color = _G.DragHitboxColor
-        part.Transparency = 1 - _G.DragHitboxTransparency
-        local outline = part:FindFirstChildOfClass("SelectionBox")
-        if outline then
-            outline.Color3 = _G.DragHitboxColor; outline.LineThickness = _G.OutlineThickness; outline.Visible = _G.ShowOutline and _G.ShowHitboxVisual
-        end
-    end
-end
-_G.BlockHitboxData = {}
-_G.DragHitboxData = {}
-local function ClearKillerBlockHitbox(Killer)
-    local data = _G.BlockHitboxData[Killer]
-    if data then
-        if data.part then data.part:Destroy() end
-        if data.connection then data.connection:Disconnect() end
-        _G.BlockHitboxData[Killer] = nil
-    end
-end
-local function ClearKillerDragHitbox(Killer)
-    local data = _G.DragHitboxData[Killer]
-    if data then
-        if data.part then data.part:Destroy() end
-        if data.connection then data.connection:Disconnect() end
-        _G.DragHitboxData[Killer] = nil
-    end
 end
 local OverlapParams = OverlapParams.new()
 OverlapParams.MaxParts = 1
 OverlapParams.FilterType = Enum.RaycastFilterType.Include
 local function StartBlockDetection(Killer, queryHitbox)
-    ClearKillerBlockHitbox(Killer)
-    local visualPart = CreateBlockHitboxVisual()
-    UpdateBlockHitboxPosition(visualPart, queryHitbox)
-    local updateConnection
-    updateConnection = RunService.Heartbeat:Connect(function()
-        if visualPart and visualPart.Parent and queryHitbox and queryHitbox.Parent then
-            UpdateBlockHitboxPosition(visualPart, queryHitbox)
-        else
-            updateConnection:Disconnect()
-        end
-    end)
-    _G.BlockHitboxData[Killer] = { part = visualPart, connection = updateConnection }
-    task.delay(_G.HitboxDuration, function()
-        ClearKillerBlockHitbox(Killer)
-    end)
+    if not _G.AutoBlockEnabled then return end
     local localChar = LP.Character
     if not localChar or not SurvivorsFolder or localChar.Parent ~= SurvivorsFolder then return end
     local localQuery = localChar:FindFirstChild("QueryHitbox")
     if not localQuery then return end
     local hitboxSize = _G.BaseHitboxSize * _G.HitboxScale
-    local detectionConn
-    detectionConn = RunService.RenderStepped:Connect(function()
-        if not _G.AutoBlockEnabled then
-            detectionConn:Disconnect()
-            return
-        end
-        if not localChar.Parent or not SurvivorsFolder or localChar.Parent ~= SurvivorsFolder then
-            detectionConn:Disconnect()
-            return
-        end
-        if not queryHitbox or not queryHitbox.Parent then
-            detectionConn:Disconnect()
-            return
-        end
-        OverlapParams.FilterDescendantsInstances = {localQuery}
-        local part = Instance.new("Part")
-        part.Size = hitboxSize
-        part.CFrame = queryHitbox.CFrame * CFrame.new(0, 0, _G.HitboxOffset)
-        part.CanCollide = false
-        part.Anchored = true
-        part.Transparency = 1
-        part.Parent = Hitboxes
-        Debris:AddItem(part, 0.1)
-        local hits = Workspace:GetPartsInPart(part, OverlapParams)
+    local detectionPart = Instance.new("Part")
+    detectionPart.Name = "AttackHitboxVisual"
+    detectionPart.Size = hitboxSize
+    detectionPart.Color = _G.HitboxColor
+    detectionPart.Material = Enum.Material.ForceField
+    detectionPart.Transparency = 1 - _G.HitboxTransparency
+    detectionPart.Anchored = true
+    detectionPart.CanCollide = false
+    detectionPart.CastShadow = false
+    detectionPart.Parent = Hitboxes
+    if _G.ShowOutline then
+        local outline = Instance.new("SelectionBox")
+        outline.Adornee = detectionPart
+        outline.Color3 = _G.HitboxColor
+        outline.LineThickness = _G.OutlineThickness
+        outline.Transparency = 0.1
+        outline.Visible = _G.ShowHitboxVisual
+        outline.Parent = detectionPart
+    end
+    OverlapParams.FilterDescendantsInstances = {localQuery}
+    local startTime = tick()
+    local function checkAndBlock()
+        if not _G.AutoBlockEnabled then return false end
+        if not localChar.Parent or not SurvivorsFolder or localChar.Parent ~= SurvivorsFolder then return false end
+        if not queryHitbox or not queryHitbox.Parent then return false end
+        detectionPart.CFrame = queryHitbox.CFrame * CFrame.new(0, 0, _G.HitboxOffset)
+        local hits = Workspace:GetPartsInPart(detectionPart, OverlapParams)
         if #hits > 0 then
-            detectionConn:Disconnect()
-            if _G.BlockDelay > 0 then
-                task.wait(_G.BlockDelay)
-            end
+            if _G.BlockDelay > 0 then task.wait(_G.BlockDelay) end
             pressBlock()
+            return true
+        end
+        return false
+    end
+    if checkAndBlock() then
+        detectionPart:Destroy()
+        return
+    end
+    local conn
+    conn = RunService.Heartbeat:Connect(function()
+        if tick() - startTime >= _G.HitboxDuration then
+            conn:Disconnect()
+            detectionPart:Destroy()
+            return
+        end
+        if checkAndBlock() then
+            conn:Disconnect()
+            detectionPart:Destroy()
         end
     end)
-    table.insert(_G.AutoBlockConnections, { Disconnect = function()
-        detectionConn:Disconnect()
-    end })
 end
 local function StartDragDetection(Killer, queryHitbox)
-    ClearKillerDragHitbox(Killer)
-    local visualPart = CreateDragHitboxVisual()
-    UpdateDragHitboxPosition(visualPart, queryHitbox)
-    local updateConnection
-    updateConnection = RunService.Heartbeat:Connect(function()
-        if visualPart and visualPart.Parent and queryHitbox and queryHitbox.Parent then
-            UpdateDragHitboxPosition(visualPart, queryHitbox)
-        else
-            updateConnection:Disconnect()
-        end
-    end)
-    _G.DragHitboxData[Killer] = { part = visualPart, connection = updateConnection }
-    task.delay(_G.DragHitboxDuration, function()
-        ClearKillerDragHitbox(Killer)
-    end)
+    if not _G.DragEnabled then return end
     local localChar = LP.Character
     if not localChar or not SurvivorsFolder or localChar.Parent ~= SurvivorsFolder then return end
     local localQuery = localChar:FindFirstChild("QueryHitbox")
     if not localQuery then return end
     local dragHitboxSize = _G.BaseHitboxSize * _G.DragHitboxScale
-    local detectionConn
-    detectionConn = RunService.RenderStepped:Connect(function()
-        if not _G.DragEnabled then
-            detectionConn:Disconnect()
-            return
-        end
-        if not localChar.Parent or not SurvivorsFolder or localChar.Parent ~= SurvivorsFolder then
-            detectionConn:Disconnect()
-            return
-        end
-        if not queryHitbox or not queryHitbox.Parent then
-            detectionConn:Disconnect()
-            return
-        end
-        OverlapParams.FilterDescendantsInstances = {localQuery}
-        local part = Instance.new("Part")
-        part.Size = dragHitboxSize
-        part.CFrame = queryHitbox.CFrame * CFrame.new(0, 0, _G.DragHitboxOffset)
-        part.CanCollide = false
-        part.Anchored = true
-        part.Transparency = 1
-        part.Parent = Hitboxes
-        Debris:AddItem(part, 0.1)
-        local hits = Workspace:GetPartsInPart(part, OverlapParams)
+    local detectionPart = Instance.new("Part")
+    detectionPart.Name = "DragHitboxVisual"
+    detectionPart.Size = dragHitboxSize
+    detectionPart.Color = _G.DragHitboxColor
+    detectionPart.Material = Enum.Material.ForceField
+    detectionPart.Transparency = 1 - _G.DragHitboxTransparency
+    detectionPart.Anchored = true
+    detectionPart.CanCollide = false
+    detectionPart.CastShadow = false
+    detectionPart.Parent = Hitboxes
+    if _G.ShowOutline then
+        local outline = Instance.new("SelectionBox")
+        outline.Adornee = detectionPart
+        outline.Color3 = _G.DragHitboxColor
+        outline.LineThickness = _G.OutlineThickness
+        outline.Transparency = 0.1
+        outline.Visible = _G.ShowHitboxVisual
+        outline.Parent = detectionPart
+    end
+    OverlapParams.FilterDescendantsInstances = {localQuery}
+    local startTime = tick()
+    local function checkAndDrag()
+        if not _G.DragEnabled then return false end
+        if not localChar.Parent or not SurvivorsFolder or localChar.Parent ~= SurvivorsFolder then return false end
+        if not queryHitbox or not queryHitbox.Parent then return false end
+        detectionPart.CFrame = queryHitbox.CFrame * CFrame.new(0, 0, _G.DragHitboxOffset)
+        local hits = Workspace:GetPartsInPart(detectionPart, OverlapParams)
         if #hits > 0 then
-            detectionConn:Disconnect()
             local myRoot = localChar:FindFirstChild("HumanoidRootPart")
             local targetPos = queryHitbox.CFrame * CFrame.new(0, 0, _G.HitboxOffset).Position
             if myRoot then
                 local stepTime = _G.DragHitboxDuration / 20
                 for i = 1, 20 do
                     if not myRoot.Parent then break end
-                    myRoot.CFrame = myRoot.CFrame:Lerp(CFrame.new(targetPos) * myRoot.CFrame.Rotation, i / 20)
+                    myRoot.CFrame = myRoot.CFrame:Lerp(CFrame.new(targetPos) * myRoot.CFrame.Rotation, i/20)
                     task.wait(stepTime)
                 end
             end
+            return true
+        end
+        return false
+    end
+    if checkAndDrag() then
+        detectionPart:Destroy()
+        return
+    end
+    local conn
+    conn = RunService.Heartbeat:Connect(function()
+        if tick() - startTime >= _G.DragHitboxDuration then
+            conn:Disconnect()
+            detectionPart:Destroy()
+            return
+        end
+        if checkAndDrag() then
+            conn:Disconnect()
+            detectionPart:Destroy()
         end
     end)
-    table.insert(_G.AutoBlockConnections, { Disconnect = function()
-        detectionConn:Disconnect()
-    end })
 end
 local function HandleKiller_Attribute(Killer)
     if not Players:GetPlayerFromCharacter(Killer) then return end
@@ -1575,8 +1497,16 @@ local function HandleKiller_Attribute(Killer)
         if not Killer.Parent then
             abilityConn:Disconnect()
             abilitiessConn:Disconnect()
-            ClearKillerBlockHitbox(Killer)
-            ClearKillerDragHitbox(Killer)
+            if _G.AutoBlockEnabled then
+                for _, v in ipairs(Hitboxes:GetChildren()) do
+                    if v.Name == "AttackHitboxVisual" then v:Destroy() end
+                end
+            end
+            if _G.DragEnabled then
+                for _, v in ipairs(Hitboxes:GetChildren()) do
+                    if v.Name == "DragHitboxVisual" then v:Destroy() end
+                end
+            end
         end
     end)
     table.insert(_G.AutoBlockConnections, { Disconnect = function()
@@ -1602,16 +1532,9 @@ local function DisableAutoBlock()
     if not _G.AutoBlockEnabled and not _G.DragEnabled then
         for _, con in ipairs(_G.AutoBlockConnections) do pcall(con.Disconnect, con) end
         _G.AutoBlockConnections = {}
-        for killer, data in pairs(_G.BlockHitboxData) do
-            if data.part then data.part:Destroy() end
-            if data.connection then data.connection:Disconnect() end
+        for _, v in ipairs(Hitboxes:GetChildren()) do
+            if v:IsA("BasePart") then v:Destroy() end
         end
-        for killer, data in pairs(_G.DragHitboxData) do
-            if data.part then data.part:Destroy() end
-            if data.connection then data.connection:Disconnect() end
-        end
-        _G.BlockHitboxData = {}
-        _G.DragHitboxData = {}
     end
 end
 local BlockLeft = Tabs.Block:AddLeftGroupbox("Auto Block", "shield")
@@ -1621,17 +1544,27 @@ BlockLeft:AddToggle("AutoBlockToggle", { Text = "Enable AutoBlock", Default = fa
 end })
 BlockLeft:AddSlider("HitboxTransparency", { Text = "Transparency", Default = 0.5, Min = 0, Max = 1, Rounding = 2, Callback = function(v)
     _G.HitboxTransparency = v
-    for _, data in pairs(_G.BlockHitboxData) do if data.part and data.part.Parent then data.part.Transparency = 1 - v end end
+    for _, part in ipairs(Hitboxes:GetChildren()) do
+        if part:IsA("BasePart") and part.Name == "AttackHitboxVisual" then
+            part.Transparency = 1 - v
+        end
+    end
 end })
 BlockLeft:AddLabel("Hitbox Color"):AddColorPicker("HitboxColor", { Default = _G.HitboxColor, Title = "Hitbox Color", Callback = function(color)
     _G.HitboxColor = color
-    for _, data in pairs(_G.BlockHitboxData) do if data.part and data.part.Parent then data.part.Color = color end end
+    for _, part in ipairs(Hitboxes:GetChildren()) do
+        if part:IsA("BasePart") and part.Name == "AttackHitboxVisual" then
+            part.Color = color
+            for _, child in ipairs(part:GetChildren()) do
+                if child:IsA("SelectionBox") then
+                    child.Color3 = color
+                end
+            end
+        end
+    end
 end })
 local BlockRight = Tabs.Block:AddRightGroupbox("Hitbox Settings", "sliders")
-BlockRight:AddSlider("HitboxSize", { Text = "Size", Default = 1.0, Min = 0.2, Max = 3.0, Rounding = 2, Callback = function(v)
-    _G.HitboxScale = v
-    for _, data in pairs(_G.BlockHitboxData) do if data.part and data.part.Parent then data.part.Size = _G.BaseHitboxSize * v end end
-end })
+BlockRight:AddSlider("HitboxSize", { Text = "Size", Default = 1.0, Min = 0.2, Max = 3.0, Rounding = 2, Callback = function(v) _G.HitboxScale = v end })
 BlockRight:AddSlider("HitboxOffset", { Text = "Offset (Z)", Default = -1.4, Min = -10, Max = 0, Rounding = 1, Callback = function(v) _G.HitboxOffset = v end })
 BlockRight:AddSlider("HitboxDuration", { Text = "Duration", Default = 1.5, Min = 0.1, Max = 5.0, Rounding = 1, Callback = function(v) _G.HitboxDuration = v end })
 BlockRight:AddSlider("BlockDelay", { Text = "Block Delay", Default = 0, Min = 0, Max = 1, Rounding = 2, Callback = function(v) _G.BlockDelay = v end })
@@ -1642,17 +1575,27 @@ DragLeft:AddToggle("EnableDrag", { Text = "Enable Drag", Default = false, Callba
 end })
 DragLeft:AddSlider("DragHitboxTransparency", { Text = "Transparency", Default = 0.5, Min = 0, Max = 1, Rounding = 2, Callback = function(v)
     _G.DragHitboxTransparency = v
-    for _, data in pairs(_G.DragHitboxData) do if data.part and data.part.Parent then data.part.Transparency = 1 - v end end
+    for _, part in ipairs(Hitboxes:GetChildren()) do
+        if part:IsA("BasePart") and part.Name == "DragHitboxVisual" then
+            part.Transparency = 1 - v
+        end
+    end
 end })
 DragLeft:AddLabel("Drag Hitbox Color"):AddColorPicker("DragHitboxColor", { Default = _G.DragHitboxColor, Title = "Drag Hitbox Color", Callback = function(color)
     _G.DragHitboxColor = color
-    for _, data in pairs(_G.DragHitboxData) do if data.part and data.part.Parent then data.part.Color = color end end
+    for _, part in ipairs(Hitboxes:GetChildren()) do
+        if part:IsA("BasePart") and part.Name == "DragHitboxVisual" then
+            part.Color = color
+            for _, child in ipairs(part:GetChildren()) do
+                if child:IsA("SelectionBox") then
+                    child.Color3 = color
+                end
+            end
+        end
+    end
 end })
 local DragRight = Tabs.Block:AddRightGroupbox("Hitbox Drag Settings", "sliders")
-DragRight:AddSlider("DragHitboxSize", { Text = "Size", Default = 1.0, Min = 0.2, Max = 3.0, Rounding = 2, Callback = function(v)
-    _G.DragHitboxScale = v
-    for _, data in pairs(_G.DragHitboxData) do if data.part and data.part.Parent then data.part.Size = _G.BaseHitboxSize * v end end
-end })
+DragRight:AddSlider("DragHitboxSize", { Text = "Size", Default = 1.0, Min = 0.2, Max = 3.0, Rounding = 2, Callback = function(v) _G.DragHitboxScale = v end })
 DragRight:AddSlider("DragHitboxOffset", { Text = "Offset (Z)", Default = -1.4, Min = -10, Max = 0, Rounding = 1, Callback = function(v) _G.DragHitboxOffset = v end })
 DragRight:AddSlider("DragHitboxDuration", { Text = "Duration", Default = 1.5, Min = 0.1, Max = 5.0, Rounding = 1, Callback = function(v) _G.DragHitboxDuration = v end })
 local TARGET_ANIMATION_ID = "100725497418533"
