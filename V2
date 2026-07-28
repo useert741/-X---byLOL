@@ -200,7 +200,7 @@ local function createPlayerESP(model, color, isKiller)
     nameLabel.Position = UDim2.new(0, 0, 0, 0)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = "Loading..."
-    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.Font = Enum.Font.Jura
     nameLabel.TextColor3 = color
     nameLabel.TextSize = 8
     nameLabel.TextStrokeTransparency = 0.6
@@ -210,7 +210,7 @@ local function createPlayerESP(model, color, isKiller)
     hpLabel.Position = UDim2.new(0, 0, 0.4, 0)
     hpLabel.BackgroundTransparency = 1
     hpLabel.Text = "HP: N/A"
-    hpLabel.Font = Enum.Font.GothamBold
+    hpLabel.Font = Enum.Font.Jura
     hpLabel.TextColor3 = color
     hpLabel.TextSize = 8
     hpLabel.TextStrokeTransparency = 0.6
@@ -310,7 +310,7 @@ local function CreateObjectESP(model, color, isGenerator, isItem, isPizza, isPiz
             textLabel.Text = model.Name
         end
     end
-    textLabel.Font = Enum.Font.GothamBlack
+    textLabel.Font = Enum.Font.Jura
     textLabel.TextColor3 = color
     textLabel.TextSize = 8
     textLabel.TextStrokeTransparency = 0.6
@@ -1431,34 +1431,55 @@ local function StartBlockDetection(Killer, queryHitbox)
         end
     end)
     _G.BlockHitboxData[Killer] = { part = visualPart, connection = updateConnection }
-    task.delay(_G.HitboxDuration, function() ClearKillerBlockHitbox(Killer) end)
     local localChar = LP.Character
-    if not localChar or not SurvivorsFolder or localChar.Parent ~= SurvivorsFolder then return end
+    if not localChar or not SurvivorsFolder or localChar.Parent ~= SurvivorsFolder then
+        task.delay(_G.HitboxDuration, function() ClearKillerBlockHitbox(Killer) end)
+        return
+    end
     local localQuery = localChar:FindFirstChild("QueryHitbox")
-    if not localQuery then return end
+    if not localQuery then
+        task.delay(_G.HitboxDuration, function() ClearKillerBlockHitbox(Killer) end)
+        return
+    end
     local hitboxSize = _G.BaseHitboxSize * _G.HitboxScale
-    task.spawn(function()
-        local startTime = tick()
-        while tick() - startTime < _G.HitboxDuration do
-            if not _G.AutoBlockEnabled then break end
-            if not localChar.Parent or not SurvivorsFolder or localChar.Parent ~= SurvivorsFolder then break end
-            if not queryHitbox or not queryHitbox.Parent then break end
-            OverlapParams.FilterDescendantsInstances = {localQuery}
-            local part = Instance.new("Part")
-            part.Size = hitboxSize
-            part.CFrame = queryHitbox.CFrame * CFrame.new(0, 0, _G.HitboxOffset)
-            part.CanCollide = false
-            part.Anchored = true
-            part.Transparency = 1
-            part.Parent = Hitboxes
-            Debris:AddItem(part, 0.1)
-            local hits = Workspace:GetPartsInPart(part, OverlapParams)
-            if #hits > 0 then
-                if _G.BlockDelay > 0 then task.wait(_G.BlockDelay) end
-                pressBlock()
-                break
-            end
-            task.wait(0.015)
+    local startTime = tick()
+    local heartbeatConn
+    heartbeatConn = RunService.Heartbeat:Connect(function()
+        if not _G.AutoBlockEnabled then
+            heartbeatConn:Disconnect()
+            ClearKillerBlockHitbox(Killer)
+            return
+        end
+        if tick() - startTime > _G.HitboxDuration then
+            heartbeatConn:Disconnect()
+            ClearKillerBlockHitbox(Killer)
+            return
+        end
+        if not localChar.Parent or not SurvivorsFolder or localChar.Parent ~= SurvivorsFolder then
+            heartbeatConn:Disconnect()
+            ClearKillerBlockHitbox(Killer)
+            return
+        end
+        if not queryHitbox or not queryHitbox.Parent then
+            heartbeatConn:Disconnect()
+            ClearKillerBlockHitbox(Killer)
+            return
+        end
+        OverlapParams.FilterDescendantsInstances = {localQuery}
+        local part = Instance.new("Part")
+        part.Size = hitboxSize
+        part.CFrame = queryHitbox.CFrame * CFrame.new(0, 0, _G.HitboxOffset)
+        part.CanCollide = false
+        part.Anchored = true
+        part.Transparency = 1
+        part.Parent = Hitboxes
+        Debris:AddItem(part, 0.1)
+        local hits = Workspace:GetPartsInPart(part, OverlapParams)
+        if #hits > 0 then
+            if _G.BlockDelay > 0 then task.wait(_G.BlockDelay) end
+            pressBlock()
+            heartbeatConn:Disconnect()
+            ClearKillerBlockHitbox(Killer)
         end
     end)
 end
@@ -1522,14 +1543,12 @@ local function HandleKiller_Attribute(Killer)
     local abilityConn, abilitiessConn
     local function doBlock()
         if not _G.AutoBlockEnabled and not _G.DragEnabled then return end
-        task.spawn(function()
-            if _G.AutoBlockEnabled then
-                StartBlockDetection(Killer, queryHitbox)
-            end
-            if _G.DragEnabled then
-                StartDragDetection(Killer, queryHitbox)
-            end
-        end)
+        if _G.AutoBlockEnabled then
+            StartBlockDetection(Killer, queryHitbox)
+        end
+        if _G.DragEnabled then
+            StartDragDetection(Killer, queryHitbox)
+        end
     end
     local function onAbilitiesUsed()
         blockLocked = true
@@ -2552,7 +2571,7 @@ MenuGroup:AddLabel("Menu bind"):AddKeyPicker("MenuKeybind", { Default = "RightSh
 MenuGroup:AddButton("Unload", function() Library:Unload() end)
 Library.ToggleKeybind = Options.MenuKeybind
 ThemeManager:SetLibrary(Library)
-ThemeManager:SetDefaultTheme({ BackgroundColor = Color3.fromRGB(26, 26, 46), AccentColor = Color3.fromRGB(137, 180, 250), OutlineColor = Color3.fromRGB(49, 50, 68), FontColor = Color3.fromRGB(205, 214, 244), FontFace = Enum.Font.Gotham })
+ThemeManager:SetDefaultTheme({ BackgroundColor = Color3.fromRGB(26, 26, 46), AccentColor = Color3.fromRGB(137, 180, 250), OutlineColor = Color3.fromRGB(49, 50, 68), FontColor = Color3.fromRGB(205, 214, 244), FontFace = Enum.Font.Jura })
 SaveManager:SetLibrary(Library)
 SaveManager:IgnoreThemeSettings()
 SaveManager:SetIgnoreIndexes({ "MenuKeybind" })
