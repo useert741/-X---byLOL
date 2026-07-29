@@ -92,9 +92,11 @@ end)
 local DevGroup = Tabs["Player Info"]:AddRightGroupbox("Developer", "user")
 DevGroup:AddLabel("[FixFox] - Owner And Developer")
 local ContributorGroup = Tabs["Player Info"]:AddRightGroupbox("Contributor", "users")
+ContributorGroup:AddLabel("[Yuxingchen] - [Contribution and Guidance]")
 ContributorGroup:AddLabel("[Fixed] - Tester")
 ContributorGroup:AddLabel("[777] - Tester")
 ContributorGroup:AddLabel("[yeye] - Tester")
+ContributorGroup:AddLabel("[TUNG_SAHUR] - Publicist")
 local CommunityGroup = Tabs["Player Info"]:AddRightGroupbox("Community", "users")
 CommunityGroup:AddButton("Copy Discord Link", function()
     pcall(function()
@@ -108,6 +110,8 @@ CommunityGroup:AddButton("QQ", function()
         Library:Notify({Title = "QQ", Description = "QQ number copied to clipboard", Time = 2})
     end)
 end)
+
+-- ========== ESP 系统 ==========
 local EspLib = {}
 local Camera = Workspace.CurrentCamera
 local MapFolder = nil
@@ -535,6 +539,8 @@ NameToggleGroup:AddToggle("ShowTaphTripwireName", { Text = "Show Tripwire Name",
 NameToggleGroup:AddToggle("ShowTripMineName", { Text = "Show Mine Name", Default = true, Callback = function(Value) ESPSettings.showTripMineName = Value end })
 NameToggleGroup:AddToggle("ShowTwoTimeRespawnName", { Text = "Show Respawn Name", Default = true, Callback = function(Value) ESPSettings.showTwoTimeRespawnName = Value end })
 NameToggleGroup:AddToggle("ShowGraffitiName", { Text = "Show Graffiti Name", Default = true, Callback = function(Value) ESPSettings.showGraffitiName = Value end })
+
+-- ========== 发电机小游戏 ==========
 local flow = { on = false, nodeDelay = 0.04 }
 local function flowKey(n) return n.row .. "-" .. n.col end
 local function flowNeighbour(r1, c1, r2, c2)
@@ -624,6 +630,8 @@ local genLeft = Tabs.Generator:AddLeftGroupbox("Auto Solve", "zap")
 genLeft:AddToggle("FlowAutoSolve", { Text = "Auto Solve", Default = flow.on, Callback = function(Value) flow.on = Value end })
 local genRight = Tabs.Generator:AddRightGroupbox("Settings", "sliders")
 genRight:AddSlider("FlowSpeed", { Text = "Auto Solve Speed", Default = flow.nodeDelay, Min = 0.01, Max = 0.50, Rounding = 2, Compact = false, Callback = function(Value) flow.nodeDelay = Value end })
+
+-- ========== 玩家功能 ==========
 local SpeedGroup = Tabs.Player:AddLeftGroupbox("Speed", "bolt")
 local FlightGroup = Tabs.Player:AddLeftGroupbox("Flight", "plane")
 local speedEnabled = false
@@ -744,6 +752,8 @@ MVP2:AddSlider("StaminaLossSlider", { Text = "Stamina Loss Speed", Default = 10,
     StaminaSettings.StaminaLoss = v
     if SettingToggles.StaminaLoss and not bai.Spr then GetModule().StaminaLoss = v end
 end })
+
+-- ========== 玩家扩展 ==========
 local ExtraGroup = Tabs.Player:AddRightGroupbox("Extra", "plus")
 local deleteFakeNoli = false
 task.spawn(function()
@@ -938,6 +948,8 @@ ExtraGroup:AddToggle("AzureAutoQTE", {
         if val then enableQTE() else disableQTE() end
     end
 })
+
+-- ========== 自瞄系统 ==========
 local generalGroup = Tabs.Aimbot:AddLeftGroupbox("General Aim")
 local survivorGroup = Tabs.Aimbot:AddLeftGroupbox("Killer Aim")
 local killerGroup = Tabs.Aimbot:AddRightGroupbox("Survivor Aim")
@@ -1295,6 +1307,8 @@ registerTriggerModule("SoundTrigger", function() soundTriggerEnabled = true; set
     soundConnections = {}
     if globalSoundConn then globalSoundConn:Disconnect(); globalSoundConn = nil end
 end)
+
+-- ========== 自动格挡 (性能优化版) ==========
 _G.BaseHitboxSize = Vector3.new(4.5, 6, 7.5)
 _G.HitboxScale = 1.0
 _G.HitboxOffset = -1.4
@@ -1402,8 +1416,9 @@ _G.DragHitboxData = {}
 local function ClearKillerBlockHitbox(Killer)
     local data = _G.BlockHitboxData[Killer]
     if data then
-        if data.part then data.part:Destroy() end
-        if data.connection then data.connection:Disconnect() end
+        if data.visualPart then data.visualPart:Destroy() end
+        if data.visualConnection then data.visualConnection:Disconnect() end
+        if data.heartbeatConnection then data.heartbeatConnection:Disconnect() end
         _G.BlockHitboxData[Killer] = nil
     end
 end
@@ -1418,19 +1433,27 @@ end
 local OverlapParams = OverlapParams.new()
 OverlapParams.MaxParts = 1
 OverlapParams.FilterType = Enum.RaycastFilterType.Include
+
 local function StartBlockDetection(Killer, queryHitbox)
     ClearKillerBlockHitbox(Killer)
     local visualPart = CreateBlockHitboxVisual()
     UpdateBlockHitboxPosition(visualPart, queryHitbox)
-    local updateConnection
-    updateConnection = RunService.Heartbeat:Connect(function()
+    
+    local visualConnection = RunService.Heartbeat:Connect(function()
         if visualPart and visualPart.Parent and queryHitbox and queryHitbox.Parent then
             UpdateBlockHitboxPosition(visualPart, queryHitbox)
         else
-            updateConnection:Disconnect()
+            visualConnection:Disconnect()
         end
     end)
-    _G.BlockHitboxData[Killer] = { part = visualPart, connection = updateConnection }
+    
+    local data = {
+        visualPart = visualPart,
+        visualConnection = visualConnection,
+        heartbeatConnection = nil
+    }
+    _G.BlockHitboxData[Killer] = data
+
     local localChar = LP.Character
     if not localChar or not SurvivorsFolder or localChar.Parent ~= SurvivorsFolder then
         task.delay(_G.HitboxDuration, function() ClearKillerBlockHitbox(Killer) end)
@@ -1441,54 +1464,86 @@ local function StartBlockDetection(Killer, queryHitbox)
         task.delay(_G.HitboxDuration, function() ClearKillerBlockHitbox(Killer) end)
         return
     end
+
     local hitboxSize = _G.BaseHitboxSize * _G.HitboxScale
     local startTime = tick()
+    
+    -- 创建两个可复用的检测部件
+    local instantPart = Instance.new("Part")
+    instantPart.Size = hitboxSize
+    instantPart.CanCollide = false
+    instantPart.Anchored = true
+    instantPart.Transparency = 1
+    instantPart.Parent = Hitboxes
+
+    local heartbeatPart = Instance.new("Part")
+    heartbeatPart.Size = hitboxSize
+    heartbeatPart.CanCollide = false
+    heartbeatPart.Anchored = true
+    heartbeatPart.Transparency = 1
+    heartbeatPart.Parent = Hitboxes
+
+    -- 立即同步检测
+    OverlapParams.FilterDescendantsInstances = {localQuery}
+    instantPart.CFrame = queryHitbox.CFrame * CFrame.new(0, 0, _G.HitboxOffset)
+    local instantHits = Workspace:GetPartsInPart(instantPart, OverlapParams)
+    if #instantHits > 0 then
+        pressBlock()
+        instantPart:Destroy()
+        heartbeatPart:Destroy()
+        ClearKillerBlockHitbox(Killer)
+        return
+    end
+
     local heartbeatConn
     heartbeatConn = RunService.Heartbeat:Connect(function()
         if not _G.AutoBlockEnabled then
             heartbeatConn:Disconnect()
+            instantPart:Destroy()
+            heartbeatPart:Destroy()
             ClearKillerBlockHitbox(Killer)
             return
         end
         if tick() - startTime > _G.HitboxDuration then
             heartbeatConn:Disconnect()
+            instantPart:Destroy()
+            heartbeatPart:Destroy()
             ClearKillerBlockHitbox(Killer)
             return
         end
         if not localChar.Parent or not SurvivorsFolder or localChar.Parent ~= SurvivorsFolder then
             heartbeatConn:Disconnect()
+            instantPart:Destroy()
+            heartbeatPart:Destroy()
             ClearKillerBlockHitbox(Killer)
             return
         end
         if not queryHitbox or not queryHitbox.Parent then
             heartbeatConn:Disconnect()
+            instantPart:Destroy()
+            heartbeatPart:Destroy()
             ClearKillerBlockHitbox(Killer)
             return
         end
-        OverlapParams.FilterDescendantsInstances = {localQuery}
-        local part = Instance.new("Part")
-        part.Size = hitboxSize
-        part.CFrame = queryHitbox.CFrame * CFrame.new(0, 0, _G.HitboxOffset)
-        part.CanCollide = false
-        part.Anchored = true
-        part.Transparency = 1
-        part.Parent = Hitboxes
-        Debris:AddItem(part, 0.1)
-        local hits = Workspace:GetPartsInPart(part, OverlapParams)
+
+        heartbeatPart.CFrame = queryHitbox.CFrame * CFrame.new(0, 0, _G.HitboxOffset)
+        local hits = Workspace:GetPartsInPart(heartbeatPart, OverlapParams)
         if #hits > 0 then
-            if _G.BlockDelay > 0 then task.wait(_G.BlockDelay) end
             pressBlock()
             heartbeatConn:Disconnect()
+            instantPart:Destroy()
+            heartbeatPart:Destroy()
             ClearKillerBlockHitbox(Killer)
         end
     end)
+    data.heartbeatConnection = heartbeatConn
 end
+
 local function StartDragDetection(Killer, queryHitbox)
     ClearKillerDragHitbox(Killer)
     local visualPart = CreateDragHitboxVisual()
     UpdateDragHitboxPosition(visualPart, queryHitbox)
-    local updateConnection
-    updateConnection = RunService.Heartbeat:Connect(function()
+    local updateConnection = RunService.Heartbeat:Connect(function()
         if visualPart and visualPart.Parent and queryHitbox and queryHitbox.Parent then
             UpdateDragHitboxPosition(visualPart, queryHitbox)
         else
@@ -1595,8 +1650,9 @@ local function DisableAutoBlock()
         for _, con in ipairs(_G.AutoBlockConnections) do pcall(con.Disconnect, con) end
         _G.AutoBlockConnections = {}
         for killer, data in pairs(_G.BlockHitboxData) do
-            if data.part then data.part:Destroy() end
-            if data.connection then data.connection:Disconnect() end
+            if data.visualPart then data.visualPart:Destroy() end
+            if data.visualConnection then data.visualConnection:Disconnect() end
+            if data.heartbeatConnection then data.heartbeatConnection:Disconnect() end
         end
         for killer, data in pairs(_G.DragHitboxData) do
             if data.part then data.part:Destroy() end
@@ -1613,16 +1669,16 @@ BlockLeft:AddToggle("AutoBlockToggle", { Text = "Enable AutoBlock", Default = fa
 end })
 BlockLeft:AddSlider("HitboxTransparency", { Text = "Transparency", Default = 0.5, Min = 0, Max = 1, Rounding = 2, Callback = function(v)
     _G.HitboxTransparency = v
-    for _, data in pairs(_G.BlockHitboxData) do if data.part and data.part.Parent then data.part.Transparency = 1 - v end end
+    for _, data in pairs(_G.BlockHitboxData) do if data.visualPart and data.visualPart.Parent then data.visualPart.Transparency = 1 - v end end
 end })
 BlockLeft:AddLabel("Hitbox Color"):AddColorPicker("HitboxColor", { Default = _G.HitboxColor, Title = "Hitbox Color", Callback = function(color)
     _G.HitboxColor = color
-    for _, data in pairs(_G.BlockHitboxData) do if data.part and data.part.Parent then data.part.Color = color end end
+    for _, data in pairs(_G.BlockHitboxData) do if data.visualPart and data.visualPart.Parent then data.visualPart.Color = color end end
 end })
 local BlockRight = Tabs.Block:AddRightGroupbox("Hitbox Settings", "sliders")
 BlockRight:AddSlider("HitboxSize", { Text = "Size", Default = 1.0, Min = 0.2, Max = 3.0, Rounding = 2, Callback = function(v)
     _G.HitboxScale = v
-    for _, data in pairs(_G.BlockHitboxData) do if data.part and data.part.Parent then data.part.Size = _G.BaseHitboxSize * v end end
+    for _, data in pairs(_G.BlockHitboxData) do if data.visualPart and data.visualPart.Parent then data.visualPart.Size = _G.BaseHitboxSize * v end end
 end })
 BlockRight:AddSlider("HitboxOffset", { Text = "Offset (Z)", Default = -1.4, Min = -10, Max = 0, Rounding = 1, Callback = function(v) _G.HitboxOffset = v end })
 BlockRight:AddSlider("HitboxDuration", { Text = "Duration", Default = 1.5, Min = 0.1, Max = 5.0, Rounding = 1, Callback = function(v) _G.HitboxDuration = v end })
@@ -1647,6 +1703,8 @@ DragRight:AddSlider("DragHitboxSize", { Text = "Size", Default = 1.0, Min = 0.2,
 end })
 DragRight:AddSlider("DragHitboxOffset", { Text = "Offset (Z)", Default = -1.4, Min = -10, Max = 0, Rounding = 1, Callback = function(v) _G.DragHitboxOffset = v end })
 DragRight:AddSlider("DragHitboxDuration", { Text = "Duration", Default = 1.5, Min = 0.1, Max = 5.0, Rounding = 1, Callback = function(v) _G.DragHitboxDuration = v end })
+
+-- ========== 背刺 ==========
 local TARGET_ANIMATION_ID = "100725497418533"
 local DASHSTAB_ANIM_ID = "89448354637442"
 local stabEnabledBackstab = false
@@ -1742,6 +1800,8 @@ StabRight:AddSlider("BehindStuds", { Text = "Behind Studs", Default = 4, Min = 1
 StabRight:AddSlider("BackstabDelay", { Text = "Backstab Start Delay", Default = 0.05, Min = 0, Max = 0.5, Rounding = 2, Callback = function(v) backstabDelay = v end })
 StabRight:AddSlider("BackstabDuration", { Text = "Backstab Duration", Default = 0.5, Min = 0.1, Max = 2, Rounding = 2, Callback = function(v) backstabDuration = v end })
 StabRight:AddSlider("DashstabDelay", { Text = "Dashstab Start Delay", Default = 0.25, Min = 0, Max = 0.5, Rounding = 2, Callback = function(v) dashstabDelay = v end })
+
+-- ========== Sk8 功能 ==========
 do
     local Sk8Player = LP
     local Sk8Workspace = Workspace
@@ -2003,6 +2063,8 @@ do
     end })
     Sk8Right:AddSlider("SpraySpeed", { Text = "Spray Speed", Default = 4.5, Min = 0.5, Max = 10, Rounding = 1, Callback = function(val) spraySpeed = val end })
 end
+
+-- ========== 表情 & 动画替换 ==========
 local EmotesGroup = Tabs.Action:AddLeftGroupbox("Emotes", "smile")
 local svc = { RS = ReplicatedStorage, Run = RunService, TS = game:GetService("TweenService"), Input = UserInputService }
 local lp = LP
@@ -2192,6 +2254,8 @@ PlayerAnimGroup:AddButton("Apply Animation", applyAnimation)
 PlayerAnimGroup:AddButton("Stop Animation", function() stopAnimations() end)
 PlayerAnimGroup:AddButton("Refresh List", function() collectBaseAnimations(); buildUniqueList() end)
 lp.CharacterAdded:Connect(function() task.wait(0.5); if next(currentTracks) then stopAnimations() end end)
+
+-- ========== 音乐 ==========
 do
     local tabMusic = Tabs["Music"]
     local leftGroup = tabMusic:AddLeftGroupbox("LMS Music", "music")
@@ -2206,6 +2270,7 @@ do
         ["Faith's Answer"] = "https://raw.githubusercontent.com/FixFox550/FixFox/refs/heads/main/IMG_7292.mp3",
         ["Teapot Palace"] = "https://raw.githubusercontent.com/FixFox550/FixFox/refs/heads/main/IMG_7295.mp3",
         ["Ready To Die"] = "https://raw.githubusercontent.com/FixFox550/FixFox/refs/heads/main/IMG_7309.mp3",
+        ["Escape The Necrobloxians"] = "https://raw.githubusercontent.com/FixFox550/FixFox/refs/heads/main/Hwoowowow.mp3",
     }
     local musicList = {}
     for k in pairs(musicTracks) do table.insert(musicList, k) end
@@ -2389,6 +2454,8 @@ do
     rightGroup:AddButton("Preview", function() pcall(function() previewStart(music.selected) end) end)
     rightGroup:AddButton("Stop Preview", function() pcall(function() previewStop() end) end)
 end
+
+-- ========== 杂项 ==========
 local ImpersonateGroup = Tabs.Misc:AddLeftGroupbox("Impersonate", "user")
 local FlipGroupMisc = Tabs.Misc:AddLeftGroupbox("Front Flip", "flip")
 local ChatGroupMisc = Tabs.Misc:AddLeftGroupbox("Chat", "message")
@@ -2561,6 +2628,8 @@ task.spawn(function()
         task.wait()
     end
 end)
+
+-- ========== UI 设置 ==========
 local MenuGroup = Tabs["UI Settings"]:AddLeftGroupbox("Menu", "wrench")
 MenuGroup:AddToggle("KeybindMenuOpen", { Default = Library.KeybindFrame.Visible, Text = "Open Keybind Menu", Callback = function(value) Library.KeybindFrame.Visible = value end })
 MenuGroup:AddToggle("ShowCustomCursor", { Text = "Custom Cursor", Default = true, Callback = function(Value) Library.ShowCustomCursor = Value end })
