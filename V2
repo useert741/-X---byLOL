@@ -111,7 +111,6 @@ CommunityGroup:AddButton("QQ", function()
     end)
 end)
 
--- ========== ESP 系统 ==========
 local EspLib = {}
 local Camera = Workspace.CurrentCamera
 local MapFolder = nil
@@ -540,7 +539,6 @@ NameToggleGroup:AddToggle("ShowTripMineName", { Text = "Show Mine Name", Default
 NameToggleGroup:AddToggle("ShowTwoTimeRespawnName", { Text = "Show Respawn Name", Default = true, Callback = function(Value) ESPSettings.showTwoTimeRespawnName = Value end })
 NameToggleGroup:AddToggle("ShowGraffitiName", { Text = "Show Graffiti Name", Default = true, Callback = function(Value) ESPSettings.showGraffitiName = Value end })
 
--- ========== 发电机小游戏 ==========
 local flow = { on = false, nodeDelay = 0.04 }
 local function flowKey(n) return n.row .. "-" .. n.col end
 local function flowNeighbour(r1, c1, r2, c2)
@@ -631,7 +629,6 @@ genLeft:AddToggle("FlowAutoSolve", { Text = "Auto Solve", Default = flow.on, Cal
 local genRight = Tabs.Generator:AddRightGroupbox("Settings", "sliders")
 genRight:AddSlider("FlowSpeed", { Text = "Auto Solve Speed", Default = flow.nodeDelay, Min = 0.01, Max = 0.50, Rounding = 2, Compact = false, Callback = function(Value) flow.nodeDelay = Value end })
 
--- ========== 玩家功能 ==========
 local SpeedGroup = Tabs.Player:AddLeftGroupbox("Speed", "bolt")
 local FlightGroup = Tabs.Player:AddLeftGroupbox("Flight", "plane")
 local speedEnabled = false
@@ -753,7 +750,6 @@ MVP2:AddSlider("StaminaLossSlider", { Text = "Stamina Loss Speed", Default = 10,
     if SettingToggles.StaminaLoss and not bai.Spr then GetModule().StaminaLoss = v end
 end })
 
--- ========== 玩家扩展 ==========
 local ExtraGroup = Tabs.Player:AddRightGroupbox("Extra", "plus")
 local deleteFakeNoli = false
 task.spawn(function()
@@ -949,7 +945,6 @@ ExtraGroup:AddToggle("AzureAutoQTE", {
     end
 })
 
--- ========== 自瞄系统 ==========
 local generalGroup = Tabs.Aimbot:AddLeftGroupbox("General Aim")
 local survivorGroup = Tabs.Aimbot:AddLeftGroupbox("Killer Aim")
 local killerGroup = Tabs.Aimbot:AddRightGroupbox("Survivor Aim")
@@ -1308,7 +1303,6 @@ registerTriggerModule("SoundTrigger", function() soundTriggerEnabled = true; set
     if globalSoundConn then globalSoundConn:Disconnect(); globalSoundConn = nil end
 end)
 
--- ========== 自动格挡 (性能优化版) ==========
 _G.BaseHitboxSize = Vector3.new(4.5, 6, 7.5)
 _G.HitboxScale = 1.0
 _G.HitboxOffset = -1.4
@@ -1321,390 +1315,159 @@ _G.HitboxDuration = 1.5
 _G.BlockDelay = 0
 _G.AutoBlockEnabled = false
 _G.AutoBlockConnections = {}
-_G.DragEnabled = false
-_G.DragHitboxScale = 1.0
-_G.DragHitboxOffset = -1.4
-_G.DragHitboxDuration = 1.5
-_G.DragHitboxColor = Color3.fromRGB(100, 255, 100)
-_G.DragHitboxTransparency = 0.5
-local MainUI, KillersFolder, SurvivorsFolder, Hitboxes
-local function GetObjects()
-    MainUI = LP.PlayerGui:FindFirstChild("MainUI")
-    KillersFolder = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers")
-    SurvivorsFolder = Workspace.Players and Workspace.Players:FindFirstChild("Survivors")
-    Hitboxes = Workspace:FindFirstChild("Hitboxes") or Instance.new("Folder", Workspace)
-    Hitboxes.Name = "Hitboxes"
-end
-GetObjects()
-local function getBlockButton()
-    if not MainUI then return nil end
-    local container = MainUI:FindFirstChild("AbilityContainer")
-    if not container then return nil end
-    return container:FindFirstChild("Block") or container:FindFirstChild("Guard")
-end
-local function pressBlock()
-    local btn = getBlockButton()
-    if not btn then return false end
-    local cd = btn:FindFirstChild("CooldownTime")
-    if cd and cd.Text ~= "" then return false end
-    pcall(function() btn:Activate() end)
-    for _, conn in ipairs(getconnections(btn.MouseButton1Click) or {}) do pcall(function() conn:Fire() end) end
-    return true
-end
-local function CreateBlockHitboxVisual()
-    local part = Instance.new("Part")
-    part.Name = "AttackHitboxVisual"
-    part.Size = _G.BaseHitboxSize * _G.HitboxScale
-    part.Color = _G.HitboxColor
-    part.Material = Enum.Material.ForceField
-    part.Transparency = 1 - _G.HitboxTransparency
-    part.Anchored = true
-    part.CanCollide = false
-    part.CastShadow = false
-    part.Parent = Hitboxes
-    if _G.ShowOutline then
-        local outline = Instance.new("SelectionBox")
-        outline.Adornee = part; outline.Color3 = _G.HitboxColor; outline.LineThickness = _G.OutlineThickness; outline.Transparency = 0.1
-        outline.Visible = _G.ShowHitboxVisual; outline.Parent = part
-    end
-    return part
-end
-local function UpdateBlockHitboxPosition(part, queryHitbox)
-    if part and queryHitbox then
-        part.CFrame = queryHitbox.CFrame * CFrame.new(0, 0, _G.HitboxOffset)
-        part.Size = _G.BaseHitboxSize * _G.HitboxScale
-        part.Color = _G.HitboxColor
-        part.Transparency = 1 - _G.HitboxTransparency
-        local outline = part:FindFirstChildOfClass("SelectionBox")
-        if outline then
-            outline.Color3 = _G.HitboxColor; outline.LineThickness = _G.OutlineThickness; outline.Visible = _G.ShowOutline and _G.ShowHitboxVisual
-        end
-    end
-end
-local function CreateDragHitboxVisual()
-    local part = Instance.new("Part")
-    part.Name = "DragHitboxVisual"
-    part.Size = _G.BaseHitboxSize * _G.DragHitboxScale
-    part.Color = _G.DragHitboxColor
-    part.Material = Enum.Material.ForceField
-    part.Transparency = 1 - _G.DragHitboxTransparency
-    part.Anchored = true
-    part.CanCollide = false
-    part.CastShadow = false
-    part.Parent = Hitboxes
-    if _G.ShowOutline then
-        local outline = Instance.new("SelectionBox")
-        outline.Adornee = part; outline.Color3 = _G.DragHitboxColor; outline.LineThickness = _G.OutlineThickness; outline.Transparency = 0.1
-        outline.Visible = _G.ShowHitboxVisual; outline.Parent = part
-    end
-    return part
-end
-local function UpdateDragHitboxPosition(part, queryHitbox)
-    if part and queryHitbox then
-        part.CFrame = queryHitbox.CFrame * CFrame.new(0, 0, _G.DragHitboxOffset)
-        part.Size = _G.BaseHitboxSize * _G.DragHitboxScale
-        part.Color = _G.DragHitboxColor
-        part.Transparency = 1 - _G.DragHitboxTransparency
-        local outline = part:FindFirstChildOfClass("SelectionBox")
-        if outline then
-            outline.Color3 = _G.DragHitboxColor; outline.LineThickness = _G.OutlineThickness; outline.Visible = _G.ShowOutline and _G.ShowHitboxVisual
-        end
-    end
-end
-_G.BlockHitboxData = {}
-_G.DragHitboxData = {}
-local function ClearKillerBlockHitbox(Killer)
-    local data = _G.BlockHitboxData[Killer]
-    if data then
-        if data.visualPart then data.visualPart:Destroy() end
-        if data.visualConnection then data.visualConnection:Disconnect() end
-        if data.heartbeatConnection then data.heartbeatConnection:Disconnect() end
-        _G.BlockHitboxData[Killer] = nil
-    end
-end
-local function ClearKillerDragHitbox(Killer)
-    local data = _G.DragHitboxData[Killer]
-    if data then
-        if data.part then data.part:Destroy() end
-        if data.connection then data.connection:Disconnect() end
-        _G.DragHitboxData[Killer] = nil
-    end
-end
-local OverlapParams = OverlapParams.new()
-OverlapParams.MaxParts = 1
-OverlapParams.FilterType = Enum.RaycastFilterType.Include
 
-local function StartBlockDetection(Killer, queryHitbox)
-    ClearKillerBlockHitbox(Killer)
-    local visualPart = CreateBlockHitboxVisual()
-    UpdateBlockHitboxPosition(visualPart, queryHitbox)
-    
-    local visualConnection = RunService.Heartbeat:Connect(function()
-        if visualPart and visualPart.Parent and queryHitbox and queryHitbox.Parent then
-            UpdateBlockHitboxPosition(visualPart, queryHitbox)
-        else
-            visualConnection:Disconnect()
-        end
+local BlockRemote = nil
+local function getBlockRemote()
+    if BlockRemote then return BlockRemote end
+    local success, remote = pcall(function()
+        return ReplicatedStorage:WaitForChild("Modules", 10):WaitForChild("Network", 5):WaitForChild("Network", 5):WaitForChild("RemoteEvent", 5)
     end)
-    
-    local data = {
-        visualPart = visualPart,
-        visualConnection = visualConnection,
-        heartbeatConnection = nil
-    }
-    _G.BlockHitboxData[Killer] = data
-
-    local localChar = LP.Character
-    if not localChar or not SurvivorsFolder or localChar.Parent ~= SurvivorsFolder then
-        task.delay(_G.HitboxDuration, function() ClearKillerBlockHitbox(Killer) end)
-        return
+    if success and remote then
+        BlockRemote = remote
+        return remote
     end
-    local localQuery = localChar:FindFirstChild("QueryHitbox")
-    if not localQuery then
-        task.delay(_G.HitboxDuration, function() ClearKillerBlockHitbox(Killer) end)
-        return
-    end
-
-    local hitboxSize = _G.BaseHitboxSize * _G.HitboxScale
-    local startTime = tick()
-    
-    -- 创建两个可复用的检测部件
-    local instantPart = Instance.new("Part")
-    instantPart.Size = hitboxSize
-    instantPart.CanCollide = false
-    instantPart.Anchored = true
-    instantPart.Transparency = 1
-    instantPart.Parent = Hitboxes
-
-    local heartbeatPart = Instance.new("Part")
-    heartbeatPart.Size = hitboxSize
-    heartbeatPart.CanCollide = false
-    heartbeatPart.Anchored = true
-    heartbeatPart.Transparency = 1
-    heartbeatPart.Parent = Hitboxes
-
-    -- 立即同步检测
-    OverlapParams.FilterDescendantsInstances = {localQuery}
-    instantPart.CFrame = queryHitbox.CFrame * CFrame.new(0, 0, _G.HitboxOffset)
-    local instantHits = Workspace:GetPartsInPart(instantPart, OverlapParams)
-    if #instantHits > 0 then
-        pressBlock()
-        instantPart:Destroy()
-        heartbeatPart:Destroy()
-        ClearKillerBlockHitbox(Killer)
-        return
-    end
-
-    local heartbeatConn
-    heartbeatConn = RunService.Heartbeat:Connect(function()
-        if not _G.AutoBlockEnabled then
-            heartbeatConn:Disconnect()
-            instantPart:Destroy()
-            heartbeatPart:Destroy()
-            ClearKillerBlockHitbox(Killer)
-            return
-        end
-        if tick() - startTime > _G.HitboxDuration then
-            heartbeatConn:Disconnect()
-            instantPart:Destroy()
-            heartbeatPart:Destroy()
-            ClearKillerBlockHitbox(Killer)
-            return
-        end
-        if not localChar.Parent or not SurvivorsFolder or localChar.Parent ~= SurvivorsFolder then
-            heartbeatConn:Disconnect()
-            instantPart:Destroy()
-            heartbeatPart:Destroy()
-            ClearKillerBlockHitbox(Killer)
-            return
-        end
-        if not queryHitbox or not queryHitbox.Parent then
-            heartbeatConn:Disconnect()
-            instantPart:Destroy()
-            heartbeatPart:Destroy()
-            ClearKillerBlockHitbox(Killer)
-            return
-        end
-
-        heartbeatPart.CFrame = queryHitbox.CFrame * CFrame.new(0, 0, _G.HitboxOffset)
-        local hits = Workspace:GetPartsInPart(heartbeatPart, OverlapParams)
-        if #hits > 0 then
-            pressBlock()
-            heartbeatConn:Disconnect()
-            instantPart:Destroy()
-            heartbeatPart:Destroy()
-            ClearKillerBlockHitbox(Killer)
-        end
+    return nil
+end
+local function fireBlockRemote()
+    local remote = getBlockRemote()
+    if not remote then return end
+    pcall(function()
+        local args = {
+            "UseActorAbility",
+            { buffer.fromstring("\003\005\000\000\000Block") }
+        }
+        remote:FireServer(unpack(args))
     end)
-    data.heartbeatConnection = heartbeatConn
 end
 
-local function StartDragDetection(Killer, queryHitbox)
-    ClearKillerDragHitbox(Killer)
-    local visualPart = CreateDragHitboxVisual()
-    UpdateDragHitboxPosition(visualPart, queryHitbox)
-    local updateConnection = RunService.Heartbeat:Connect(function()
-        if visualPart and visualPart.Parent and queryHitbox and queryHitbox.Parent then
-            UpdateDragHitboxPosition(visualPart, queryHitbox)
-        else
-            updateConnection:Disconnect()
-        end
-    end)
-    _G.DragHitboxData[Killer] = { part = visualPart, connection = updateConnection }
-    task.delay(_G.DragHitboxDuration, function() ClearKillerDragHitbox(Killer) end)
-    local localChar = LP.Character
-    if not localChar or not SurvivorsFolder or localChar.Parent ~= SurvivorsFolder then return end
-    local localQuery = localChar:FindFirstChild("QueryHitbox")
-    if not localQuery then return end
-    local dragHitboxSize = _G.BaseHitboxSize * _G.DragHitboxScale
+local isBoxDetecting = false
+local function createSpatialOverlapBox(creatorChar, size, onHitDetected)
+    local creatorRoot = creatorChar:FindFirstChild("HumanoidRootPart") or creatorChar:FindFirstChild("RootPart")
+    if not creatorRoot then return end
+    local overlapParams = OverlapParams.new()
+    overlapParams.FilterType = Enum.RaycastFilterType.Exclude
+    overlapParams.FilterDescendantsInstances = { creatorChar }
+    isBoxDetecting = true
     task.spawn(function()
-        local startTime = tick()
-        while tick() - startTime < _G.DragHitboxDuration do
-            if not _G.DragEnabled then break end
-            if not localChar.Parent or not SurvivorsFolder or localChar.Parent ~= SurvivorsFolder then break end
-            if not queryHitbox or not queryHitbox.Parent then break end
-            OverlapParams.FilterDescendantsInstances = {localQuery}
-            local part = Instance.new("Part")
-            part.Size = dragHitboxSize
-            part.CFrame = queryHitbox.CFrame * CFrame.new(0, 0, _G.DragHitboxOffset)
-            part.CanCollide = false
-            part.Anchored = true
-            part.Transparency = 1
-            part.Parent = Hitboxes
-            Debris:AddItem(part, 0.1)
-            local hits = Workspace:GetPartsInPart(part, OverlapParams)
-            if #hits > 0 then
-                local myRoot = localChar:FindFirstChild("HumanoidRootPart")
-                local targetPos = queryHitbox.CFrame * CFrame.new(0, 0, _G.HitboxOffset).Position
-                if myRoot then
-                    local stepTime = _G.DragHitboxDuration / 20
-                    for i = 1, 20 do
-                        if not myRoot.Parent then break end
-                        myRoot.CFrame = myRoot.CFrame:Lerp(CFrame.new(targetPos) * myRoot.CFrame.Rotation, i/20)
-                        task.wait(stepTime)
+        local timePast = 0
+        while creatorChar.Parent and creatorRoot and creatorRoot.Parent and timePast < _G.HitboxDuration do
+            local Part = Instance.new("Part")
+            Part.Name = "AutoBlockHitbox_Frame"
+            Part.Transparency = _G.HitboxTransparency
+            Part.CanCollide = false
+            Part.CanTouch = false
+            Part.CanQuery = false
+            Part.CastShadow = false
+            Part.Anchored = true
+            Part.Size = size
+            Part.Color = _G.HitboxColor
+            Part.Material = Enum.Material.ForceField
+            local dynamicOffset = CFrame.new(0, 0, _G.HitboxOffset)
+            Part.CFrame = creatorRoot.CFrame * dynamicOffset
+            Part.Parent = workspace
+            if _G.ShowOutline and _G.ShowHitboxVisual then
+                local outline = Instance.new("SelectionBox")
+                outline.Adornee = Part
+                outline.Color3 = _G.HitboxColor
+                outline.LineThickness = _G.OutlineThickness
+                outline.Transparency = 0.1
+                outline.Visible = true
+                outline.Parent = Part
+            end
+            Debris:AddItem(Part, 0.05)
+            local parts = workspace:GetPartsInPart(Part, overlapParams)
+            local localPlayerHit = false
+            for _, v in ipairs(parts) do
+                local humanoid = v.Parent:FindFirstChildOfClass("Humanoid")
+                if humanoid and humanoid.Health > 0 then
+                    local player = Players:GetPlayerFromCharacter(humanoid.Parent)
+                    if player == LP then
+                        localPlayerHit = true
+                        break
                     end
                 end
+            end
+            if localPlayerHit then
+                if onHitDetected then onHitDetected() end
                 break
             end
-            task.wait(0.015)
+            timePast = timePast + RunService.Heartbeat:Wait()
         end
+        isBoxDetecting = false
     end)
 end
-local function HandleKiller_Attribute(Killer)
-    if not Players:GetPlayerFromCharacter(Killer) then return end
-    local queryHitbox = Killer:FindFirstChild("QueryHitbox")
-    if not queryHitbox then return end
-    local blockLocked = false
-    local abilityConn, abilitiessConn
-    local function doBlock()
-        if not _G.AutoBlockEnabled and not _G.DragEnabled then return end
-        if _G.AutoBlockEnabled then
-            StartBlockDetection(Killer, queryHitbox)
-        end
-        if _G.DragEnabled then
-            StartDragDetection(Killer, queryHitbox)
-        end
+
+local lastAbilityLastUsed = nil
+local lastAbilitiesUsed = nil
+local blockLocked = false
+local function checkAbilityAttributes()
+    local killersFolder = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers")
+    if not killersFolder then return end
+    local slasher = killersFolder:GetChildren()[1]
+    if not slasher or not slasher:IsA("Model") then return end
+    local currentAbilityLastUsed = slasher:GetAttribute("AbilityLastUsed") or 0
+    local currentAbilitiesUsed = slasher:GetAttribute("AbilitiesUsed") or 0
+    if lastAbilityLastUsed == nil then
+        lastAbilityLastUsed = currentAbilityLastUsed
+        lastAbilitiesUsed = currentAbilitiesUsed
+        return
     end
-    local function onAbilitiesUsed()
+    local abilityLastUsedIncreased = (currentAbilityLastUsed > lastAbilityLastUsed)
+    local abilitiesUsedIncreased = (currentAbilitiesUsed > lastAbilitiesUsed)
+    if abilitiesUsedIncreased then
         blockLocked = true
     end
-    local function onAbilityLastUsed()
-        if not _G.AutoBlockEnabled and not _G.DragEnabled then return end
+    if abilityLastUsedIncreased then
         if blockLocked then
             blockLocked = false
         else
-            doBlock()
+            local baseSize = _G.BaseHitboxSize * _G.HitboxScale
+            createSpatialOverlapBox(
+                slasher,
+                Vector3.new(baseSize.X, baseSize.Y, baseSize.Z),
+                function()
+                    fireBlockRemote()
+                end
+            )
         end
     end
-    abilityConn = Killer:GetAttributeChangedSignal("AbilityLastUsed"):Connect(onAbilityLastUsed)
-    abilitiessConn = Killer:GetAttributeChangedSignal("AbilitiesUsed"):Connect(onAbilitiesUsed)
-    Killer.AncestryChanged:Connect(function()
-        if not Killer.Parent then
-            abilityConn:Disconnect()
-            abilitiessConn:Disconnect()
-            ClearKillerBlockHitbox(Killer)
-            ClearKillerDragHitbox(Killer)
-        end
-    end)
-    table.insert(_G.AutoBlockConnections, { Disconnect = function()
-        abilityConn:Disconnect()
-        abilitiessConn:Disconnect()
-    end })
+    lastAbilityLastUsed = currentAbilityLastUsed
+    lastAbilitiesUsed = currentAbilitiesUsed
 end
-local function EnableAutoBlock()
-    if _G.AutoBlockEnabled or _G.DragEnabled then
-        for _, con in ipairs(_G.AutoBlockConnections) do pcall(con.Disconnect, con) end
-        _G.AutoBlockConnections = {}
-        GetObjects()
-        if KillersFolder then
-            for _, killer in ipairs(KillersFolder:GetChildren()) do
-                HandleKiller_Attribute(killer)
-            end
-            local childCon = KillersFolder.ChildAdded:Connect(HandleKiller_Attribute)
-            table.insert(_G.AutoBlockConnections, { Disconnect = function() childCon:Disconnect() end })
-        end
+
+RunService.Heartbeat:Connect(function()
+    if _G.AutoBlockEnabled then
+        checkAbilityAttributes()
     end
+end)
+
+local function EnableAutoBlock()
+    lastAbilityLastUsed = nil
+    lastAbilitiesUsed = nil
+    blockLocked = false
+    isBoxDetecting = false
+    getBlockRemote()
 end
 local function DisableAutoBlock()
-    if not _G.AutoBlockEnabled and not _G.DragEnabled then
-        for _, con in ipairs(_G.AutoBlockConnections) do pcall(con.Disconnect, con) end
-        _G.AutoBlockConnections = {}
-        for killer, data in pairs(_G.BlockHitboxData) do
-            if data.visualPart then data.visualPart:Destroy() end
-            if data.visualConnection then data.visualConnection:Disconnect() end
-            if data.heartbeatConnection then data.heartbeatConnection:Disconnect() end
-        end
-        for killer, data in pairs(_G.DragHitboxData) do
-            if data.part then data.part:Destroy() end
-            if data.connection then data.connection:Disconnect() end
-        end
-        _G.BlockHitboxData = {}
-        _G.DragHitboxData = {}
-    end
+    lastAbilityLastUsed = nil
+    lastAbilitiesUsed = nil
+    blockLocked = false
+    isBoxDetecting = false
 end
+
 local BlockLeft = Tabs.Block:AddLeftGroupbox("Auto Block", "shield")
 BlockLeft:AddToggle("AutoBlockToggle", { Text = "Enable AutoBlock", Default = false, Callback = function(state)
     _G.AutoBlockEnabled = state
     if state then EnableAutoBlock() else DisableAutoBlock() end
 end })
-BlockLeft:AddSlider("HitboxTransparency", { Text = "Transparency", Default = 0.5, Min = 0, Max = 1, Rounding = 2, Callback = function(v)
-    _G.HitboxTransparency = v
-    for _, data in pairs(_G.BlockHitboxData) do if data.visualPart and data.visualPart.Parent then data.visualPart.Transparency = 1 - v end end
-end })
-BlockLeft:AddLabel("Hitbox Color"):AddColorPicker("HitboxColor", { Default = _G.HitboxColor, Title = "Hitbox Color", Callback = function(color)
-    _G.HitboxColor = color
-    for _, data in pairs(_G.BlockHitboxData) do if data.visualPart and data.visualPart.Parent then data.visualPart.Color = color end end
-end })
+BlockLeft:AddSlider("HitboxTransparency", { Text = "Transparency", Default = 0.5, Min = 0, Max = 1, Rounding = 2, Callback = function(v) _G.HitboxTransparency = v end })
+BlockLeft:AddLabel("Hitbox Color"):AddColorPicker("HitboxColor", { Default = _G.HitboxColor, Title = "Hitbox Color", Callback = function(color) _G.HitboxColor = color end })
 local BlockRight = Tabs.Block:AddRightGroupbox("Hitbox Settings", "sliders")
-BlockRight:AddSlider("HitboxSize", { Text = "Size", Default = 1.0, Min = 0.2, Max = 3.0, Rounding = 2, Callback = function(v)
-    _G.HitboxScale = v
-    for _, data in pairs(_G.BlockHitboxData) do if data.visualPart and data.visualPart.Parent then data.visualPart.Size = _G.BaseHitboxSize * v end end
-end })
+BlockRight:AddSlider("HitboxSize", { Text = "Size", Default = 1.0, Min = 0.2, Max = 3.0, Rounding = 2, Callback = function(v) _G.HitboxScale = v end })
 BlockRight:AddSlider("HitboxOffset", { Text = "Offset (Z)", Default = -1.4, Min = -10, Max = 0, Rounding = 1, Callback = function(v) _G.HitboxOffset = v end })
 BlockRight:AddSlider("HitboxDuration", { Text = "Duration", Default = 1.5, Min = 0.1, Max = 5.0, Rounding = 1, Callback = function(v) _G.HitboxDuration = v end })
 BlockRight:AddSlider("BlockDelay", { Text = "Block Delay", Default = 0, Min = 0, Max = 1, Rounding = 2, Callback = function(v) _G.BlockDelay = v end })
-local DragLeft = Tabs.Block:AddLeftGroupbox("Hitbox Drag", "move")
-DragLeft:AddToggle("EnableDrag", { Text = "Enable Drag", Default = false, Callback = function(state)
-    _G.DragEnabled = state
-    if state then EnableAutoBlock() else DisableAutoBlock() end
-end })
-DragLeft:AddSlider("DragHitboxTransparency", { Text = "Transparency", Default = 0.5, Min = 0, Max = 1, Rounding = 2, Callback = function(v)
-    _G.DragHitboxTransparency = v
-    for _, data in pairs(_G.DragHitboxData) do if data.part and data.part.Parent then data.part.Transparency = 1 - v end end
-end })
-DragLeft:AddLabel("Drag Hitbox Color"):AddColorPicker("DragHitboxColor", { Default = _G.DragHitboxColor, Title = "Drag Hitbox Color", Callback = function(color)
-    _G.DragHitboxColor = color
-    for _, data in pairs(_G.DragHitboxData) do if data.part and data.part.Parent then data.part.Color = color end end
-end })
-local DragRight = Tabs.Block:AddRightGroupbox("Hitbox Drag Settings", "sliders")
-DragRight:AddSlider("DragHitboxSize", { Text = "Size", Default = 1.0, Min = 0.2, Max = 3.0, Rounding = 2, Callback = function(v)
-    _G.DragHitboxScale = v
-    for _, data in pairs(_G.DragHitboxData) do if data.part and data.part.Parent then data.part.Size = _G.BaseHitboxSize * v end end
-end })
-DragRight:AddSlider("DragHitboxOffset", { Text = "Offset (Z)", Default = -1.4, Min = -10, Max = 0, Rounding = 1, Callback = function(v) _G.DragHitboxOffset = v end })
-DragRight:AddSlider("DragHitboxDuration", { Text = "Duration", Default = 1.5, Min = 0.1, Max = 5.0, Rounding = 1, Callback = function(v) _G.DragHitboxDuration = v end })
 
--- ========== 背刺 ==========
 local TARGET_ANIMATION_ID = "100725497418533"
 local DASHSTAB_ANIM_ID = "89448354637442"
 local stabEnabledBackstab = false
@@ -1801,7 +1564,6 @@ StabRight:AddSlider("BackstabDelay", { Text = "Backstab Start Delay", Default = 
 StabRight:AddSlider("BackstabDuration", { Text = "Backstab Duration", Default = 0.5, Min = 0.1, Max = 2, Rounding = 2, Callback = function(v) backstabDuration = v end })
 StabRight:AddSlider("DashstabDelay", { Text = "Dashstab Start Delay", Default = 0.25, Min = 0, Max = 0.5, Rounding = 2, Callback = function(v) dashstabDelay = v end })
 
--- ========== Sk8 功能 ==========
 do
     local Sk8Player = LP
     local Sk8Workspace = Workspace
@@ -2064,7 +1826,6 @@ do
     Sk8Right:AddSlider("SpraySpeed", { Text = "Spray Speed", Default = 4.5, Min = 0.5, Max = 10, Rounding = 1, Callback = function(val) spraySpeed = val end })
 end
 
--- ========== 表情 & 动画替换 ==========
 local EmotesGroup = Tabs.Action:AddLeftGroupbox("Emotes", "smile")
 local svc = { RS = ReplicatedStorage, Run = RunService, TS = game:GetService("TweenService"), Input = UserInputService }
 local lp = LP
@@ -2255,7 +2016,6 @@ PlayerAnimGroup:AddButton("Stop Animation", function() stopAnimations() end)
 PlayerAnimGroup:AddButton("Refresh List", function() collectBaseAnimations(); buildUniqueList() end)
 lp.CharacterAdded:Connect(function() task.wait(0.5); if next(currentTracks) then stopAnimations() end end)
 
--- ========== 音乐 ==========
 do
     local tabMusic = Tabs["Music"]
     local leftGroup = tabMusic:AddLeftGroupbox("LMS Music", "music")
@@ -2455,7 +2215,6 @@ do
     rightGroup:AddButton("Stop Preview", function() pcall(function() previewStop() end) end)
 end
 
--- ========== 杂项 ==========
 local ImpersonateGroup = Tabs.Misc:AddLeftGroupbox("Impersonate", "user")
 local FlipGroupMisc = Tabs.Misc:AddLeftGroupbox("Front Flip", "flip")
 local ChatGroupMisc = Tabs.Misc:AddLeftGroupbox("Chat", "message")
@@ -2629,7 +2388,6 @@ task.spawn(function()
     end
 end)
 
--- ========== UI 设置 ==========
 local MenuGroup = Tabs["UI Settings"]:AddLeftGroupbox("Menu", "wrench")
 MenuGroup:AddToggle("KeybindMenuOpen", { Default = Library.KeybindFrame.Visible, Text = "Open Keybind Menu", Callback = function(value) Library.KeybindFrame.Visible = value end })
 MenuGroup:AddToggle("ShowCustomCursor", { Text = "Custom Cursor", Default = true, Callback = function(Value) Library.ShowCustomCursor = Value end })
