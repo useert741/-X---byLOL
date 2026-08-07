@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delta 解卡工具 - iOS版</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: #333;
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+        
+        header {
+            background: linear-gradient(90deg, #2575fc, #6a11cb);
+            color: white;
+            padding: 25px 20px;
+            text-align: center;
+            position: relative;
+        }
+        
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            padding: 25px;
+        }
+        
+        .input-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #444;
+        }
+        
+        .input-with-icon {
+            position: relative;
+        }
+        
+        input {
+            width: 100%;
+            padding: 15px 50px 15px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #2575fc;
+            box-shadow: 0 0 0 3px rgba(37, 117, 252, 0.2);
+        }
+        
+        .input-icon {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6a11cb;
+            font-size: 20px;
+        }
+        
+        .api-key-group {
+            margin-bottom: 25px;
+        }
+        
+        .api-key-toggle {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+        
+        .api-key-toggle input {
+            width: auto;
+            margin-right: 10px;
+        }
+        
+        .api-key-input {
+            display: none;
+            margin-top: 10px;
+        }
+        
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(90deg, #2575fc, #6a11cb);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(37, 117, 252, 0.3);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 117, 252, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn:disabled {
+            background: #b0b0b0;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .result-container {
+            display: none;
+            margin-top: 30px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 5px solid #6a11cb;
+        }
+        
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .result-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #6a11cb;
+        }
+        
+        .copy-btn {
+            background: #2575fc;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .result-content {
+            line-height: 1.8;
+        }
+        
+        .result-item {
+            margin-bottom: 10px;
+            display: flex;
+        }
+        
+        .result-label {
+            font-weight: 600;
+            min-width: 80px;
+            color: #555;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 5px solid rgba(37, 117, 252, 0.2);
+            border-radius: 50%;
+            border-top: 5px solid #2575fc;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .instructions {
+            margin-top: 30px;
+            background: #eef5ff;
+            border-radius: 12px;
+            padding: 20px;
+        }
+        
+        .instructions h3 {
+            color: #2575fc;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .instructions ol {
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 10px;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+        }
+        
+        .supported-domains {
+            margin-top: 15px;
+            font-size: 0.85rem;
+            color: #666;
+        }
+        
+        .success { color: #28a745; }
+        .warning { color: #ffc107; }
+        .error { color: #dc3545; }
+        
+        @media (max-width: 480px) {
+            .container {
+                border-radius: 15px;
+            }
+            
+            header {
+                padding: 20px 15px;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+            }
+            
+            .main-content {
+                padding: 20px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-key"></i> Delta 解卡工具</h1>
+            <p class="subtitle">专为iOS设备优化的解卡解决方案</p>
+        </header>
+        
+        <div class="main-content">
+            <div class="input-group">
+                <label for="delta-url"><i class="fas fa-link"></i> 粘贴 Delta 认证链接</label>
+                <div class="input-with-icon">
+                    <input type="text" id="delta-url" placeholder="例如: https://auth.platoboost.com/...">
+                    <div class="input-icon">
+                        <i class="fas fa-paste"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="api-key-group">
+                <div class="api-key-toggle">
+                    <input type="checkbox" id="use-custom-key">
+                    <label for="use-custom-key">使用自定义 API 密钥</label>
+                </div>
+                <div class="api-key-input" id="api-key-container">
+                    <input type="text" id="api-key" placeholder="输入您的 API 密钥">
+                </div>
+            </div>
+            
+            <button class="btn" id="bypass-btn">
+                <i class="fas fa-bolt"></i> 开始解卡
+            </button>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>正在解卡，请稍候...</p>
+            </div>
+            
+            <div class="result-container" id="result-container">
+                <div class="result-header">
+                    <div class="result-title"><i class="fas fa-check-circle"></i> 解卡结果</div>
+                    <button class="copy-btn" id="copy-btn">
+                        <i class="fas fa-copy"></i> 复制结果
+                    </button>
+                </div>
+                <div class="result-content" id="result-content">
+                    <!-- 结果将在这里显示 -->
+                </div>
+            </div>
+            
+            <div class="instructions">
+                <h3><i class="fas fa-info-circle"></i> 使用说明</h3>
+                <ol>
+                    <li>复制 Delta 认证链接（以 auth.platoboost.com 等开头）</li>
+                    <li>粘贴到上方输入框中</li>
+                    <li>点击"开始解卡"按钮</li>
+                    <li>等待几秒钟获取卡密</li>
+                    <li>复制结果并使用</li>
+                </ol>
+                <div class="supported-domains">
+                    <p><strong>支持的域名:</strong> auth.platoboost.com, auth.platorelay.com, auth.platoboost.net, auth.platoboost.click</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>Powered by LATstudio | 专为 iOS 设备优化</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const deltaUrlInput = document.getElementById('delta-url');
+            const useCustomKeyCheckbox = document.getElementById('use-custom-key');
+            const apiKeyContainer = document.getElementById('api-key-container');
+            const apiKeyInput = document.getElementById('api-key');
+            const bypassBtn = document.getElementById('bypass-btn');
+            const loadingElement = document.getElementById('loading');
+            const resultContainer = document.getElementById('result-container');
+            const resultContent = document.getElementById('result-content');
+            const copyBtn = document.getElementById('copy-btn');
+            
+            // 默认API密钥（在实际应用中应该从安全的地方获取）
+            const defaultApiKey = 'DEMO_API_KEY';
+            
+            // 切换自定义API密钥输入框
+            useCustomKeyCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    apiKeyContainer.style.display = 'block';
+                } else {
+                    apiKeyContainer.style.display = 'none';
+                }
+            });
+            
+            // 解卡按钮点击事件
+            bypassBtn.addEventListener('click', function() {
+                const deltaUrl = deltaUrlInput.value.trim();
+                
+                if (!deltaUrl) {
+                    alert('请输入 Delta 认证链接');
+                    return;
+                }
+                
+                // 检查链接是否有效
+                const deltaDomains = [
+                    "https://auth.platoboost.com",
+                    "https://auth.platorelay.com", 
+                    "https://auth.platoboost.net",
+                    "https://auth.platoboost.click"
+                ];
+                
+                const isValidDeltaLink = deltaDomains.some(domain => deltaUrl.includes(domain));
+                if (!isValidDeltaLink) {
+                    alert('请输入有效的 Delta 认证链接');
+                    return;
+                }
+                
+                // 获取API密钥
+                const apiKey = useCustomKeyCheckbox.checked ? apiKeyInput.value.trim() : defaultApiKey;
+                if (!apiKey) {
+                    alert('请输入 API 密钥');
+                    return;
+                }
+                
+                // 显示加载状态
+                loadingElement.style.display = 'block';
+                resultContainer.style.display = 'none';
+                bypassBtn.disabled = true;
+                
+                // 模拟API调用（在实际应用中替换为真实的API调用）
+                simulateBypassAPI(deltaUrl, apiKey);
+            });
+            
+            // 复制结果按钮
+            copyBtn.addEventListener('click', function() {
+                const resultText = resultContent.innerText;
+                navigator.clipboard.writeText(resultText).then(() => {
+                    const originalText = copyBtn.innerHTML;
+                    copyBtn.innerHTML = '<i class="fas fa-check"></i> 已复制';
+                    setTimeout(() => {
+                        copyBtn.innerHTML = originalText;
+                    }, 2000);
+                });
+            });
+            
+            // 模拟API调用函数
+            function simulateBypassAPI(url, apiKey) {
+                // 在实际应用中，这里应该调用真实的API
+                // 例如：fetch(`https://bypass.ceo/bypass/premium/delta?url=${encodeURIComponent(url)}&api_key=${apiKey}`)
+                
+                // 模拟网络延迟
+                setTimeout(() => {
+                    // 模拟成功响应
+                    const mockResponse = {
+                        key: "DELTA-7X9B2-C8M3N-1P5Q6",
+                        time: "1250",
+                        error: null
+                    };
+                    
+                    // 模拟错误响应（取消注释测试错误情况）
+                    // const mockResponse = {
+                    //     key: null,
+                    //     time: null,
+                    //     error: "无效的链接或API密钥"
+                    // };
+                    
+                    displayResult(mockResponse);
+                }, 2000);
+            }
+            
+            // 显示结果函数
+            function displayResult(data) {
+                loadingElement.style.display = 'none';
+                resultContainer.style.display = 'block';
+                bypassBtn.disabled = false;
+                
+                let resultHTML = '';
+                
+                if (data.key) {
+                    resultHTML += `
+                        <div class="result-item">
+                            <span class="result-label">🔑 卡密:</span>
+                            <span class="success">${data.key}</span>
+                        </div>
+                    `;
+                } else {
+                    resultHTML += `
+                        <div class="result-item">
+                            <span class="result-label">🔑 卡密:</span>
+                            <span class="error">获取失败</span>
+                        </div>
+                    `;
+                }
+                
+                if (data.time) {
+                    resultHTML += `
+                        <div class="result-item">
+                            <span class="result-label">⏱️ 耗时:</span>
+                            <span>${data.time}ms</span>
+                        </div>
+                    `;
+                }
+                
+                if (data.error) {
+                    resultHTML += `
+                        <div class="result-item">
+                            <span class="result-label">⚠️ 错误:</span>
+                            <span class="error">${data.error}</span>
+                        </div>
+                    `;
+                }
+                
+                resultHTML += `
+                    <div class="result-item">
+                        <span class="result-label">💡 来源:</span>
+                        <span>LATstudio</span>
+                    </div>
+                `;
+                
+                resultContent.innerHTML = resultHTML;
+            }
+            
+            // 粘贴功能
+            deltaUrlInput.addEventListener('click', function() {
+                navigator.clipboard.readText().then(text => {
+                    if (text.includes('auth.platoboost') || text.includes('auth.platorelay')) {
+                        deltaUrlInput.value = text;
+                    }
+                }).catch(err => {
+                    console.log('无法读取剪贴板:', err);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
