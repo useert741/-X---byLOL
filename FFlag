@@ -1,0 +1,169 @@
+if not setfflag then return end
+
+local RunService = game:GetService("RunService")
+
+local function stripPrefix(name)
+    name = name:gsub("^DFInt", "")
+    name = name:gsub("^DFFlag", "")
+    name = name:gsub("^FFlag", "")
+    name = name:gsub("^FInt", "")
+    name = name:gsub("^FString", "")
+    name = name:gsub("^FLog", "")
+    return name
+end
+
+local function setFlag(k, v)
+    pcall(function() setfflag(stripPrefix(k), v) end)
+    pcall(function() setfflag(k, v) end)
+end
+
+setFlag("FIntDebugTextureManagerSkipMips", "8")
+setFlag("FFlagDisablePostFx", "true")
+
+if setfpscap then
+    pcall(function() setfpscap(240) end)
+end
+
+local baseFlags = {
+    ["FIntTaskSchedulerAutoThreadLimit"]              = "6",
+    ["FIntTaskSchedulerAsyncTasksMinimumThreadCount"] = "2",
+    ["FIntTaskSchedulerMaxNumOfJobs"]                 = "86",
+    ["FIntTaskSchedulerThreadMin"]                    = "1",
+
+    ["DFFlagBrowserTrackerIdTelemetryEnabled"]     = "False",
+    ["DFFlagCoreScriptTelemetry2"]                 = "False",
+    ["DFFlagVideoCaptureServiceEnabled"]           = "False",
+    ["FFlagEnableTelemetryService1"]               = "False",
+    ["FFlagPerfDataOnTelemetryV2"]                 = "False",
+    ["FFlagOpenTelemetryEnabled2"]                 = "False",
+    ["FIntPerformanceTelemetryQueueProcessLimit"]  = "0",
+    ["FIntTelemetryProfilerFrequency"]             = "0",
+    ["FIntReportDeviceInfoRollout"]                = "0",
+
+    ["FFlagRenderFutureLighting"]                  = "False",
+    ["FFlagRenderUseFutureLighting"]               = "False",
+    ["FFlagRenderVoxelLighting"]                   = "True",
+    ["FFlagFastGPULightCulling3"]                  = "True",
+    ["FFlagRenderUseShadowMapV2"]                  = "False",
+    ["FFlagDebugGraphicsPreferD3D11"]              = "True",
+    ["FFlagDebugGraphicsDisableVulkan"]            = "False",
+    ["FFlagDebugGraphicsDisableMetal"]             = "False",
+    ["FFlagCacheTextBoundsInGuiText"]              = "True",
+    ["FFlagRenderGpuTextureCompressor"]            = "False",
+    ["FFlagRenderAllocateShadowMapResourcesOnDemand"] = "False",
+}
+
+local tiers = {
+    {
+        ["DFIntDebugFRMQualityLevelOverride"]   = "2",
+        ["DFIntDebugFRMQualityLevelOverride2"]  = "2",
+        ["FFlagRenderInitShadowmaps"]           = "False",
+        ["DFIntRenderShadowMapResolution"]      = "256",
+        ["FIntRenderShadowMapDepthCacheMemLimit"]= "64",
+        ["FIntRenderMaxShadowAtlasUsageBeforeDownscale"] = "20",
+        ["FIntRenderShadowIntensity"]           = "0",
+        ["FIntDebugForceMSAASamples"]           = "0",
+        ["FIntFRMMaxGrassDistance"]             = "0",
+        ["FIntFRMMinGrassDistance"]             = "0",
+        ["FIntTerrainOTAMaxTextureSize"]        = "512",
+        ["FIntUITextureMaxRenderTextureSize"]   = "512",
+        ["FIntDefaultMeshCacheSizeMB"]          = "384",
+        ["DFIntRenderDistance"]                 = "2000",
+        ["FIntRenderMaxPartDistance"]           = "2000",
+    },
+    {
+        ["DFIntDebugFRMQualityLevelOverride"]   = "5",
+        ["DFIntDebugFRMQualityLevelOverride2"]  = "5",
+        ["FFlagRenderInitShadowmaps"]           = "True",
+        ["DFIntRenderShadowMapResolution"]      = "512",
+        ["FIntRenderShadowMapDepthCacheMemLimit"]= "128",
+        ["FIntRenderMaxShadowAtlasUsageBeforeDownscale"] = "60",
+        ["FIntRenderShadowIntensity"]           = "60",
+        ["FIntDebugForceMSAASamples"]           = "0",
+        ["FIntFRMMaxGrassDistance"]             = "200",
+        ["FIntFRMMinGrassDistance"]             = "100",
+        ["FIntTerrainOTAMaxTextureSize"]        = "1024",
+        ["FIntUITextureMaxRenderTextureSize"]   = "1024",
+        ["FIntDefaultMeshCacheSizeMB"]          = "512",
+        ["DFIntRenderDistance"]                 = "5000",
+        ["FIntRenderMaxPartDistance"]           = "5000",
+    },
+    {
+        ["DFIntDebugFRMQualityLevelOverride"]   = "8",
+        ["DFIntDebugFRMQualityLevelOverride2"]  = "8",
+        ["FFlagRenderInitShadowmaps"]           = "True",
+        ["DFIntRenderShadowMapResolution"]      = "1024",
+        ["FIntRenderShadowMapDepthCacheMemLimit"]= "256",
+        ["FIntRenderMaxShadowAtlasUsageBeforeDownscale"] = "100",
+        ["FIntRenderShadowIntensity"]           = "80",
+        ["FIntDebugForceMSAASamples"]           = "2",
+        ["FIntFRMMaxGrassDistance"]             = "500",
+        ["FIntFRMMinGrassDistance"]             = "200",
+        ["FIntTerrainOTAMaxTextureSize"]        = "2048",
+        ["FIntUITextureMaxRenderTextureSize"]   = "2048",
+        ["FIntDefaultMeshCacheSizeMB"]          = "768",
+        ["DFIntRenderDistance"]                 = "10000",
+        ["FIntRenderMaxPartDistance"]           = "10000",
+    },
+}
+
+for k, v in pairs(baseFlags) do
+    setFlag(k, v)
+    RunService.RenderStepped:Wait()
+end
+
+local currentTier = nil
+
+local function applyTier(index)
+    if currentTier == index then return end
+    currentTier = index
+    for k, v in pairs(tiers[index]) do
+        setFlag(k, v)
+        RunService.RenderStepped:Wait()
+    end
+    setFlag("FIntDebugTextureManagerSkipMips", "8")
+    setFlag("FFlagDisablePostFx", "true")
+end
+
+applyTier(2)
+
+local frameCount    = 0
+local timeAccum     = 0
+local SAMPLE_TIME   = 2.5
+local LOW_THRESHOLD = 45
+local HIGH_THRESHOLD= 75
+local LOW_STREAK    = 3
+local HIGH_STREAK   = 6
+
+local lowStreak, highStreak = 0, 0
+
+RunService.RenderStepped:Connect(function(dt)
+    frameCount = frameCount + 1
+    timeAccum  = timeAccum + dt
+
+    if timeAccum < SAMPLE_TIME then return end
+
+    local fps = frameCount / timeAccum
+    frameCount = 0
+    timeAccum  = 0
+
+    if fps < LOW_THRESHOLD then
+        lowStreak  = lowStreak + 1
+        highStreak = 0
+    elseif fps > HIGH_THRESHOLD then
+        highStreak = highStreak + 1
+        lowStreak  = 0
+    else
+        lowStreak, highStreak = 0, 0
+    end
+
+    if lowStreak >= LOW_STREAK and currentTier > 1 then
+        applyTier(currentTier - 1)
+        lowStreak = 0
+    end
+
+    if highStreak >= HIGH_STREAK and currentTier < 3 then
+        applyTier(currentTier + 1)
+        highStreak = 0
+    end
+end)
